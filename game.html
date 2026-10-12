@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>小游戏开发 · 个人网页开发</title>
+<meta name="description" content="微信小程序《修仙小游戏-修仙》的设计与开发：国风水墨视觉系统、页面结构、玩法与技术实现。">
+<meta name="theme-color" content="#F5F5F7">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
+<!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
+     首屏入场的初始态（opacity:0）只写在 `.js` 选择器下面 ——
+     .js 挂晚了的话，浏览器已经按「全可见」画过一帧，
+     挂上 .js 时元素是从 1 变成 0（还带着 110ms 的 transition-delay），
+     紧接着两个 rAF 后又加 is-in 把它拉回 1，
+     这次过渡是 1→1，**入场动画直接看不出来**（刷新时偶发，取决于谁先到）。
+     标题的单字没有这个问题 —— 它们是 JS 之后才创建的，首个计算值就是 0。 -->
+<script>document.documentElement.classList.remove('no-js');
+document.documentElement.classList.add('js');
+/* 兜底：site.js 万一没跑起来（文件缺失、被杀软拦、路径写错），
+   就把 .js 撤掉。否则所有 .reveal 元素会永远停在 opacity:0 —— 整页白屏。
+   site.js 一旦执行就会置上 window.__siteReady，这个定时器就什么都不做。 */
+setTimeout(function () {
+  if (!window.__siteReady) document.documentElement.classList.remove('js');
+}, 4000);</script>
+
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<nav class="site-nav site-nav--bar" aria-label="主导航">
+  <div class="site-nav__inner">
+    <a class="site-nav__home" href="index.html">首页</a>
+    <button class="nav-toggle" type="button"
+            aria-expanded="false" aria-controls="nav-list" aria-label="打开菜单">
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <ul class="site-nav__list" id="nav-list">
+        <li><a class="site-nav__link" href="design.html">平面设计</a></li>
+        <li><a class="site-nav__link" href="ai-video.html">AI视频</a></li>
+        <li><a class="site-nav__link" aria-current="page" href="game.html">小游戏开发</a></li>
+        <li><a class="site-nav__link" href="culture.html">传统文化</a></li>
+        <li><a class="site-nav__link" href="llm.html">大模型部署</a></li>
+</ul>
+  </div>
+</nav>
+
+<main id="main">
+
+  <header class="page-head wrap">
+    <nav class="breadcrumb" aria-label="面包屑">
+      <a href="index.html">首页</a>
+      <span aria-hidden="true">/</span>
+      <span>小游戏开发</span>
+    </nav>
+    <h1 class="page-head__title">小游戏开发</h1>
+    <p class="page-head__lead">
+      微信小程序《修仙小游戏-修仙》——设计、视觉、开发一个人从头做到尾。
+    </p>
+  </header>
+
+  <section class="wrap wrap--wide" aria-label="作品列表">
+    <div class="works">
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">游戏截图 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>2025 — 开发中</span>
+            <span>独立完成</span>
+          </div>
+          <h2 class="work__title">项目概览</h2>
+          <p class="work__desc">
+            一款以修仙为主题的文字类微信小游戏。玩家通过修炼积累修为、
+            外出游历获取资源、经营自己的洞府，并在战斗中推进境界。
+            七个主要页面覆盖了从日常挂机到主动操作的完整循环。
+          </p>
+          <div class="work__tags">
+            <span class="tag">微信小程序</span>
+            <span class="tag">游戏设计</span>
+            <span class="tag">独立开发</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">视觉稿 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>视觉系统</span>
+            <span>国风水墨</span>
+          </div>
+          <h2 class="work__title">国风水墨视觉系统</h2>
+          <p class="work__desc">
+            整体走浅色宣纸的国风水墨方向——不是把水墨当贴图，
+            而是让它决定界面的底层规则：留白怎么留、层次靠墨色浓淡区分、
+            装饰元素一律让位给信息本身。整套视觉从设计变量开始搭，
+            保证后续新增页面不用重新做一遍风格决策。
+          </p>
+          <div class="work__tags">
+            <span class="tag">视觉系统</span>
+            <span class="tag">设计变量</span>
+            <span class="tag">国风</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">页面流程 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>玩法</span>
+            <span>七个页面</span>
+          </div>
+          <h2 class="work__title">页面结构与玩法循环</h2>
+          <p class="work__desc">
+            修炼、游历、洞府、战斗四个主页面构成核心循环，
+            背包、商店、个人中心承担资源与成长的管理。
+            设计的重点在于：让玩家在任何一个页面都能一眼看懂
+            下一步该干什么，不用来回翻找。
+          </p>
+          <div class="work__tags">
+            <span class="tag">玩法设计</span>
+            <span class="tag">信息架构</span>
+            <span class="tag">交互流程</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">开发记录 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>开发</span>
+            <span>小程序原生</span>
+          </div>
+          <h2 class="work__title">技术实现</h2>
+          <p class="work__desc">
+            用微信小程序原生框架开发，页面结构与样式分开维护。
+            做下来体会最深的一点是：样式的可维护性要靠结构解决，
+            所以先把整套设计变量抽出来，页面里只引用变量，
+            后续统一换风格时改一个地方就够了。
+          </p>
+          <div class="work__tags">
+            <span class="tag">小程序开发</span>
+            <span class="tag">样式架构</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__grid">
+      <div>
+        <p class="site-footer__title">张杰波</p>
+        <p>平面设计师 · 视觉设计 / AI 影像 / 交互开发</p>
+      </div>
+      <div>
+        <p class="site-footer__title">联系方式</p>
+        <ul class="site-footer__list">
+          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="#">微信：待填写</a></li>
+          <li><a href="#">小红书：待填写</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="site-footer__title">五个方向</p>
+        <ul class="site-footer__list">
+          <li><a href="design.html">平面设计</a></li>
+          <li><a href="ai-video.html">AI视频</a></li>
+          <li><a href="game.html">小游戏开发</a></li>
+          <li><a href="culture.html">传统文化</a></li>
+          <li><a href="llm.html">大模型部署</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="site-footer__bottom">
+      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利</span>
+      <span>本网站全部由个人开发</span>
+      <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

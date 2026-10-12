@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI视频 · 个人网页开发</title>
+<meta name="description" content="张杰波的 AI 视频实践：商用宣传片的提示词工程、时间分段控制、首尾帧接力与中文文字渲染方案。">
+<meta name="theme-color" content="#F5F5F7">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
+<link rel="preload" as="image" href="assets/video/hero-poster.jpg">
+<!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
+     首屏入场的初始态（opacity:0）只写在 `.js` 选择器下面 ——
+     .js 挂晚了的话，浏览器已经按「全可见」画过一帧，
+     挂上 .js 时元素是从 1 变成 0（还带着 110ms 的 transition-delay），
+     紧接着两个 rAF 后又加 is-in 把它拉回 1，
+     这次过渡是 1→1，**入场动画直接看不出来**（刷新时偶发，取决于谁先到）。
+     标题的单字没有这个问题 —— 它们是 JS 之后才创建的，首个计算值就是 0。 -->
+<script>document.documentElement.classList.remove('no-js');
+document.documentElement.classList.add('js');
+/* 兜底：site.js 万一没跑起来（文件缺失、被杀软拦、路径写错），
+   就把 .js 撤掉。否则所有 .reveal 元素会永远停在 opacity:0 —— 整页白屏。
+   site.js 一旦执行就会置上 window.__siteReady，这个定时器就什么都不做。 */
+setTimeout(function () {
+  if (!window.__siteReady) document.documentElement.classList.remove('js');
+}, 4000);</script>
+
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<nav class="site-nav site-nav--bar" aria-label="主导航">
+  <div class="site-nav__inner">
+    <a class="site-nav__home" href="index.html">首页</a>
+    <button class="nav-toggle" type="button"
+            aria-expanded="false" aria-controls="nav-list" aria-label="打开菜单">
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <ul class="site-nav__list" id="nav-list">
+        <li><a class="site-nav__link" href="design.html">平面设计</a></li>
+        <li><a class="site-nav__link" aria-current="page" href="ai-video.html">AI视频</a></li>
+        <li><a class="site-nav__link" href="game.html">小游戏开发</a></li>
+        <li><a class="site-nav__link" href="culture.html">传统文化</a></li>
+        <li><a class="site-nav__link" href="llm.html">大模型部署</a></li>
+</ul>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- 沉浸式页头：全屏大图 + 居中巨字，「动起来」用渐变强调。
+       高度 = 视口高 − 粘顶条高（--nav-h），所以导航 + 大图正好一屏。
+
+       .hero-pin 是下拉动画的容器，比页头本身高一截：
+       页头在里面 position: sticky，下拉时先不动，
+       等文字飞走、灰色褪掉，容器才见底放开，视频才跟着滚上去。
+       高度与 sticky 都写在 .js 下，禁用 JS 时这层容器等于不存在。 -->
+  <div class="hero-pin">
+    <header class="page-hero">
+      <video class="page-hero__bg" autoplay muted loop playsinline
+             preload="auto" poster="assets/video/hero-poster.jpg"
+             aria-hidden="true">
+        <source src="assets/video/hero-720p.mp4" type="video/mp4">
+      </video>
+      <div class="page-hero__veil" aria-hidden="true"></div>
+      <div class="page-hero__stage">
+        <h1 class="page-hero__title">我让画面<span class="grad">动起来</span></h1>
+        <p class="page-hero__sub">用提示词调度视频模型，把脚本变成分镜，把分镜变成成片。</p>
+      </div>
+    </header>
+  </div>
+
+  <section class="section wrap wrap--wide" aria-label="成果展示">
+    <div class="section__head">
+      <p class="eyebrow section__eyebrow reveal-line">AI 视频</p>
+      <h2 class="section-title reveal-line title-gradient">成品展示</h2>
+      <p class="section__intro reveal-line">
+        每一条都是一次生成走完的。点封面开始播放，再点暂停。
+      </p>
+    </div>
+
+    <div class="works">
+
+      <article class="work work--video" id="work-06-samoyed">
+        <div class="work__media work__media--video reveal-line">
+          <video class="work__video" loop playsinline preload="none" controls
+                 poster="assets/video/06-samoyed-poster.jpg">
+            <source src="assets/video/06-samoyed.mp4" type="video/mp4">
+          </video>
+          <button class="work__play" type="button" aria-label="播放《会跳舞的萨摩耶》">
+            <span class="work__play-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>28 秒</span>
+            <span>3840×2160</span>
+          </div>
+          <h2 class="work__title reveal-line">会跳舞的萨摩耶</h2>
+          <p class="work__desc reveal-line">
+            一只萨摩耶坐在床上，前爪交替抬起、左右摇摆，像在跟人跳舞。暖阳斜照在亚麻床品上，毛发边缘被照得发亮。
+          </p>
+          <div class="work__tags reveal-line">
+              <span class="tag">动物</span>
+              <span class="tag">拟人化动作</span>
+              <span class="tag">暖光</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work work--video" id="work-04-future-lab">
+        <div class="work__media work__media--video reveal-line">
+          <video class="work__video" loop playsinline preload="none" controls
+                 poster="assets/video/04-future-lab-poster.jpg">
+            <source src="assets/video/04-future-lab.mp4" type="video/mp4">
+          </video>
+          <button class="work__play" type="button" aria-label="播放《AI 便民接管站》">
+            <span class="work__play-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>90 秒</span>
+            <span>1280×720</span>
+          </div>
+          <h2 class="work__title reveal-line">AI 便民接管站</h2>
+          <p class="work__desc reveal-line">
+            一则完整的科幻短片。雨夜，年轻人走进一家「AI 便民接管站」，门头下面一行小字写着「人类岗位剩余存活率：3%」。柜台后的白色服务机器人起初笑脸相迎，随后眼睛转红、周身迸出电弧。全片有完整的起承转合。
+          </p>
+          <div class="work__tags reveal-line">
+              <span class="tag">科幻短片</span>
+              <span class="tag">完整叙事</span>
+              <span class="tag">90 秒</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work work--video" id="work-01-red-sedan">
+        <div class="work__media work__media--video reveal-line">
+          <video class="work__video" loop playsinline preload="none" controls
+                 poster="assets/video/01-red-sedan-poster.jpg">
+            <source src="assets/video/01-red-sedan.mp4" type="video/mp4">
+          </video>
+          <button class="work__play" type="button" aria-label="播放《红轿夜行》">
+            <span class="work__play-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>15 秒</span>
+            <span>1920×1080</span>
+          </div>
+          <h2 class="work__title reveal-line">红轿夜行</h2>
+          <p class="work__desc reveal-line">
+            夜林深处，一顶朱红花轿悬在半空，红绸向四面散开，轿檐垂着一圈铜铃。镜头从远景一路匀速推到轿前，中途不变速、不切镜——一次生成走完这个长推。
+          </p>
+          <div class="work__tags reveal-line">
+              <span class="tag">国风志怪</span>
+              <span class="tag">一镜到底</span>
+              <span class="tag">氛围光</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work work--video" id="work-02-giant-ape">
+        <div class="work__media work__media--video reveal-line">
+          <video class="work__video" loop playsinline preload="none" controls
+                 poster="assets/video/02-giant-ape-poster.jpg">
+            <source src="assets/video/02-giant-ape.mp4" type="video/mp4">
+          </video>
+          <button class="work__play" type="button" aria-label="播放《巨猿临城》">
+            <span class="work__play-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>18 秒</span>
+            <span>3840×2160</span>
+          </div>
+          <h2 class="work__title reveal-line">巨猿临城</h2>
+          <p class="work__desc reveal-line">
+            云海之上，赤毛巨猿立于宫阙之间，俯身向崖边的修行者按下一掌。整条的支点是尺度反差——把人和巨物放进同一个画面，靠对比把「大」推出来，而不是靠特效堆。
+          </p>
+          <div class="work__tags reveal-line">
+              <span class="tag">尺度反差</span>
+              <span class="tag">仙侠</span>
+              <span class="tag">4K</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work work--video" id="work-03-deity">
+        <div class="work__media work__media--video reveal-line">
+          <video class="work__video" loop playsinline preload="none" controls
+                 poster="assets/video/03-deity-poster.jpg">
+            <source src="assets/video/03-deity.mp4" type="video/mp4">
+          </video>
+          <button class="work__play" type="button" aria-label="播放《鎏金神祇》">
+            <span class="work__play-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>8 秒</span>
+            <span>1280×720</span>
+          </div>
+          <h2 class="work__title reveal-line">鎏金神祇</h2>
+          <p class="work__desc reveal-line">
+            灰暗荒原上，一个披长袍的身影独立于风暴之下，袍面密布发光的金色符文。镜头先推近、再上摇，最后停在脸上——双眼燃着金光。八秒，一个角色的亮相。
+          </p>
+          <div class="work__tags reveal-line">
+              <span class="tag">角色特写</span>
+              <span class="tag">符文粒子</span>
+              <span class="tag">神话</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work work--video" id="work-05-rabbit-warrior">
+        <div class="work__media work__media--video reveal-line">
+          <video class="work__video" loop playsinline preload="none" controls
+                 poster="assets/video/05-rabbit-warrior-poster.jpg">
+            <source src="assets/video/05-rabbit-warrior.mp4" type="video/mp4">
+          </video>
+          <button class="work__play" type="button" aria-label="播放《兔武士之战》">
+            <span class="work__play-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>29 秒</span>
+            <span>2560×1440</span>
+          </div>
+          <h2 class="work__title reveal-line">兔武士之战</h2>
+          <p class="work__desc reveal-line">
+            高架桥下的雨夜，白毛兔首武士手持巨斧，与红黑铠甲、眼中泛红的对手短兵相接。斧刃与光刃撞上的位置迸出火花，背景是湿漉漉的城市霓虹。
+          </p>
+          <div class="work__tags reveal-line">
+              <span class="tag">动作</span>
+              <span class="tag">打斗</span>
+              <span class="tag">毛发细节</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- 全部作品归档。上方列表最多 10 条，这里是完整的一份。
+  由 制作过程缓存数据/build_ai_video.py 生成，不要手改中间那段。 -->
+  <section class="section section--raised" aria-label="全部作品">
+    <div class="wrap wrap--wide">
+      <div class="section__head">
+        <p class="eyebrow section__eyebrow reveal-line">全部作品</p>
+        <h2 class="section-title reveal-line title-gradient">作品库</h2>
+        <p class="section__intro reveal-line">
+          所有片子的合集。点封面回到上面看完整简介。
+        </p>
+      </div>
+
+      <ul class="gallery">
+      <!-- GALLERY:START -->
+        <li class="gallery__item reveal-line">
+          <a class="gallery__link" href="#work-06-samoyed">
+            <span class="gallery__thumb">
+              <img src="assets/video/06-samoyed-poster.jpg" alt="" loading="lazy" decoding="async">
+            </span>
+            <span class="gallery__title">会跳舞的萨摩耶</span>
+            <span class="gallery__meta">28 秒</span>
+          </a>
+        </li>
+        <li class="gallery__item reveal-line">
+          <a class="gallery__link" href="#work-04-future-lab">
+            <span class="gallery__thumb">
+              <img src="assets/video/04-future-lab-poster.jpg" alt="" loading="lazy" decoding="async">
+            </span>
+            <span class="gallery__title">AI 便民接管站</span>
+            <span class="gallery__meta">90 秒</span>
+          </a>
+        </li>
+        <li class="gallery__item reveal-line">
+          <a class="gallery__link" href="#work-01-red-sedan">
+            <span class="gallery__thumb">
+              <img src="assets/video/01-red-sedan-poster.jpg" alt="" loading="lazy" decoding="async">
+            </span>
+            <span class="gallery__title">红轿夜行</span>
+            <span class="gallery__meta">15 秒</span>
+          </a>
+        </li>
+        <li class="gallery__item reveal-line">
+          <a class="gallery__link" href="#work-02-giant-ape">
+            <span class="gallery__thumb">
+              <img src="assets/video/02-giant-ape-poster.jpg" alt="" loading="lazy" decoding="async">
+            </span>
+            <span class="gallery__title">巨猿临城</span>
+            <span class="gallery__meta">18 秒</span>
+          </a>
+        </li>
+        <li class="gallery__item reveal-line">
+          <a class="gallery__link" href="#work-03-deity">
+            <span class="gallery__thumb">
+              <img src="assets/video/03-deity-poster.jpg" alt="" loading="lazy" decoding="async">
+            </span>
+            <span class="gallery__title">鎏金神祇</span>
+            <span class="gallery__meta">8 秒</span>
+          </a>
+        </li>
+        <li class="gallery__item reveal-line">
+          <a class="gallery__link" href="#work-05-rabbit-warrior">
+            <span class="gallery__thumb">
+              <img src="assets/video/05-rabbit-warrior-poster.jpg" alt="" loading="lazy" decoding="async">
+            </span>
+            <span class="gallery__title">兔武士之战</span>
+            <span class="gallery__meta">29 秒</span>
+          </a>
+        </li>
+      <!-- GALLERY:END -->
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__grid">
+      <div>
+        <p class="site-footer__title">张杰波</p>
+        <p>平面设计师 · 视觉设计 / AI 影像 / 交互开发</p>
+      </div>
+      <div>
+        <p class="site-footer__title">联系方式</p>
+        <ul class="site-footer__list">
+          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="#">微信：待填写</a></li>
+          <li><a href="#">小红书：待填写</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="site-footer__title">五个方向</p>
+        <ul class="site-footer__list">
+          <li><a href="design.html">平面设计</a></li>
+          <li><a href="ai-video.html">AI视频</a></li>
+          <li><a href="game.html">小游戏开发</a></li>
+          <li><a href="culture.html">传统文化</a></li>
+          <li><a href="llm.html">大模型部署</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="site-footer__bottom">
+      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利</span>
+      <span>本网站全部由个人开发</span>
+      <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

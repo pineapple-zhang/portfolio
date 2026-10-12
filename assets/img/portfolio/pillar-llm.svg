@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"
+     width="1600" height="900" role="img"
+     aria-label="大模型部署 · 抽象示意图（占位图，等真实截图替换）">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F7F7F9"/>
+      <stop offset="1" stop-color="#E2E2E7"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <line x1="300" y1="200" x2="800" y2="140" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="200" x2="800" y2="300" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="200" x2="800" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="380" x2="800" y2="300" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="380" x2="800" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="380" x2="800" y2="140" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="560" x2="800" y2="620" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="560" x2="800" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="560" x2="800" y2="780" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="740" x2="800" y2="780" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="740" x2="800" y2="620" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="300" y1="740" x2="800" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="140" x2="1300" y2="260" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="140" x2="1300" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="140" x2="1300" y2="660" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="300" x2="1300" y2="260" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="300" x2="1300" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="300" x2="1300" y2="660" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="460" x2="1300" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="460" x2="1300" y2="260" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="460" x2="1300" y2="660" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="620" x2="1300" y2="660" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="620" x2="1300" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="620" x2="1300" y2="260" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="780" x2="1300" y2="660" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="780" x2="1300" y2="460" stroke="#C9C9CE" stroke-width="2"/>
+  <line x1="800" y1="780" x2="1300" y2="260" stroke="#C9C9CE" stroke-width="2"/>
+  <circle cx="300" cy="200" r="15" fill="#FFFFFF" stroke="#9A9AA0" stroke-width="3"/>
+  <circle cx="300" cy="380" r="15" fill="#FFFFFF" stroke="#9A9AA0" stroke-width="3"/>
+  <circle cx="300" cy="560" r="15" fill="#FFFFFF" stroke="#9A9AA0" stroke-width="3"/>
+  <circle cx="300" cy="740" r="15" fill="#FFFFFF" stroke="#9A9AA0" stroke-width="3"/>
+  <circle cx="800" cy="140" r="15" fill="#161616" stroke="#161616" stroke-width="3"/>
+  <circle cx="800" cy="300" r="15" fill="#161616" stroke="#161616" stroke-width="3"/>
+  <circle cx="800" cy="460" r="15" fill="#161616" stroke="#161616" stroke-width="3"/>
+  <circle cx="800" cy="620" r="15" fill="#161616" stroke="#161616" stroke-width="3"/>
+  <circle cx="800" cy="780" r="15" fill="#161616" stroke="#161616" stroke-width="3"/>
+  <circle cx="1300" cy="260" r="15" fill="#FFFFFF" stroke="#9A9AA0" stroke-width="3"/>
+  <circle cx="1300" cy="460" r="15" fill="#FFFFFF" stroke="#9A9AA0" stroke-width="3"/>
+  <circle cx="1300" cy="660" r="15" fill="#FFFFFF" stroke="#9A9AA0" stroke-width="3"/>
+  <text x="800" y="838" text-anchor="middle" font-family="Noto Sans SC, sans-serif"
+        font-size="30" font-weight="500" letter-spacing="6" fill="#A0A0A6">示意图 · 待替换</text>
+</svg>

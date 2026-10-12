@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>传统文化 · 个人网页开发</title>
+<meta name="description" content="张杰波在传统文化方向的视觉实践：水墨视觉语言、书法与篆刻元素的现代转译、传统配色的界面应用。">
+<meta name="theme-color" content="#F5F5F7">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
+<!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
+     首屏入场的初始态（opacity:0）只写在 `.js` 选择器下面 ——
+     .js 挂晚了的话，浏览器已经按「全可见」画过一帧，
+     挂上 .js 时元素是从 1 变成 0（还带着 110ms 的 transition-delay），
+     紧接着两个 rAF 后又加 is-in 把它拉回 1，
+     这次过渡是 1→1，**入场动画直接看不出来**（刷新时偶发，取决于谁先到）。
+     标题的单字没有这个问题 —— 它们是 JS 之后才创建的，首个计算值就是 0。 -->
+<script>document.documentElement.classList.remove('no-js');
+document.documentElement.classList.add('js');
+/* 兜底：site.js 万一没跑起来（文件缺失、被杀软拦、路径写错），
+   就把 .js 撤掉。否则所有 .reveal 元素会永远停在 opacity:0 —— 整页白屏。
+   site.js 一旦执行就会置上 window.__siteReady，这个定时器就什么都不做。 */
+setTimeout(function () {
+  if (!window.__siteReady) document.documentElement.classList.remove('js');
+}, 4000);</script>
+
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<nav class="site-nav site-nav--bar" aria-label="主导航">
+  <div class="site-nav__inner">
+    <a class="site-nav__home" href="index.html">首页</a>
+    <button class="nav-toggle" type="button"
+            aria-expanded="false" aria-controls="nav-list" aria-label="打开菜单">
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <ul class="site-nav__list" id="nav-list">
+        <li><a class="site-nav__link" href="design.html">平面设计</a></li>
+        <li><a class="site-nav__link" href="ai-video.html">AI视频</a></li>
+        <li><a class="site-nav__link" href="game.html">小游戏开发</a></li>
+        <li><a class="site-nav__link" aria-current="page" href="culture.html">传统文化</a></li>
+        <li><a class="site-nav__link" href="llm.html">大模型部署</a></li>
+</ul>
+  </div>
+</nav>
+
+<main id="main">
+
+  <header class="page-head wrap">
+    <nav class="breadcrumb" aria-label="面包屑">
+      <a href="index.html">首页</a>
+      <span aria-hidden="true">/</span>
+      <span>传统文化</span>
+    </nav>
+    <h1 class="page-head__title">传统文化</h1>
+    <p class="page-head__lead">
+      把传统视觉语法拆开，再装回现代媒介里——不是贴皮，是重建。
+    </p>
+  </header>
+
+  <section class="wrap wrap--wide" aria-label="作品列表">
+    <div class="works">
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>持续</span>
+            <span>视觉语言</span>
+          </div>
+          <h2 class="work__title">国风水墨的视觉语言</h2>
+          <p class="work__desc">
+            水墨真正好用的地方不是笔触，是它的层次逻辑——
+            浓淡、虚实、留白，本身就是一套成熟的信息优先级工具。
+            把「墨分五色」翻译成界面的明度层级，画面立刻就有了呼吸感，
+            而且不需要任何多余的装饰元素。
+          </p>
+          <div class="work__tags">
+            <span class="tag">水墨</span>
+            <span class="tag">留白</span>
+            <span class="tag">层次</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>持续</span>
+            <span>字体与构成</span>
+          </div>
+          <h2 class="work__title">书法与篆刻的现代转译</h2>
+          <p class="work__desc">
+            书法的骨架是笔势的走向，篆刻的核心是方寸之内的疏密与均衡。
+            这两样东西直接照搬会显得老气，但把它们的构成规律抽出来用在
+            版式上——字与字的关系、正负空间的比例——就会既现代又立得住。
+          </p>
+          <div class="work__tags">
+            <span class="tag">书法</span>
+            <span class="tag">篆刻构成</span>
+            <span class="tag">版式</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>持续</span>
+            <span>色彩</span>
+          </div>
+          <h2 class="work__title">传统配色在界面里的用法</h2>
+          <p class="work__desc">
+            朱砂、石青、赭石、月白——传统色名字好听，直接铺满屏幕却容易俗。
+            可行的做法是让它们只在关键处出现：一处强调色，或者一个几乎看不出的
+            底色倾向。传统的克制比传统的浓重更难，也更高级。
+          </p>
+          <div class="work__tags">
+            <span class="tag">传统色</span>
+            <span class="tag">配色系统</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal">
+        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
+        <div>
+          <div class="work__meta">
+            <span>持续</span>
+            <span>题材视觉</span>
+          </div>
+          <h2 class="work__title">仙侠题材的视觉构建</h2>
+          <p class="work__desc">
+            仙侠的视觉难点在于「仙」怎么表现——纯金碧辉煌会显得廉价，
+            纯素净又会丢掉气势。我的处理方式是用空间尺度造仙气：
+            把人和建筑放在不成比例的环境里，靠渺小感反推出宏大，
+            而不是靠堆砌发光特效。
+          </p>
+          <div class="work__tags">
+            <span class="tag">仙侠</span>
+            <span class="tag">场景构建</span>
+            <span class="tag">空间尺度</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__grid">
+      <div>
+        <p class="site-footer__title">张杰波</p>
+        <p>平面设计师 · 视觉设计 / AI 影像 / 交互开发</p>
+      </div>
+      <div>
+        <p class="site-footer__title">联系方式</p>
+        <ul class="site-footer__list">
+          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="#">微信：待填写</a></li>
+          <li><a href="#">小红书：待填写</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="site-footer__title">五个方向</p>
+        <ul class="site-footer__list">
+          <li><a href="design.html">平面设计</a></li>
+          <li><a href="ai-video.html">AI视频</a></li>
+          <li><a href="game.html">小游戏开发</a></li>
+          <li><a href="culture.html">传统文化</a></li>
+          <li><a href="llm.html">大模型部署</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="site-footer__bottom">
+      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利</span>
+      <span>本网站全部由个人开发</span>
+      <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

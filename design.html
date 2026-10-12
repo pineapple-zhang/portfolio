@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js theme-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>平面设计 · 个人网页开发</title>
+<meta name="description" content="张杰波的平面设计作品：商业街招商海报系列、商场开业品宣全案、年会与艺术节活动视觉、地产卖点海报、原创 IP 视觉。">
+<meta name="theme-color" content="#0D0D0D">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
+<!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
+     首屏入场的初始态（opacity:0）只写在 `.js` 选择器下面 ——
+     .js 挂晚了的话，浏览器已经按「全可见」画过一帧，
+     挂上 .js 时元素是从 1 变成 0（还带着 110ms 的 transition-delay），
+     紧接着两个 rAF 后又加 is-in 把它拉回 1，
+     这次过渡是 1→1，**入场动画直接看不出来**（刷新时偶发，取决于谁先到）。
+     标题的单字没有这个问题 —— 它们是 JS 之后才创建的，首个计算值就是 0。 -->
+<script>document.documentElement.classList.remove('no-js');
+document.documentElement.classList.add('js');
+/* 兜底：site.js 万一没跑起来（文件缺失、被杀软拦、路径写错），
+   就把 .js 撤掉。否则所有 .reveal 元素会永远停在 opacity:0 —— 整页白屏。
+   site.js 一旦执行就会置上 window.__siteReady，这个定时器就什么都不做。 */
+setTimeout(function () {
+  if (!window.__siteReady) document.documentElement.classList.remove('js');
+}, 4000);</script>
+
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<nav class="site-nav site-nav--bar" aria-label="主导航">
+  <div class="site-nav__inner">
+    <a class="site-nav__home" href="index.html">首页</a>
+    <button class="nav-toggle" type="button"
+            aria-expanded="false" aria-controls="nav-list" aria-label="打开菜单">
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <ul class="site-nav__list" id="nav-list">
+        <li><a class="site-nav__link" aria-current="page" href="design.html">平面设计</a></li>
+        <li><a class="site-nav__link" href="ai-video.html">AI视频</a></li>
+        <li><a class="site-nav__link" href="game.html">小游戏开发</a></li>
+        <li><a class="site-nav__link" href="culture.html">传统文化</a></li>
+        <li><a class="site-nav__link" href="llm.html">大模型部署</a></li>
+</ul>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- 页头 = 作品集封面
+
+       **纯黑底 + 机甲和宇航员的抠图**，文案排在主体上方，全部水平居中。
+       排版参考用户给的 `素材/首页底图/排版参考-iPadPro渐变字.png`
+       （Apple iPad Pro 那页：黑底、标题居中、主体在下、四周大量留白），
+       文案按「都缩小一点」整体收小。
+
+       ⚠️ 这里换过三种做法：
+          1. 整张封面图铺满（封面 PSD 里「LITTE WORLD」是烤进位图的，分不开）
+          2. 干净机甲底图铺满 + 压暗 + 文案居中
+          3. **现在这版**：用户 2026-10-08 明确「只要把这个机甲和人放进去，
+             不要整个图放进去」—— 底图整张不要了，改成主体的透明抠图。
+             抠图是 `制作过程缓存数据/cutout_mecha.py` 用 u2net 做的
+             （他自己抠的那版 alpha 是顶部线性擦除，机甲上半身被擦成半透明）。
+       ⚠️ 主标题的字形一直在让步：先是 Arial Black 横向压缩仿原版（字形不对），
+          再改 `--font-sans` + 对角渐变，**字形仍然不是封面原版**，
+          这是明确接受的取舍。渐变色标见 tokens.css 的 --cover-grad。
+       ⚠️ 用户明确要求首屏**只保留这四个文案**，所以封面上原来那些
+          （平面设计师 张杰波 / 创意荒原 / 用设计解决问题… / Form follows
+          function. / LITTE WORLD STUDIO / Portfolio 作品集 / 条码）都没有上。 -->
+  <!-- ⚠️ 2026-10-10 新增：外面这层 .dive-pin 是「钉住」用的容器 ——
+       多出来的那段高度就是下潜的行程，页头在里面 position: sticky。
+       机制跟 AI 视频页的 .hero-pin 是同一套（site.js 第 6 节），
+       但**参数完全不同**，所以是独立的第 6b 节，不要合并。 -->
+  <div class="dive-pin">
+  <section class="cover-hero" aria-label="作品集封面">
+    <div class="cover-hero__inner">
+
+      <div class="cover-hero__copy">
+        <h1 class="cover-hero__mark cover-hero__reveal">LITTE WORLD</h1>
+        <p class="cover-hero__cn cover-hero__reveal">平面作品集</p>
+        <!-- 「2026」原来是单独一个 <span>（琥珀色 + 粗体）。用户 2026-10-08 要求
+             数字和英文同一个字号、同一个白色，那个 span 就撤掉了 ——
+             现在整行共用 .cover-hero__tag 的字号字重颜色。 -->
+        <p class="cover-hero__tag cover-hero__reveal">
+          2026 Design is thinking made visual.
+        </p>
+      </div>
+
+      <!-- 主体：带 alpha 的抠图，黑底上看不出边。
+           ⚠️ WebP 放前面当主用格式；<img> 上的 png 只是兜底 ——
+              支持 WebP 的浏览器只会下那一份，不会白下 1MB 的 PNG。
+           ⚠️ width/height 是**裁切后的真实像素**（1290×820），
+              用来占位防抖动；实际显示尺寸由 CSS 的 object-fit 决定。 -->
+      <picture class="cover-hero__subject">
+        <source type="image/webp" srcset="assets/img/hero/hero-subject.webp">
+        <img src="assets/img/hero/hero-subject.png" width="2400" height="1540"
+             fetchpriority="high" decoding="async"
+             alt="黑色背景中一台四足巨型机甲的正面，脚下站着一名宇航员">
+      </picture>
+
+    </div>
+
+    <!-- 下潜到门洞里之后的"全黑"层。放大到最后，画面本来就是门洞里的暗部，
+         这层只是把最后一帧彻底压成纯黑、顺便盖掉放大带来的模糊。
+         opacity 由 site.js 第 6b 节按滚动进度写。 -->
+    <span class="cover-hero__void" aria-hidden="true"></span>
+  </section>
+  </div><!-- /.dive-pin -->
+
+  <!-- ====================================================================
+       全部版面 —— 作品集里的每一页，一页不落
+
+       ⚠️ 顺序 = 《2026 简历汇总（中清晰度）.pdf》的页面顺序。
+          对应关系不是按文件名猜的：`制作过程缓存数据/map_pdf_to_psd.py`
+          把 29 张 PDF 内嵌图 × 29 个 PSD 合成图逐张做像素比对，
+          29/29 一一对应、余量都够。
+       ⚠️ 排除了 3 页，都不是「漏了」：
+            PDF #02  02 详情页   —— 整页个人简历
+            PDF #21  20 内容     —— 站酷个人主页截图 + 二维码 + 网名
+            PDF #29  结尾       —— 底部印着手机号，全套唯一带手机号的一页
+          用户要求「除了名字和邮箱，其他都不要放」。
+       ⚠️ PDF #01（封面）也不在这里 —— 它是上面那个页头，不重复出现。
+
+       ⚠️⚠️ 2026-10-08 用户要求：把这里的
+          「全部版面 / 一页不落 / 25 页，一页不落…」整块 section__head **删掉**
+          （条数后来从 25 减到 24，见 制作过程缓存数据/pages.py 里的说明）
+          因为标题删了，section 的 aria-labelledby 也跟着换成 aria-label。
+       ⚠️⚠️ 2026-10-10 用户要求：把这段中文导语（「看家的手艺。商业地产…」）
+          **也删掉**（附截图圈的就是它）。它 10-08 从页头「下移」到过这里，
+          这次是彻底去掉 —— 原本就是作品区里唯一一行散文，去掉之后
+          这一页的文字只剩：首屏三行 + 机甲那两行 + 页脚。
+          连带清掉：site.js 第 5c 节（逐字升起）、site.css 的 `.cover-hero__lead`
+          三条规则、以及 `_shots/verify_lead.py`。
+
+       下面的列表由 制作过程缓存数据/build_design_pages.py 生成，
+       中间那段不要手改，改页表（pages.py）后重跑。
+       ==================================================================== -->
+  <section class="section section--raised" aria-label="全部版面">
+
+    <!-- 机甲视频：**文案在上、视频在下**（视频视口宽的 66%，居中，高度按 16:9）。
+         ⚠️ 这个位置改了**四轮**，每一轮都推翻上一轮，下面已按**最终形态**写：
+              一：880px 宽居中
+              二：用户「放大成全屏 + 文案压在视频上面，文案内容全部抄这张」→ 整幅出血
+              三：用户「视频还是缩小一点，排版参考<本站首屏>」→ 80% + 渐变标题
+              四：用户「**视频和英文字再小一点，不要让字盖到视频**」→ **现在这版**
+                  · 视频 80% → 66%
+                  · 文案整个**移出视频**，改成视频上方居中的两行（不再是绝对定位）
+                  · 遮罩 `.mecha-hero__scrim` **删掉了** —— 它唯一的用途是把大标题
+                    从视频背景里拉出来；字不压在视频上了，它只会平白压暗机甲
+         ⚠️ 文案是《A SMALL WORLD 品宣活动海报物料》那两行（用户指定抄那张海报），
+            排版照**本站首屏**那组居中堆叠，大标题用 M5 Ultra 那条横向渐变。
+         ⚠️ 文案现在**在文档流里**（视频上方），所以不受视频那两层 mask 影响 ——
+            第三轮那套「文案必须在 mask 之外」的约束自动满足了。
+         ⚠️ 机甲视频是用户自己在即梦生成的（我只出提示词）。原片 1920×1080 /
+            24fps / 5.06 秒 / 7.2MB / **带音轨**；网页用版本去音轨 + CRF 25 → 0.94MB。
+         ⚠️⚠️ **它不是「背景天然跟页面同色」的那种素材**。逐帧量过：底子 19~25
+            （作品区是 #161616 = 22），顶部一道聚光灯锥锥心到 95 且被上边缘切断，
+            地面光池底边内侧 36~42 —— 直接贴上去四周会是一圈硬边
+            （顶边实测 +73 级台阶）。所以视频和它的框各带一层 mask，把四条边
+            羽化掉，见 site.css `.mecha-hero` 那一段
+            （羽化带宽度是照机甲的实际包围盒定的，**改素材要重量**）。
+         ⚠️ 尺寸用 width/height 属性定比例，CSS 只写 width + height:auto。
+         ⚠️ 不用 role="img"（那是指没有内容的装饰盒）—— <video> 自己
+            就是媒体元素，用 aria-label 给它一个名字。
+         ⚠️ 万一视频这条路不走，对应的静态兜底是那张六格精灵图
+            （`mecha-walk.webp` + site.css 里那段 steps() 动画，已备份）。 -->
+    <!-- ⭐ 2026-10-12 用户：「我想要这个页面的出场动画**像木板一样覆盖上去**」
+         （选项里选的是「推上去压住上一段」）。
+         这一层就是那件事的**钉住容器**：它多出来的高度 = 作品区那块"木板"
+         推上来的行程；里面那段机甲视频 `position: sticky` 钉住不动，
+         于是下面的作品区推上来时，**它的顶边会扫过这一段把它盖住**。
+         ⚠️ 机制跟上面首屏的 `.dive-pin` 是同一个（多一段高度 + 子元素 sticky），
+            但**没有 JS** —— sticky 自己就是滚动驱动的。
+         ⚠️ 行程与细节全在 site.css 的 `.slab-pin / .slab` 那一块注释里。 -->
+    <div class="slab-pin">
+      <div class="mecha-hero">
+        <p class="mecha-hero__copy">
+          <span class="mecha-hero__en mecha-hero__reveal">A SMALL WORLD</span>
+          <span class="mecha-hero__cn mecha-hero__reveal">品宣活动海报物料</span>
+        </p>
+        <div class="mecha-hero__frame">
+          <!-- ⚠️ `disablepictureinpicture` + `controlslist` 是 2026-10-09 加的：
+              用户截图圈出视频左上角浮着一个小胶囊（画中画 + 投屏两个图标），
+              问「这个是什么，可以去掉吗」。那**不是页面里的东西** ——
+              全站没有任何图标资源，是浏览器给 `<video>` 挂的媒体控件浮层。
+              这两个属性正好对应那两个按钮：`disablepictureinpicture` 去掉画中画，
+              `controlslist="noremoteplayback"` 去掉投屏。
+              ⚠️ 它们只对**浏览器原生控件**生效；要是那浮层还在，就是浏览器自带的
+                 悬浮媒体控件（跟页面无关），得从浏览器设置关。 -->
+          <video class="mecha-hero__video" src="assets/video/mecha-greet.mp4"
+                 poster="assets/video/mecha-greet-poster.jpg"
+                 width="1920" height="1080"
+                 muted loop playsinline autoplay preload="metadata"
+                 disablepictureinpicture
+                 controlslist="nodownload noplaybackrate noremoteplayback"
+                 aria-label="机甲从站姿单膝蹲跪下来，面罩亮起，抬起手臂向观众挥手"></video>
+
+          <!-- ⭐ Siri 式的问好（用户 2026-10-10 要求）：
+               先在机甲脚前弹出一个会转的彩色圆球 → 变形成半透明胶囊
+               → 胶囊里出现「欢迎来到我的作品集」。
+               ⚠️ 位置 left/top 是**相对这个框**的百分比（框 = 视频的可见区）。
+                  改视频尺寸 / 换素材要重新量那个点（见 site.css 那一节的说明）。
+               ⚠️ 容器本身宽高 0，形状靠子元素各自 translate(-50%,-50%) 居中。
+               ⚠️⚠️ **不要给它加 `.mecha-hero__reveal`。** 加过（2026-10-10 早些时候），
+                  后果是它跟着上面那两行文案共用一个观察者 —— 观察的是整个
+                  `.mecha-hero`，问好却在**视频框的下沿**（top = 框高的 88%），
+                  框一露头就把动画播完了，等滚到胶囊那儿只剩一座空框。
+                  用户原话：「底部的动画怎么提前就播放了，应该用户下拉到出现在
+                  屏幕里才能开始播放吧」。现在时机由 site.js 第 5f 节单独盯。
+               ⚠️ aria-hidden：它是装饰性的动效，欢迎语本身在下面 .wrap 里
+                  已经有了可读文本，读屏重复念一遍反而吵。 -->
+          <span class="morb" aria-hidden="true">
+            <span class="morb__ball"></span>
+            <span class="morb__pill">
+              <span class="morb__wave"><i></i><i></i><i></i><i></i></span>
+              <span class="morb__text">欢迎来到我的作品集</span>
+            </span>
+          </span>
+        </div>
+      </div>
+
+    <div class="wrap wrap--wide slab">
+      <!-- ================================================================
+           「品宣海报 · 商场宣传」这一套 —— **用 HTML 排的，不是压平的图片**。
+           ⚠️ 2026-10-09 用户：「我是要你排在 html 网页里，不是排个图片，
+              文案里的英文不要，去写到网页里，排版你自己看，不一定要抄我的」。
+              所以：文案全是**真文本**（能选中、能搜、改字只改这儿），
+              三张海报各是一个 <img>，**英文全部去掉**（MALL PROMOTION /
+              A SMALL WORLD / SERIES ALTITUDE 都不要）。
+           ⚠️ 这一格原本是 pages.py 里的一行（PDF#04，用那张 2800px 的压平卡贴）。
+              那行**已经从表里删掉了** —— 不删的话同一个项目会在页面里出现两次。
+           ⚠️ `reveal-line` 是走站里那套「滚到视口逐行浮现」，
+              要在 site.js 的 staggerRows 选择器里带上 `.promo`（已加）。
+           ================================================================ -->
+      <article class="promo" aria-labelledby="promo-title">
+        <!-- ⚠️ `.reveal-line` 挂到**每一个要动的元素**上，不是一个块包住全部。
+             `revealRow()` 按 DOM 顺序给每个发 `--d`（间隔 90ms），
+             所以顺序就是：标题 → 副标题 → 正文 → 标签 → 海报 1/2/3。
+             ⚠️ 条目数变了这儿不用改 —— 延迟是按 DOM 顺序算的，自动跟着变。
+             （原来最前面还有一行「01. 商场宣传」眉题，用户 2026-10-09 要求去掉。） -->
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="promo-title">品宣海报</h3>
+          <p class="promo__sub reveal-line">系列品宣海拔</p>
+          <p class="promo__desc reveal-line">这是一组国风系列商业街招商海报，以“热点、顶点、焦点”
+            为主题，分别突出项目稀缺性、景区地段与人流配套三大核心优势，
+            传递“财在点子上”的投资价值，整体风格统一、卖点清晰。</p>
+          <ul class="promo__tags reveal-line">
+            <li>视觉提升</li>
+            <li>品宣升级</li>
+            <li>主题商业街</li>
+            <li>调性提升</li>
+          </ul>
+        </header>
+        <ul class="promo__posters">
+          <li class="reveal-line">
+            <img src="assets/img/design/promo-01.jpg"
+                 alt="「热点」招商海报：橙色主调，以白描楼阁与远山为底"
+                 width="640" height="1376" loading="lazy" decoding="async">
+          </li>
+          <li class="reveal-line">
+            <img src="assets/img/design/promo-02.jpg"
+                 alt="「顶点」招商海报：黄绿主调，以白描楼阁与远山为底"
+                 width="640" height="1376" loading="lazy" decoding="async">
+          </li>
+          <li class="reveal-line">
+            <img src="assets/img/design/promo-03.jpg"
+                 alt="「焦点」招商海报：紫色主调，以白描楼阁与远山为底"
+                 width="640" height="1376" loading="lazy" decoding="async">
+          </li>
+        </ul>
+      </article>
+
+      <!-- PAGES:START -->
+      <!-- PDF#5 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-05">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-05">品宣活动</h3>
+          <p class="promo__sub reveal-line">开业品宣活动</p>
+          <p class="promo__desc reveal-line">三星旗舰店盛大开业，同步推出「设计师星光之夜」主题活动。以“星光汇聚 设计同行”为理念，融合AI智能科技与前沿设计体验，打造沉浸式智享生活场景，诚邀共启未来生活新纪元。</p>
+          <ul class="promo__tags reveal-line"><li>视觉提升</li><li>品宣升级</li><li>开业宣传</li><li>调性提升</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4630"><img src="assets/img/design/works/05-1.jpg" alt="品宣活动 · 邀请函" width="463" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.8832"><img src="assets/img/design/works/05-2.jpg" alt="品宣活动 · 效果图" width="1000" height="531" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.8018"><img src="assets/img/design/works/05-3.jpg" alt="品宣活动 · 屏幕主画面1" width="1000" height="555" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#6 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-06">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-06">开业品宣</h3>
+          <p class="promo__sub reveal-line">系列品宣海拔</p>
+          <p class="promo__desc reveal-line">这组品宣海报以“山海相逢，品味福见”为主题，庆祝餐厅开业盛典，通过主视觉海报、倒计时海报与优惠细则海报形成完整传播矩阵。主海报以红金主色调搭配精美菜品图，突出开业时间；倒计时系列营造期待感；优惠海报则清晰呈现储值送券、砸金蛋等开业福利，整体设计喜庆大气，有效传递品牌庆典与促销信息。</p>
+          <ul class="promo__tags reveal-line"><li>视觉提升</li><li>商业主题</li><li>调性提升</li><li>品宣升级</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/06-1.jpg" alt="开业品宣 · 球风餐饮开业05-主视觉16" width="1000" height="563" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 2.5316"><img src="assets/img/design/works/06-2.jpg" alt="开业品宣 · 宴会厅LED屏" width="1000" height="395" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/06-3.jpg" alt="开业品宣 · 倒计时1" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4640"><img src="assets/img/design/works/06-4.jpg" alt="开业品宣 · 倒计时2" width="464" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4640"><img src="assets/img/design/works/06-5.jpg" alt="开业品宣 · 倒计时3" width="464" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#7 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-07">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-07">调性提升</h3>
+          <p class="promo__sub reveal-line">广场调性提升</p>
+          <p class="promo__desc reveal-line">通过将教师节的人文关怀、中秋节的团圆氛围与保利秋拍艺术佳作（如漆画《故里》）巧妙融合，商场以‘艺术+生活’为核心理念，持续打造高品质、有温度的品宣调性。三组海报共同传递出：家居不仅是功能空间，更是美好生活与圆满人生的承载之所，有效提升了商场在文化品位与情感共鸣层面的品牌形象。</p>
+          <ul class="promo__tags reveal-line"><li>场景美学</li><li>品牌影响力</li><li>文化赋能</li><li>格调提升</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/07-1.jpg" alt="调性提升 · 漆画延期" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4450"><img src="assets/img/design/works/07-2.jpg" alt="调性提升 · 教师节0909" width="445" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4630"><img src="assets/img/design/works/07-3.jpg" alt="调性提升 · 国庆1" width="463" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/07-4.jpg" alt="调性提升 · 亮度/对比度 2" width="462" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#8 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-08">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-08">品牌宣传</h3>
+          <p class="promo__sub reveal-line">品牌宣传活动</p>
+          <p class="promo__desc reveal-line">以品牌IP为核心，围绕萌宝爬行运动会打造统一、活泼的视觉体系。设计上采用明亮温暖的色调与圆润可爱的图形语言，突出‘好营养’与‘中国宝宝’的品牌主张。品宣物料通过强识别性的主视觉、趣味化的活动延展，有效传递了亲和、专业、健康的品牌形象，助力活动氛围营造与用户情感连接</p>
+          <ul class="promo__tags reveal-line"><li>辨识强化</li><li>亲和暖心</li><li>调性提升</li><li>互动性强</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7794"><img src="assets/img/design/works/08-1.jpg" alt="品牌宣传 · 主画面" width="1000" height="562" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.4409"><img src="assets/img/design/works/08-2.jpg" alt="品牌宣传 · 门头画板 1" width="1000" height="694" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.9709"><img src="assets/img/design/works/08-3.jpg" alt="品牌宣传 · 品牌打卡区画板 1" width="934" height="962" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.8783"><img src="assets/img/design/works/08-4.jpg" alt="品牌宣传 · 图层 1" width="844" height="961" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.8490"><img src="assets/img/design/works/08-5.jpg" alt="品牌宣传 · 图层 2" width="849" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#9 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-09">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-09">艺术节x舞台剧</h3>
+          <p class="promo__sub reveal-line">广场调性提升</p>
+          <p class="promo__desc reveal-line">以‘云端遇见’与‘神话国潮’为双主线，打造兼具浪漫格调与亲子活力的商场活动视觉体系。设计上采用高空意象与东方神话元素碰撞，通过鲜明色彩、动感版式与氛围化主视觉，统一呈现‘云瑞艺术节’的燃爆调性与‘哪吒闹海’的戏剧张力。品宣物料有效强化了商场年轻化、艺术化、家庭友好的品牌形象，提升了活动期待感与现场沉浸感。</p>
+          <ul class="promo__tags reveal-line"><li>氛围沉浸</li><li>品牌提档</li><li>文化赋能</li><li>格调升华</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7794"><img src="assets/img/design/works/09-1.jpg" alt="艺术节x舞台剧 · 嘉禾主画面 气球" width="1000" height="562" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.7794"><img src="assets/img/design/works/09-2.jpg" alt="艺术节x舞台剧 · 嘉禾哪吒" width="1000" height="562" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 3.3113"><img src="assets/img/design/works/09-3.jpg" alt="艺术节x舞台剧 · 哪吒门票(低版本)-02" width="1000" height="302" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 3.3333"><img src="assets/img/design/works/09-4.jpg" alt="艺术节x舞台剧 · 哪吒门票(低版本)-01" width="1000" height="300" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#10 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-10">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-10">啤酒/美食节</h3>
+          <p class="promo__sub reveal-line">啤酒节x美食节</p>
+          <p class="promo__desc reveal-line">以‘渔村风情+节庆狂欢’为核心，打造啤酒节与美食节双主题的沉浸式视觉体验。设计上融合‘龙行浦头’的文化符号与‘来趣村beer’的轻快语调，通过统一的品牌色系、鲜明的节庆主视觉及富有张力的3D现场效果图，构建出热烈、亲民、具有地域特色的活动氛围。品宣物料兼顾线下落地效果与线上传播需求，强化了活动的识别度与参与感，提升了商圈的夜间经济与节庆吸引力。</p>
+          <ul class="promo__tags reveal-line"><li>落地还原</li><li>地域特色</li><li>夜间引流</li><li>视觉冲击</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/10-1.jpg" alt="啤酒/美食节" width="1000" height="563" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/10-2.jpg" alt="啤酒/美食节（2）" width="1000" height="563" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/10-3.jpg" alt="啤酒/美食节（3）" width="1000" height="563" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/10-4.jpg" alt="啤酒/美食节（4）" width="1000" height="563" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/10-5.jpg" alt="啤酒/美食节（5）" width="1000" height="563" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 2.0000"><img src="assets/img/design/works/10-6.jpg" alt="啤酒/美食节 · 0705浦头主视觉(2)画板 1" width="1000" height="500" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#11 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-11">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-11">开业品宣</h3>
+          <p class="promo__sub reveal-line">开业品宣活动</p>
+          <p class="promo__desc reveal-line">以‘为生活而设计’与‘生生不息’为核心主题，打造统一、高级且富有生命力的品牌开业视觉体系。设计上采用克制而有力的版式语言，结合品牌标识与运动元素，贯穿主视觉、邀请函、签到处及划船机挑战赛等全触点物料。整体调性突出品牌的专业感、生活美学与持续活力，有效提升开业活动的仪式感与品牌认知度，助力线下体验与用户心智建立。</p>
+          <ul class="promo__tags reveal-line"><li>氛围沉浸</li><li>品牌提档</li><li>意境雅致</li><li>质感突出</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4604"><img src="assets/img/design/works/11-1.jpg" alt="开业品宣 · 倒计时3" width="454" height="986" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4604"><img src="assets/img/design/works/11-2.jpg" alt="开业品宣 · 倒计时2" width="454" height="986" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.7794"><img src="assets/img/design/works/11-3.jpg" alt="开业品宣 · 主画面15" width="1000" height="562" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4615"><img src="assets/img/design/works/11-4.jpg" alt="开业品宣 · 邀请函" width="455" height="986" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4604"><img src="assets/img/design/works/11-5.jpg" alt="开业品宣 · 倒计时1" width="454" height="986" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 2.0000"><img src="assets/img/design/works/11-6.jpg" alt="开业品宣 · C厅背景板" width="1000" height="500" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 2.3095"><img src="assets/img/design/works/11-7.jpg" alt="开业品宣 · 效果图" width="1000" height="433" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 7.5188"><img src="assets/img/design/works/11-8.jpg" alt="开业品宣" width="1000" height="133" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#12 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-12">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-12">年会策划</h3>
+          <p class="promo__sub reveal-line">年会设计落地</p>
+          <p class="promo__desc reveal-line">以“锦至卓越，尚无止境”为主题，为企业年会打造兼具仪式感与趣味性的整体视觉方案。设计上统一运用年会主视觉基调，贯穿‘腰缠万贯’‘趣味投壶’‘蒙眼敲锣’等多项游园游戏规则海报，兼顾信息清晰传达与现场氛围营造。作为乙方设计方，重点解决了多规则、多玩法的信息层级梳理，确保物料在工厂年会场景下落地清晰、执行高效，提升了员工参与体验与企业活动形象</p>
+          <ul class="promo__tags reveal-line"><li>酸性排版</li><li>波普撞色</li><li>互动提升</li><li>视觉冲击</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.0000"><img src="assets/img/design/works/12-1.jpg" alt="年会策划 · 亮度/对比度 1" width="1000" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6670"><img src="assets/img/design/works/12-2.jpg" alt="年会策划 · 个人项目画板 1 5" width="667" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6670"><img src="assets/img/design/works/12-3.jpg" alt="年会策划 · 个人项目画板 1 2" width="667" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6680"><img src="assets/img/design/works/12-4.jpg" alt="年会策划 · 个人项目画板 1 3" width="668" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/12-5.jpg" alt="年会策划" width="1000" height="563" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6680"><img src="assets/img/design/works/12-6.jpg" alt="年会策划 · 个人项目画板 1 4" width="668" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6680"><img src="assets/img/design/works/12-7.jpg" alt="年会策划 · 个人项目画板 1" width="668" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <figure class="plate plate--wide">
+        <div class="plate__stage">
+          <p class="plate__en reveal-line">A SMALL WORLD</p>
+          <div class="plate__mecha reveal-line">
+            <picture>
+              <source type="image/webp" srcset="assets/img/design/poster-mecha.webp">
+              <img src="assets/img/design/poster-mecha.png" width="1600" height="886"
+                   loading="lazy" decoding="async" alt="一台六足重型机甲的正面：宽扁的圆角机身，正面中央一个大圆形舱门（边缘一圈红色指示灯，中心发蓝白光），两侧各三条节肢状机械腿，灰白装甲风化斑驳">
+            </picture>
+            <span class="plate__glow" aria-hidden="true"></span>
+          </div>
+          <h3 class="plate__cn reveal-line">品宣落地摄影图</h3>
+          <span class="morb morb--plate" aria-hidden="true">
+            <span class="morb__ball"></span>
+            <span class="morb__pill">
+              <span class="morb__wave"><i></i><i></i><i></i><i></i></span>
+              <span class="morb__text">继续下滑参观摄影图</span>
+            </span>
+          </span>
+        </div>
+      </figure>
+      <!-- PDF#14 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-14">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-14">品宣活动</h3>
+          <p class="promo__sub reveal-line">开业品宣活动</p>
+          <p class="promo__desc reveal-line">三星旗舰店盛大开业，同步推出「设计师星光之夜」主题活动。以“星光汇聚 设计同行”为理念，融合AI智能科技与前沿设计体验，打造沉浸式智享生活场景，诚邀共启未来生活新纪元。</p>
+          <ul class="promo__tags reveal-line"><li>视觉提升</li><li>品宣升级</li><li>开业宣传</li><li>调性提升</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.4993"><img src="assets/img/design/works/14-1.jpg" alt="品宣活动 · 实拍 1" width="1000" height="667" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.4993"><img src="assets/img/design/works/14-2.jpg" alt="品宣活动 · 实拍 2" width="1000" height="667" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.4970"><img src="assets/img/design/works/14-3.jpg" alt="品宣活动 · 实拍 3" width="1000" height="668" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.4993"><img src="assets/img/design/works/14-4.jpg" alt="品宣活动 · 实拍 4" width="1000" height="667" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.5920"><img src="assets/img/design/works/14-5.jpg" alt="品宣活动 · 实拍 5" width="592" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#15 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-15">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-15">开业品宣</h3>
+          <p class="promo__sub reveal-line">系列品宣海拔</p>
+          <p class="promo__desc reveal-line">这组品宣海报以“山海相逢，品味福见”为主题，庆祝餐厅开业盛典，通过主视觉海报、倒计时海报与优惠细则海报形成完整传播矩阵。主海报以红金主色调搭配精美菜品图，突出开业时间；倒计时系列营造期待感；优惠海报则清晰呈现储值送券、砸金蛋等开业福利，整体设计喜庆大气，有效传递品牌庆典与促销信息。</p>
+          <ul class="promo__tags reveal-line"><li>视觉提升</li><li>商业主题</li><li>调性提升</li><li>品宣升级</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/15-1.jpg" alt="开业品宣 · 实拍 1" width="1000" height="666" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/15-2.jpg" alt="开业品宣 · 实拍 2" width="1000" height="666" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.4993"><img src="assets/img/design/works/15-3.jpg" alt="开业品宣 · 实拍 3" width="1000" height="667" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.4993"><img src="assets/img/design/works/15-4.jpg" alt="开业品宣 · 实拍 4" width="1000" height="667" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6000"><img src="assets/img/design/works/15-5.jpg" alt="开业品宣 · 实拍 5" width="600" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#16 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-16">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-16">艺术节x舞台剧</h3>
+          <p class="promo__sub reveal-line">广场调性提升</p>
+          <p class="promo__desc reveal-line">以‘云端遇见’与‘神话国潮’为双主线，打造兼具浪漫格调与亲子活力的商场活动视觉体系。设计上采用高空意象与东方神话元素碰撞，通过鲜明色彩、动感版式与氛围化主视觉，统一呈现‘云瑞艺术节’的燃爆调性与‘哪吒闹海’的戏剧张力。品宣物料有效强化了商场年轻化、艺术化、家庭友好的品牌形象，提升了活动期待感与现场沉浸感。</p>
+          <ul class="promo__tags reveal-line"><li>氛围沉浸</li><li>品牌提档</li><li>文化赋能</li><li>格调升华</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.4993"><img src="assets/img/design/works/16-1.jpg" alt="艺术节x舞台剧 · 实拍 1" width="1000" height="667" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.5060"><img src="assets/img/design/works/16-2.jpg" alt="艺术节x舞台剧 · 实拍 2" width="1000" height="664" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6820"><img src="assets/img/design/works/16-3.jpg" alt="艺术节x舞台剧 · 实拍 3" width="682" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.6910"><img src="assets/img/design/works/16-4.jpg" alt="艺术节x舞台剧 · 实拍 4" width="691" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.7040"><img src="assets/img/design/works/16-5.jpg" alt="艺术节x舞台剧 · 实拍 5" width="704" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.7030"><img src="assets/img/design/works/16-6.jpg" alt="艺术节x舞台剧 · 实拍 6" width="703" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.4684"><img src="assets/img/design/works/16-7.jpg" alt="艺术节x舞台剧 · 实拍 7" width="1000" height="681" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#17 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-17">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-17">年会策划</h3>
+          <p class="promo__sub reveal-line">年会设计落地</p>
+          <p class="promo__desc reveal-line">以“锦至卓越，尚无止境”为主题，为企业年会打造兼具仪式感与趣味性的整体视觉方案。设计上统一运用年会主视觉基调，贯穿‘腰缠万贯’‘趣味投壶’‘蒙眼敲锣’等多项游园游戏规则海报，兼顾信息清晰传达与现场氛围营造。作为乙方设计方，重点解决了多规则、多玩法的信息层级梳理，确保物料在工厂年会场景下落地清晰、执行高效，提升了员工参与体验与企业活动形象</p>
+          <ul class="promo__tags reveal-line"><li>酸性排版</li><li>波普撞色</li><li>互动提升</li><li>视觉冲击</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.4993"><img src="assets/img/design/works/17-1.jpg" alt="年会策划 · 实拍 1" width="1000" height="667" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/17-2.jpg" alt="年会策划 · 实拍 2" width="1000" height="666" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.6660"><img src="assets/img/design/works/17-3.jpg" alt="年会策划 · 实拍 3" width="666" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/17-4.jpg" alt="年会策划 · 实拍 4" width="1000" height="666" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.5038"><img src="assets/img/design/works/17-5.jpg" alt="年会策划 · 实拍 5" width="1000" height="665" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#18 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-18">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-18">年会策划</h3>
+          <p class="promo__sub reveal-line">年会设计落地</p>
+          <p class="promo__desc reveal-line">以‘卓越·向上’为核心主题，为企业年会打造简洁有力、具有品牌识别度的整体视觉方案。设计上通过重复强化‘卓越’关键词与品牌标识（FORVIA），形成强烈的记忆锚点。作为乙方设计方，重点突出年会积极向上的精神内核，确保主视觉在舞台背景、签到区、游戏规则海报等全场景中统一延展，有效提升了企业活动的专业形象与员工凝聚力。</p>
+          <ul class="promo__tags reveal-line"><li>视觉统一</li><li>品牌强化</li><li>氛围提振</li><li>专业呈现</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/18-1.jpg" alt="年会策划" width="1000" height="666" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/18-2.jpg" alt="年会策划（2）" width="1000" height="666" loading="lazy" decoding="async"></figure>
+          </div>
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/18-3.jpg" alt="年会策划（3）" width="1000" height="666" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.7860"><img src="assets/img/design/works/18-4.jpg" alt="年会策划（4）" width="786" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 1.5015"><img src="assets/img/design/works/18-5.jpg" alt="年会策划（5）" width="1000" height="666" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#20 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-20">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-20">玉兔下凡</h3>
+          <p class="promo__sub reveal-line">个人短剧设计</p>
+          <p class="promo__desc reveal-line">以‘神话与怪物’的哲思对立为核心，为原创IP《玉兔下凡》打造悬疑氛围感的视觉体系。设计上采用克制留白与冷峻色调，通过‘从月亮来的，它不是神？’等文案制造悬念，强化‘月光会证明一切’的情绪张力。作为独立设计方，重点突出影片的神秘主义气质与文艺调性，确保主视觉在有限信息中传递足够的故事感与期待值，助力小众原创内容的品宣传播。</p>
+          <ul class="promo__tags reveal-line"><li>氛围营造</li><li>故事感强</li><li>文艺调性</li><li>视觉冲击</li></ul>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 1.7762"><img src="assets/img/design/works/20-1.jpg" alt="玉兔下凡 · 剧照 调整" width="1000" height="563" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.5630"><img src="assets/img/design/works/20-2.jpg" alt="玉兔下凡 · 海报2 调整" width="563" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <figure class="plate plate--bleed">
+        <div class="plate__stage">
+          <p class="plate__en reveal-line">A SMALL WORLD</p>
+          <div class="plate__mecha reveal-line">
+            <picture>
+              <source type="image/webp" srcset="assets/img/design/castle-mecha.webp">
+              <img src="assets/img/design/castle-mecha.png" width="1600" height="668"
+                   loading="lazy" decoding="async" alt="一座废土风格的移动要塞：长长的履带底盘上叠着三层方正舱体，中央一座略高的塔楼，一侧竖着两根烟囱、挂着一条外露的检修走道；舱体侧面是几扇很大的横向方窗，整齐成排，透出明亮的暖黄灯光，整体是冷灰蓝装甲配铁锈">
+            </picture>
+            <span class="plate__light" aria-hidden="true" style="background-image:image-set(url(assets/img/design/castle-light.webp) type('image/webp'), url(assets/img/design/castle-light.png))"></span>
+          </div>
+          <h3 class="plate__cn reveal-line">地产海报设计</h3>
+          <span class="morb morb--plate" aria-hidden="true">
+            <span class="morb__ball"></span>
+            <span class="morb__pill">
+              <span class="morb__wave"><i></i><i></i><i></i><i></i></span>
+              <span class="morb__text">继续下滑参观设计图</span>
+            </span>
+          </span>
+        </div>
+      </figure>
+      <!-- PDF#23 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-23">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-23">地产海报</h3>
+          <p class="promo__sub reveal-line">商户促销系列</p>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/23-1.jpg" alt="地产海报 · 预热2" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/23-2.jpg" alt="地产海报" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/23-3.jpg" alt="地产海报 · 预热1" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4610"><img src="assets/img/design/works/23-4.jpg" alt="地产海报 · 0907中台闽南语1" width="461" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4610"><img src="assets/img/design/works/23-5.jpg" alt="地产海报 · 0907中台闽南语2" width="461" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4610"><img src="assets/img/design/works/23-6.jpg" alt="地产海报 · 0907中台闽南语3" width="461" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#24 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-24">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-24">地产海报</h3>
+          <p class="promo__sub reveal-line">多项目组版</p>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/24-1.jpg" alt="地产海报 · 0612-父亲节特辑-实景2" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/24-2.jpg" alt="地产海报 · 0608 风扇活动单图psd" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/24-3.jpg" alt="地产海报 · 05.25活动单图1" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4630"><img src="assets/img/design/works/24-4.jpg" alt="地产海报 · 万科城市人气图" width="463" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/24-5.jpg" alt="地产海报 · 0912 城市之光SOHO系列稿" width="462" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#25 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-25">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-25">地产海报</h3>
+          <p class="promo__sub reveal-line">车位 · 节点促销</p>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4610"><img src="assets/img/design/works/25-1.jpg" alt="地产海报 · 九号院" width="461" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/25-2.jpg" alt="地产海报 · 画板 43" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4680"><img src="assets/img/design/works/25-3.jpg" alt="地产海报 · 火锅活动" width="468" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/25-4.jpg" alt="地产海报 · 0612-一口价单图02" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/25-5.jpg" alt="地产海报 · 周末热销单图" width="462" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#26 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-26">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-26">地产海报</h3>
+          <p class="promo__sub reveal-line">节点促销系列</p>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/26-1.jpg" alt="地产海报 · 0913-复式分销单图" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4440"><img src="assets/img/design/works/26-2.jpg" alt="地产海报 · 0710 中梁·正荣府车位展架 对话框" width="444" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/26-3.jpg" alt="地产海报 · 8月月度热销单图" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/26-4.jpg" alt="地产海报 · 0801 分销系类" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/26-5.jpg" alt="地产海报 · 0823 热销系列01" width="462" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#27 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-27">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-27">地产海报</h3>
+          <p class="promo__sub reveal-line">人居价值系列</p>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/27-1.jpg" alt="地产海报 · 溪望价值单图3" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/27-2.jpg" alt="地产海报 · 溪望价值单图1" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/27-3.jpg" alt="地产海报 · 溪望价值单图2" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/27-4.jpg" alt="地产海报 · 0720 价值系列02" width="462" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4620"><img src="assets/img/design/works/27-5.jpg" alt="地产海报 · 0720 价值系列01" width="462" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PDF#28 → 1 张卡片；作品图按 PDF 顺序串起来 -->
+      <article class="promo" aria-labelledby="pd-28">
+        <header class="promo__copy">
+          <h3 class="promo__title reveal-line" id="pd-28">地产海报</h3>
+          <p class="promo__sub reveal-line">报广 · 招聘 · 公开课</p>
+        </header>
+        <div class="promo__works">
+          <div class="promo__works__row">
+            <figure class="promo__work reveal-line" style="--ar: 0.4610"><img src="assets/img/design/works/28-1.jpg" alt="地产海报 · 直播促销活动内容系类02" width="461" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4610"><img src="assets/img/design/works/28-2.jpg" alt="地产海报 · 直播促销活动内容系类01" width="461" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.4700"><img src="assets/img/design/works/28-3.jpg" alt="地产海报 · 0626-璞悦山抖音活动" width="470" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.3360"><img src="assets/img/design/works/28-4.jpg" alt="地产海报 · 0828-招募集采供应商" width="336" height="1000" loading="lazy" decoding="async"></figure>
+            <figure class="promo__work reveal-line" style="--ar: 0.3120"><img src="assets/img/design/works/28-5.jpg" alt="地产海报 · 0823-厦门万科政策利好快讯" width="312" height="1000" loading="lazy" decoding="async"></figure>
+          </div>
+        </div>
+      </article>
+      <!-- PAGES:END -->
+    </div>
+    </div><!-- /.slab-pin
+      钉住容器：里面除机甲视频那段，**整块作品区也在里面** —— 板子必须在容器
+      内部才追得上被钉住的那一段；在外面的话钉子一松两边就同步走、永远盖不上。 -->
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__grid">
+      <div>
+        <p class="site-footer__title">张杰波</p>
+        <p>平面设计师 · 视觉设计 / AI 影像 / 交互开发</p>
+      </div>
+      <div>
+        <p class="site-footer__title">联系方式</p>
+        <ul class="site-footer__list">
+          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="#">微信：待填写</a></li>
+          <li><a href="#">小红书：待填写</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="site-footer__title">五个方向</p>
+        <ul class="site-footer__list">
+          <li><a href="design.html">平面设计</a></li>
+          <li><a href="ai-video.html">AI视频</a></li>
+          <li><a href="game.html">小游戏开发</a></li>
+          <li><a href="culture.html">传统文化</a></li>
+          <li><a href="llm.html">大模型部署</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="site-footer__bottom">
+      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利</span>
+      <span>本网站全部由个人开发</span>
+      <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>

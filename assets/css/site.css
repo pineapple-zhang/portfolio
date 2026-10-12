@@ -1,0 +1,3398 @@
+/* ==========================================================================
+   site.css — 布局与组件
+   依赖 tokens.css 与 base.css，引入顺序不能颠倒。
+   ========================================================================== */
+
+/* ==========================================================================
+   1. 容器
+   ========================================================================== */
+
+.wrap {
+  width: 100%;
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding-inline: var(--sp-5);
+}
+.wrap--wide { max-width: 1320px; }
+
+/* 锚点跳转要给顶部那条栏让出高度，否则跳到 #main 之后第一块内容会被压在它底下。
+   ⚠️ 两条栏现在**等高**（都读 --nav-h: 50px），这个 max() 其实是冗余的；
+      留着是因为它们历史上不等高过（52 / 26），哪天又要分开也不用回来改。 */
+#main { scroll-margin-top: max(var(--nav-h), var(--nav-h-sub)); }
+
+@media (min-width: 768px) {
+  .wrap { padding-inline: var(--sp-6); }
+}
+
+/* ==========================================================================
+   2. 顶部导航
+
+   两套外观，同一份 HTML 标记：
+     --hero : 铺在首屏上，绝对定位，垂直中心对齐 PSD 的 3.06% 画布高
+     --bar  : 内页用的粘顶条，带半透明毛玻璃底
+
+   导航组的横向跨度固定为画布宽的 55.6%（PSD 实测 1261 / 2267），
+   五项之间用 space-between 等分 —— 与 PSD 里导航组的居中等分一致。
+   ========================================================================== */
+
+.site-nav {
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+}
+
+/* 首页首屏导航。**不再是 absolute** —— absolute 只在首屏那 100vh 范围内有效，
+   往下滚一屏导航就跟着走了。改成 fixed 才能真正「始终置顶」。
+
+   高度读 --nav-h（2026-10-09 起是 50px，两个条等高）。
+   ⚠️ 它们中间一度不等高（52 / 26），首页 ↔ 内页切换时导航文字会上下跳十几像素；
+      现在 --nav-h-sub 直接取 --nav-h，两边一起走。 */
+.site-nav--hero {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-h);
+  align-items: center;
+}
+
+/* 滚动之后才给背景和分隔线 —— 停在顶部时首屏要保持 PSD 的「纯平无装饰」，
+   加一条线上去就多了一样 PSD 里没有的东西。
+   首屏底色就是 --bg，所以这层半透明背景压在首屏上本来也看不出来，
+   它真正起作用是滚起来之后：内容会从导航底下穿过去。 */
+.js .site-nav--hero.is-stuck {
+  background: var(--nav-veil);
+  border-bottom: 1px solid var(--line);
+}
+
+/* 内页粘顶条：60% 不透明，让下面的内容能透出来。
+   ⚠️ 这里只用半透明背景，**不能在基础规则里加 backdrop-filter**：
+   它会为 position:fixed 的后代建立包含块，移动端那个 translateX(100%)
+   藏在屏幕外的抽屉就不再相对视口定位，会撑进文档可滚动区域，
+   窄屏直接多出一条横向滚动条（已实测踩过）。
+   毛玻璃只在桌面端加 —— 那一档宽度下抽屉规则不生效，没有这个问题。 */
+.site-nav--bar {
+  position: sticky;
+  top: 0;
+  /* 高度定死。以前靠 padding-block: 12px 撑，实际高度是 67~69px，
+     而 .page-hero 那边写死 68px 去减它 —— 两边对不上，
+     页头要么露一条缝要么被压掉一点。现在两边都读同一个令牌。
+     定死高度 + align-items: center，内容自动居中，不用再靠 padding 凑。
+     高度令牌是 --nav-h-sub（内页专用），不再和首页导航共用。 */
+  height: var(--nav-h-sub);
+  align-items: center;
+  background: var(--nav-veil);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-nav__inner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--sp-5);
+}
+
+.site-nav__list {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(var(--sp-3), 1.6vw, var(--sp-6));
+}
+
+/* ⚠️ li 必须显式接管字体与行高，并且自己就是 flex 容器。
+   不写的话 li 继承正文的 16px / 1.75，会撑出一个 28px 高的「strut」，
+   把行盒顶高、再把里面那个行内链接按基线推偏 ——
+   实测导航文字的墨迹中心比条中心低 2.4px，看着就是没居中。
+   改成 flex 居中（align-items）后就不走基线了，
+   盒子高度也变成「行高 + 内边距」这个确定值。 */
+.site-nav__list > li {
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-nav);
+  line-height: var(--lh-nav);
+}
+
+/* 内页粘顶条：「首页」贴左，五个栏目贴右。
+   这里**不能**沿用 --measure（1080px）—— 那会把两组挤在屏幕中间一小块，
+   两边各留出好几百像素空白。撑满，只留左右内边距，用 clamp 控制边距随宽度增长。
+   ⚠️ 只影响内页的 --bar。首页首屏那套是 --hero，仍按 PSD 的 55.6% 居中。 */
+.site-nav--bar .site-nav__inner {
+  max-width: none;
+  padding-inline: clamp(20px, 3.2vw, 64px);
+  justify-content: space-between;
+  gap: var(--sp-5);
+}
+.site-nav--bar .site-nav__list {
+  gap: clamp(var(--sp-4), 2.4vw, var(--sp-7));
+}
+
+/* --- 桌面端的横向排布 ---------------------------------------------------
+   这些尺寸规则必须包在 min-width 里。放在外层的话，移动端的抽屉
+   （.site-nav__list 变成 position:fixed 的侧滑面板）会继续被
+   width:55.6% 和 min-width:460px 命中——min-width 会把抽屉顶成满屏。
+--------------------------------------------------------------------- */
+@media (min-width: 861px) {
+  /* 首屏：导航组整体跨度 = 画布宽的 55.6%（PSD 实测 1261 / 2267），
+     组内五项 space-between 等分，与 PSD 的分布一致。
+     去掉 inner 的左右内边距，否则 55.6% 会以「视口减内边距」为基准，
+     实际只有 53.9%，比 PSD 窄一圈。 */
+  .site-nav--hero .site-nav__inner { padding-inline: 0; }
+
+  .site-nav--hero .site-nav__list {
+    width: var(--nav-span);
+    min-width: min(100%, 460px);
+  }
+
+  /* 桌面端才加毛玻璃：这一档宽度下移动端抽屉规则不生效，
+     不会触发「backdrop-filter 建立包含块」那个坑。
+     ⚠️ 首页首屏导航同理 —— 它自己也是 position:fixed，
+        一旦挂上 backdrop-filter，里面那个 fixed 的侧滑抽屉
+        就会改成相对它定位，窄屏直接撑出横向滚动条。 */
+  .site-nav--bar,
+  .js .site-nav--hero.is-stuck {
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+  }
+}
+
+.site-nav__link {
+  font-size: var(--fs-nav);
+  font-weight: var(--fw-nav);
+  line-height: var(--lh-nav);
+  letter-spacing: var(--ls-nav);
+  color: var(--ink);
+  white-space: nowrap;
+  padding-block: var(--sp-1);
+  position: relative;
+  transition: opacity var(--dur) var(--ease);
+}
+
+/* 悬停/当前项：不是变色，而是用一条细下划线。
+   ⚠️ 下划线用 --title-blue（#2471E1），不是 currentColor ——
+      全站的下划线都是这一个蓝（导航、作品标题、区块眉题同一支）。
+      两条 ::after 的 background 要一起改，漏一条就会出现两种颜色的下划线。 */
+.site-nav__link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--title-blue);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur) var(--ease);
+}
+.site-nav__link:hover::after,
+.site-nav__link[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+.site-nav__link:hover { opacity: .68; }
+
+/* 「首页」：只在内页粘顶条里出现，首屏不显示（已经在首页，没必要）。
+   它是回首页的入口，所以给和导航项一样的悬停下划线 —— 纯文字看不出可点。 */
+.site-nav__home {
+  font-size: var(--fs-nav);
+  font-weight: var(--fw-med);
+  /* ⚠️ 必须显式写行高。它不像 .site-nav__link 那样嵌在 li 里，
+     而是 .site-nav__inner 的直接 flex 子元素 —— 是个块级盒子，
+     高度由 line-height 决定。不写就继承正文的 1.75，
+     当年在 26px 的粘顶条里会向上溢出 1.9px、被视口顶边切掉。
+     （条高现在 50px，溢出问题不复存在，但显式行高仍然要留。） */
+  line-height: var(--lh-nav);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  position: relative;
+  padding-block: var(--sp-1);
+  transition: opacity var(--dur) var(--ease);
+}
+.site-nav__home::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--title-blue);      /* 和 .site-nav__link 那条保持一致 */
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur) var(--ease);
+}
+.site-nav__home:hover::after { transform: scaleX(1); }
+.site-nav__home:hover { opacity: .68; }
+
+/* --- 移动端菜单 ---------------------------------------------------------- */
+
+.nav-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+}
+.nav-toggle__bar {
+  display: block;
+  width: 20px;
+  height: 1.5px;
+  background: var(--ink);
+  position: relative;
+  transition: background var(--dur) var(--ease);
+}
+.nav-toggle__bar::before,
+.nav-toggle__bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 20px;
+  height: 1.5px;
+  background: var(--ink);
+  transition: transform var(--dur) var(--ease);
+}
+.nav-toggle__bar::before { top: -6px; }
+.nav-toggle__bar::after  { top: 6px; }
+
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar { background: transparent; }
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar::before { transform: translateY(6px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar::after  { transform: translateY(-6px) rotate(-45deg); }
+
+@media (max-width: 860px) {
+  .site-nav--hero {
+    /* 位置和高度已在基础规则里定好（fixed / top 0 / --nav-h），这里不用再调。
+       原来靠 padding-block 撑高度、靠 absolute 定位，现在都不需要了。 */
+    align-items: center;
+  }
+  .site-nav__inner {
+    padding-inline: var(--sp-5);
+    justify-content: flex-end;
+    gap: var(--sp-3);
+  }
+  .site-nav--bar .site-nav__inner { justify-content: space-between; }
+  .site-nav--bar .site-nav__home { margin-right: auto; }
+
+  /* 汉堡按钮要 44×44（触摸目标的下限尺寸）。
+     ⚠️ 条高 50px 时它本来就装得下，这个 min(0px, …) 算出来是 0，不生效；
+        当年条高只有 26px，靠它把**点击区**向上下各外扩 9px 而不撑高条子。
+        用 calc 从 --nav-h-sub 推，改条高时自动跟着变，所以留着。 */
+  .nav-toggle {
+    display: inline-flex;
+    margin-block: min(0px, calc((var(--nav-h-sub) - 44px) / 2));
+  }
+
+  /* 抽屉：由 site.js 切 .is-open */
+  .site-nav__list {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(78vw, 320px);
+    height: 100svh;
+    background: var(--bg);
+    border-left: 1px solid var(--line);
+    padding: 88px var(--sp-6) var(--sp-6);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0;
+    transform: translateX(100%);
+    transition: transform 320ms var(--ease);
+    box-shadow: -24px 0 60px rgba(0, 0, 0, .06);
+    z-index: 45;
+  }
+  .site-nav__list.is-open { transform: none; }
+  .site-nav__list .site-nav__link {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: var(--fw-body);
+    padding-block: var(--sp-4);
+    border-bottom: 1px solid var(--line);
+  }
+  .site-nav__list .site-nav__link::after { display: none; }
+}
+
+/* 移动端抽屉遮罩 */
+.nav-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, .28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms var(--ease);
+}
+.nav-scrim.is-open { opacity: 1; pointer-events: auto; }
+
+@media (min-width: 861px) {
+  .nav-scrim { display: none; }
+}
+
+/* ==========================================================================
+   3. 首屏
+
+   位置严格照 PSD：标题块水平居中、垂直中心 38.8% 画布高。
+   用绝对定位 + translateY(-50%) 精确落位，而不是靠 padding 凑。
+   ========================================================================== */
+
+.hero {
+  position: relative;
+  min-height: var(--hero-h);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 首屏保持 PSD 的纯平底色（#F5F5F7），不加任何渐变。
+   如果你想要一点氛围感，把下面这段取消注释——它是很轻的一层顶部高光，
+   不会出现明显的色带。 */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* background: radial-gradient(130% 85% at 50% -5%, rgba(255,255,255,.55), transparent 62%); */
+}
+
+.hero__stage {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--hero-title-y);
+  transform: translateY(-50%);
+  padding-inline: var(--sp-5);
+  text-align: center;
+  z-index: 2;
+}
+
+.hero__title {
+  font-size: var(--fs-hero);
+  font-weight: var(--fw-hero);
+  line-height: var(--lh-hero);
+  letter-spacing: var(--ls-hero);
+  margin: 0;
+  color: var(--ink);
+}
+
+.hero__eyebrow {
+  margin-bottom: clamp(var(--sp-4), 2.2vh, var(--sp-6));
+}
+
+.hero__sub {
+  margin-top: clamp(var(--sp-4), 2.6vh, var(--sp-7));
+  font-size: clamp(.9375rem, min(1.15vw, 2vh), 1.25rem);
+  font-weight: var(--fw-body);
+  color: var(--ink-2);
+  letter-spacing: .02em;
+}
+
+/* 滚动提示。
+   ⚠️ 定位基准从「视口底部」改成了「画布高的 60%」——
+   原来是 bottom: clamp(24px, 5vh, 64px)，钉在首屏最底下，
+   实测 1600x900 下副标底边在 463.8px、提示顶边在 792px，
+   中间空出 328px，看着跟标题块脱节。按需求上移到副标下方。
+   用 top 而不是 bottom：top 的百分比同样按画布高算，
+   但读起来就是「画布往下 60% 处」，改数值时不用反着推。 */
+/* 滚动提示：白底卡贴 + 右侧蓝色圆球（球里是白色箭头）。
+   定位在画布高的 70% 处。
+
+   ⚠️ **白底压在 #F5F5F7 上几乎看不见，全靠那层投影撑出边界。**
+      这是需求里特意点名的（「白色卡贴和白色小球看不见要加投影」）——
+      别把 box-shadow 删了。
+
+   ⚠️ **整块的尺寸、透明度、宽度、描边色全部由 site.js 第 12b 节逐帧驱动**，
+      CSS 这边只写静态样式和起始态，**一条 transition 都不要加**：
+      出场和退场都要改宽度，而 transition-delay 对**每一次**变化都生效 ——
+      出场那段延迟会在退场时再等一遍，收回动作会平白拖 1.5 秒。
+      （之前那版就是栽在这里。）
+   ⚠️ 滚动消失挂在外层 .hero__cue 上（只做位移），淡出改由卡贴自己做 ——
+      这样「先文字消失、再收回成球、最后淡出」才排得开。 */
+.hero__cue {
+  position: absolute;
+  left: 50%;
+  /* 画布高的七成处 */
+  top: 70%;
+  /* ⚠️ 位移必须走变量，不能由 JS 直接写 transform ——
+     窄屏那条 `transform: none` 覆盖会被内联样式顶掉，卡贴就歪到一边去了。 */
+  transform: translateX(-50%) translateY(var(--cue-drift, 0px));
+  pointer-events: none;        /* 纯装饰，别挡住下面的东西 */
+  z-index: 2;
+}
+
+.hero__cue-pill {
+  --cue-d: 54px;               /* 起始小圆直径，同时也是卡贴高度 */
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  height: var(--cue-d);
+  /* ⚠️ 这几个数是配平的，改一个要重算其余：
+       卡贴 54px − 上下描边 6px = 内容高 48px；蓝球 42px → 上下各余 3px，
+       加上描边就是**距外缘 6px**。右边内边距取 3px → 也是 6px，三边等距。
+     60px 高那版上下各余 7px，用户反馈「上下太宽」，所以压到 54px，
+     同时把字号抬到 16px 让长宽比从 3.35 拉到 3.72（更接近参考图的 3.7）。 */
+  padding: 0 3px 0 30px;
+  border-radius: 999px;
+  background: #fff;
+  /* 描边留着 3px 但颜色由 JS 驱动到全透明 —— 最终样子是**没有蓝边**的。
+     保留这 3px 是为了布局稳定：真删掉的话小圆那一阶段和白底阶段尺寸会差一圈。 */
+  border: 3px solid var(--title-blue);
+  box-shadow:
+    0 14px 36px -14px rgba(0, 0, 0, .42),
+    0 2px 6px rgba(0, 0, 0, .07);
+  /* 收窄成小圆时内容要能被裁掉，且不许折行把高度撑起来 */
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 1rem;
+  letter-spacing: .05em;
+  color: var(--ink);
+}
+
+.hero__cue-text { flex: 0 0 auto; }
+
+/* 右侧的蓝色圆球，里面放白色箭头 */
+.hero__cue-dot {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--title-blue);
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+.hero__cue-arrow {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+/* 起始态：一个很小的圆。JS 会从这儿把它一路放大、去边、拉长。 */
+.js .hero__cue-pill {
+  width: var(--cue-d);         /* = 高，所以是正圆 */
+  opacity: 0;
+  /* 开头的缩放起点。原来 .42 太秀气，用户要求「蓝边那个小圆放大点」——
+     反正那一圈蓝边马上就要取消，起点做大些更好看。 */
+  transform: scale(.6);
+}
+.js .hero__cue-text,
+.js .hero__cue-dot,
+.js .hero__cue-arrow { opacity: 0; }
+
+/* 箭头缓缓闪烁。由 JS 在时间线走到位之后挂上 .is-blink。
+   ⚠️ 退场时要由 JS 把 .is-blink 摘掉 ——
+      动画的优先级高于内联样式，留着的话淡出会被它按住不放。 */
+@keyframes cueBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .3; }
+}
+.js .hero__cue-arrow.is-blink { animation: cueBlink 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* 出场时间线整条不播，直接给最终样子（退场的淡出由 JS 保留） */
+  .js .hero__cue-pill {
+    width: auto;
+    opacity: 1;
+    transform: none;
+  }
+  .js .hero__cue-text,
+  .js .hero__cue-dot,
+  .js .hero__cue-arrow { opacity: 1; }
+  .js .hero__cue-arrow.is-blink { animation: none; }
+}
+
+/* --- 首屏入场（只在首页）-------------------------------------------------
+   标题由 JS 拆成单字，按顺序依次升起；eyebrow 先到、副标题后到、
+   滚动提示最后。顺序与延迟都在 JS 里排，这里只管样子。
+
+   ⚠️ 只给**子元素**加 transform。
+   .hero__stage 和 .hero__cue 自身带有 translateY(-50%) / translateX(-50%)
+   在做居中，一旦被这里的 transform 覆盖，标题和滚动提示就会跑偏。
+------------------------------------------------------------------------- */
+.js .hero__eyebrow,
+.js .hero__sub {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 900ms var(--ease),
+    transform 900ms var(--ease);
+  transition-delay: var(--d, 0ms);
+}
+.js .hero__eyebrow.is-in,
+.js .hero__sub.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* 滚动提示只淡入 —— 它的 transform 要留着居中 */
+/* 入场动画已移到 .hero__cue-pill 上（见上面的滚动提示那一节），
+   这里只兜「没 JS 时别把提示藏起来」—— 所以不再写 opacity: 0。 */
+
+/* 标题的每一个字 */
+.js .hero__title .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(.4em);
+  transition:
+    opacity 820ms var(--ease),
+    transform 820ms var(--ease);
+  transition-delay: var(--d, 0ms);
+}
+.js .hero__title .char.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .hero__eyebrow,
+  .js .hero__sub,
+  .js .hero__title .char {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  /* ⚠️ 这里不能给 .hero__cue 写 transform ——
+     它的 transform 归零是「桌面 translateX(-50%) / 窄屏 none」两套逻辑管的，
+     在这里写死任意一个都会盖掉另一套（本选择器特异性更高）。只放开透明度。 */
+  .hero__cue-pill {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* 窄屏：绝对定位会让内容挤压重叠，改成常规流式排布 */
+@media (max-width: 860px) {
+  .hero {
+    justify-content: center;
+    gap: var(--sp-5);
+    padding: 96px var(--sp-5) var(--sp-9);
+  }
+  .hero__stage {
+    position: static;
+    transform: none;
+    padding-inline: 0;
+  }
+  .hero__cue {
+    position: static;
+    transform: none;
+    margin-top: var(--sp-6);
+    /* ⚠️ 回到常规流之后，桌面端那套「left:50% + translateX(-50%)」就没用了，
+       胶囊会贴到左边去。这里必须自己管居中 ——
+       原来 .hero__cue 本身就是 flex 居中的，改成两层结构时丢掉了，
+       窄屏当场就歪了。 */
+    display: flex;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   4. 区块
+   ========================================================================== */
+
+.section {
+  padding-block: clamp(var(--sp-8), 11vh, var(--sp-10));
+}
+
+/* 相邻区块的上下内边距会叠加。两块 .section 挨着时，
+   实测 1600x900 下光内边距就吃掉 198px（各 99px），
+   中间那段空白看着像页面断了。
+   这里把后一块的上内边距收掉约一半，让两块贴得紧一些。
+   只作用于「紧跟着另一块 section」的那块，首块不受影响。 */
+.section + .section {
+  padding-top: clamp(40px, 6vh, 72px);
+}
+
+.section--tight { padding-block: clamp(var(--sp-7), 7vh, var(--sp-9)); }
+.section--raised { background: var(--bg-raised); }
+
+.section__head {
+  margin-bottom: clamp(var(--sp-6), 5vh, var(--sp-8));
+}
+
+/* 只有眉题、没有标题的区块头（首页的「关于」就是）。
+   .section__head 的下边距是按「标题 + 导语」那一组留的，
+   底下只有一个「关于」两个字的眉题时，那块空白就显得特别大。 */
+.section__head--solo { margin-bottom: var(--sp-5); }
+
+.section__eyebrow { margin-bottom: var(--sp-3); }
+
+.section__intro {
+  margin-top: var(--sp-5);
+  max-width: var(--measure-narrow);
+  color: var(--ink-2);
+  font-size: clamp(1rem, 1.3vw, 1.125rem);
+}
+
+/* ==========================================================================
+   5. 五个方向（圆角卡贴）
+
+   纵向一列五张卡，不是 2/3/4 列的卡片网格 —— 5 这个数量在那些列数下
+   都会剩一行不齐，纵向排在任何宽度下都成立，也更耐看。
+   ========================================================================== */
+
+.pillars {
+  display: grid;
+  gap: var(--sp-4);          /* 卡片之间的缝 */
+}
+
+/* 布局与卡片外观分成两条规则，**权重刻意不一样**：
+     .pillar       (0,1,0) —— 只管栅格，窄屏的 @media 覆盖也是 0,1,0，
+                              同权重靠「在后面」取胜，能正常生效。
+     .pillars> .pillar (0,2,0) —— 只管皮肤。必须升到 0,2,0，因为
+                              base.css 的 `.js .reveal` 是 0,2,0 且写了整条
+                              transition，权重不够时阴影/背景过渡会被它整条覆盖。
+   ⚠️ 别把 grid-template-columns 搬进下面那条高权重的规则里 ——
+      一搬进去，窄屏的 `.pillar { grid-template-columns }` 就再也压不过它，
+      响应式会静默失效（手机上还在用五列栅格）。这个坑本次踩过一次。 */
+.pillar {
+  position: relative;          /* .pillar__hit 的定位基准 */
+  display: grid;
+  /* 标题正文 | 元信息 | 箭头 | 配图。
+     原来最左边还有一列 3.5rem 放序号（01–05），已按需求去掉 ——
+     标题因此整体左移约 80px（56px 列宽 + 24px 列间距），
+     正好落在卡片内边距上，不再有一段空白顶着。
+     配图列用 minmax(200px, 300px)：容器最窄（.wrap 在 901px 视口）时
+     仍有 200px 图 + 约 380px 正文，两边都不挤。 */
+  grid-template-columns: minmax(0, 1fr) 7rem auto minmax(200px, 300px);
+  /* ⚠️ 原来是 baseline。加上配图后行高由图片撑到 200 多像素，
+     baseline 会让序号/元信息/箭头全部贴到顶上去，整行看着散。
+     改成 center，让文字块和配图垂直居中对齐。 */
+  align-items: center;
+  gap: var(--sp-4) var(--sp-5);
+}
+
+/* 卡贴的「贴」：底色 + 圆角 + 投影。 */
+.pillars > .pillar {
+  /* 左右内边距统一 24px（原来是 clamp 到 32px）——
+     配合去掉序号列，标题相对改动前共左移约 88px，贴到卡片内缘。 */
+  padding: clamp(var(--sp-5), 3.4vh, var(--sp-7)) var(--sp-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg-raised);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .05),
+    0 12px 32px -20px rgba(0, 0, 0, .20);
+  /* ⚠️ 这里的 transition 会把 base.css `.js .reveal` 里那条一起覆盖掉，
+     所以入场用的 opacity / transform 必须原样重写一遍，不能只写悬浮相关的那几个属性。 */
+  transition:
+    opacity 620ms var(--ease),         /* 入场淡入 —— 数值必须与 base.css 的 .reveal 一致 */
+    transform 620ms var(--ease),       /* 入场位移 —— 同上 */
+    translate var(--dur) var(--ease),  /* 悬浮上浮 */
+    box-shadow var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
+}
+
+/* 悬浮上浮。
+   ⚠️⚠️ 位移用独立的 `translate` 属性，**不要用 `transform`**：
+       `.js .reveal.is-in { transform: none }` 的权重是 0,3,0，
+       比 `.pillar:hover`（0,1,0）高，写 transform 会被它盖掉，
+       效果是「代码明明写了、悬浮毫无反应」这种最难查的静默失效。
+       translate / rotate / scale 是三个独立属性，与 transform 叠加而非互斥。
+   只在真的支持悬浮的设备上启用 —— 触屏点一下会让 :hover 粘住不散。 */
+@media (hover: hover) {
+  .pillars > .pillar:hover {
+    translate: 0 -8px;
+    /* z-index 让浮起的那张盖住后面那张，否则下坠的阴影会被
+       16px 之后的下一张白卡盖掉一半，看着像被切了。 */
+    z-index: 1;
+    box-shadow:
+      0 4px 8px rgba(0, 0, 0, .06),
+      0 28px 56px -24px rgba(0, 0, 0, .32);
+  }
+}
+
+.pillar__name {
+  color: var(--title-blue);          /* 和「精选作品」眉题、作品标题同一个蓝 */
+  font-size: clamp(1.375rem, 2.6vw, 2.125rem);
+  font-weight: var(--fw-bold);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.pillar__desc {
+  color: var(--ink-2);
+  font-size: .9375rem;
+  line-height: 1.6;
+  margin-top: var(--sp-2);
+  max-width: 46ch;
+}
+
+.pillar__meta {
+  font-size: .8125rem;
+  color: var(--ink-3);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pillar__arrow {
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--ink-3);
+  transition: transform var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.pillar:hover .pillar__arrow {
+  transform: translateX(6px);
+  color: var(--ink);
+}
+
+.pillar__media {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-sunken);      /* 图没加载出来时的底色 */
+  aspect-ratio: 16 / 9;
+}
+.pillar__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 520ms var(--ease);
+}
+.pillar:hover .pillar__media img { transform: scale(1.04); }
+
+/* 整张卡可点：把链接铺满整个格子，避免只有标题能点。
+   border-radius: inherit 让键盘焦点的光圈跟着卡片圆角走，
+   同时盖掉 base.css 里 `:focus-visible { border-radius: 3px }` 的直角方框。 */
+.pillar__hit {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+/* 光圈画在卡片内侧 —— 画到外面会飘到灰底上，和卡贴的边界脱节 */
+.pillar__hit:focus-visible { outline-offset: -3px; }
+
+/* 窄屏把四列压成两列：左侧自上而下是 序号 / 标题正文 / 元信息，
+   箭头单独占右列并纵向居中。这里必须显式指定行列 ——
+   只改 columns 而留 auto 排列，会和上面 meta 的 grid-column 打架，
+   把箭头挤到左下角去。 */
+@media (max-width: 900px) {
+  .pillar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--sp-2) var(--sp-5);
+    align-items: start;
+  }
+  /* 卡贴的内边距跟着窄屏收 —— .wrap 本身在 <768px 只有 24px 边距 */
+  .pillars > .pillar { padding: var(--sp-5); }
+  /* 去掉序号列后行数少一行，行列都要跟着上移一格 */
+  .pillar__body  { grid-column: 1; grid-row: 1; }
+  .pillar__meta  { grid-column: 1; grid-row: 2; text-align: left; }
+  .pillar__arrow { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  .pillar__desc  { max-width: none; }
+  /* 配图跨两列落到最下面，占满整行宽度。
+     ⚠️ 不要在这里 display:none —— 那等于手机上又退回五行纯文字，
+        正是这次要解决的问题。 */
+  .pillar__media {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: var(--sp-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pillar__media img { transition: none; }
+  .pillar:hover .pillar__media img { transform: none; }
+  /* 卡片不位移，但保留阴影变化当悬浮反馈 —— 总得让用户知道这块能点。
+     ⚠️ 选择器要压过 base.css 里 `.js .reveal`（0,2,0）设的 transition: none，
+        否则阴影也会瞬间跳变。0,3,0 稳赢。 */
+  .pillars > .pillar:hover { translate: none; }
+  .js .pillars > .pillar {
+    transition: box-shadow var(--dur) var(--ease), background-color var(--dur) var(--ease);
+  }
+}
+
+/* ==========================================================================
+   6. 内页页头
+
+   两种页面头：
+     .page-head  —— 常规：面包屑 + 大标题 + 一句话，浅底
+     .page-hero  —— 沉浸式：全屏大图 + 居中巨字，参考火山引擎 Seedance 那稿
+   ========================================================================== */
+
+/* --- 沉浸式大图页头 ------------------------------------------------------
+   高度 = 视口高减去粘顶条，这样「导航 + 大图」正好占满一屏。
+   图片用 object-fit: cover 铺满；下面那层 veil 负责压暗顶部（给浅色导航条
+   收边）和底部（给正文区过渡），中间留最亮，保证白字能读。
+------------------------------------------------------------------------ */
+.page-hero {
+  position: relative;
+  min-height: calc(100svh - var(--nav-h-sub));
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #0A0D11;           /* 图片没加载出来时的兜底色 */
+  isolation: isolate;
+}
+
+/* --- 钉住式页头（下拉动画的容器）---------------------------------------
+   .hero-pin 比 .page-hero 高出一截，多出来的这段就是「钉住」的行程：
+   .page-hero 在里面 position: sticky，贴住粘顶条下方不动，
+   等容器见底才解除 —— 那时候视频才跟着页面上滚。
+
+   ⚠️ 三条规则都挂在 .js 下，纯 CSS 不生效。
+      否则禁用 JS 的用户会滚过一段什么都不发生的空白行程。
+   ⚠️ sticky 的 top 必须是 --nav-h，不能是 0 ——
+      写 0 的话页头会钻到粘顶条底下，视频从导航条的毛玻璃后面透出来，
+      和现在的视觉不一致。
+------------------------------------------------------------------------ */
+.js .hero-pin {
+  --pin: 50svh;                  /* 钉住期间要滚多少距离 */
+  position: relative;
+  height: calc(100svh - var(--nav-h-sub) + var(--pin));
+}
+.js .hero-pin > .page-hero {
+  position: sticky;
+  /* ⚠️ 必须跟着粘顶条走。写死 0 页头会钻到条底下，
+     写死别的数则会和条之间露一条缝。 */
+  top: var(--nav-h-sub);
+}
+/* 手机上行程短一点，不然要划好几下才走得掉 */
+@media (max-width: 860px) {
+  .js .hero-pin { --pin: 38svh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .hero-pin { height: auto; }
+  .js .hero-pin > .page-hero { position: static; }
+}
+
+/* 同时吃 <img> 和 <video>：两者都支持 object-fit。
+   pointer-events: none 是为了不挡住标题上的点击/选中。 */
+.page-hero__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 42%;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* 遮罩压暗。
+   这段背景视频本身是亮的（云海仙宫，天空接近纯白），白字直接压上去读不出来，
+   所以不能像暗调图那样只压边、中间留亮 —— 这里反过来：
+   中间（放字的地方）压得最重，四周轻，让视频还能透出来。
+   两层叠加：径向负责中间，线性负责上下收边。 */
+.page-hero__veil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 76% 50% at 50% 50%,
+      rgba(6, 9, 14, .40) 0%,
+      rgba(6, 9, 14, .27) 45%,
+      rgba(6, 9, 14, .09) 78%,
+      rgba(6, 9, 14, .03) 100%),
+    linear-gradient(to bottom,
+      rgba(6, 9, 14, .30) 0%,
+      rgba(6, 9, 14, .04) 24%,
+      rgba(6, 9, 14, .04) 72%,
+      rgba(6, 9, 14, .38) 100%);
+}
+
+.page-hero__stage {
+  position: relative;
+  padding: clamp(var(--sp-8), 10vh, 140px) var(--sp-5) clamp(var(--sp-8), 12vh, 160px);
+  text-align: center;
+  max-width: 1000px;
+
+  /* 静态上提：标题和副标整体比几何中心高一点，视觉重心更稳。
+     --lift 是常数，--out / --fade 由 JS 在下拉时写入。
+     两者必须在同一个 transform 里合成 —— 分给两层元素的话，
+     上提量会被子层的位移覆盖掉。 */
+  --lift: clamp(18px, 4.5vh, 56px);
+  --out: 0vh;
+  --fade: 1;
+  transform: translate3d(0, calc(var(--out) - var(--lift)), 0);
+  opacity: var(--fade);
+}
+
+.page-hero__title {
+  font-size: clamp(2.5rem, min(7vw, 12.5vh), 8.5rem);
+  font-weight: var(--fw-bold);
+  line-height: 1.14;
+  letter-spacing: -0.01em;
+  color: #fff;
+  margin: 0;
+  /* 投影要**收紧**，不能是 26px 那种大模糊。
+     实测过：大模糊的暗部会从字形边缘往笔画内部渗，
+     渐变色的实测值会掉到 rgb(225,188,109)，比规格的 rgb(255,217,118) 暗 12%——
+     整行字看着发脏。改成 4px 小偏移只做边缘定义，
+     内部保持纯色，远处那层大扩散单独给一点点就够。 */
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, .55),
+    0 8px 40px rgba(0, 0, 0, .28);
+}
+
+/* 「动起来」的彩色渐变。
+   色值从参考图逐列采样得来：R 通道恒定在 253，G 从 191 线性降到 108，
+   B 从 97 升到 212 —— 本质是一条两段线性渐变（金黄 → 品红）。
+   后来又整体提亮了一档：压在明亮的云海画面上，原本那组色偏闷。 */
+.page-hero__title .grad {
+  background-image: linear-gradient(90deg, #FFD976 0%, #FF8FE8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* 这里必须把投影关掉。
+     中文笔画在这个字号下只有十几像素宽，4px 的模糊就从两侧各吃掉一半，
+     实测投影一挂上，渐变色立刻从 rgb(255,217,118) 掉到 rgb(225,188,109)，
+     整段看着发暗发褐。宁可少一层保护，也要保住颜色本身。
+     白字那部分不受影响，投影照旧。 */
+  text-shadow: none;
+}
+
+/* 万一浏览器不支持 background-clip: text，退回到一个接近中间的实色，
+   总比整段看不见强 */
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .page-hero__title .grad {
+    color: #FDA97E;
+    -webkit-text-fill-color: #FDA97E;
+  }
+}
+
+.page-hero__sub {
+  margin-top: clamp(var(--sp-4), 3.2vh, var(--sp-7));
+  font-size: clamp(.9375rem, min(1.5vw, 2.4vh), 1.375rem);
+  line-height: 1.7;
+  color: rgba(255, 255, 255, .93);
+  font-weight: var(--fw-body);
+  text-shadow: 0 1px 16px rgba(0, 0, 0, .60);
+}
+
+@media (max-width: 860px) {
+  .page-hero { min-height: calc(100svh - var(--nav-h)); }
+  .page-hero__bg { object-position: center 38%; }
+  .page-hero__stage { padding-inline: var(--sp-5); }
+  .page-hero__title { line-height: 1.22; }
+}
+
+.page-head {
+  padding-block: clamp(var(--sp-8), 12vh, 180px) clamp(var(--sp-7), 7vh, var(--sp-9));
+}
+
+.page-head__title {
+  font-size: clamp(2.25rem, min(5.6vw, 10vh), 5.5rem);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  margin-top: var(--sp-4);
+}
+
+.page-head__lead {
+  margin-top: clamp(var(--sp-4), 3vh, var(--sp-6));
+  font-size: clamp(1.0625rem, 1.6vw, 1.375rem);
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 34ch;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: .8125rem;
+  color: var(--ink-3);
+}
+.breadcrumb a:hover { color: var(--ink); }
+
+/* ==========================================================================
+   7. 作品条目
+   ========================================================================== */
+
+.works {
+  display: grid;
+  gap: clamp(var(--sp-6), 5vh, var(--sp-8));
+}
+
+.work {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(var(--sp-5), 4vw, var(--sp-8));
+  align-items: center;
+  padding-block: clamp(var(--sp-6), 5vh, var(--sp-8));
+  border-top: 1px solid var(--line);
+}
+
+.work:nth-child(even) .work__media { order: 2; }
+
+.work__media {
+  aspect-ratio: 4 / 3;
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+}
+.work__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* --- 视频作品 -----------------------------------------------------------
+   视频用 16:9（图片是 4:3），preserve 原始画幅不乱裁。
+   封面帧走 poster，preload="none" —— 6 条视频加起来近 30MB，
+   不点就不该下载。播放控制交给 site.js。
+------------------------------------------------------------------------ */
+.work__media--video {
+  aspect-ratio: 16 / 9;
+  background: #0C0E11;
+}
+
+/* 16:9 的静态配图（平面设计页的作品页）。
+   ⚠️ 默认的 4:3 会把 16:9 的作品页**左右各切掉 12%** ——
+      而这套版面把栏目名放在左边、作品板放在右边，一裁就切掉半截标题。
+      平面设计页的作品页全是 16:9，所以那一页统一挂这个修饰类。 */
+.work__media--wide { aspect-ratio: 16 / 9; }
+
+.work__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.work__play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: rgba(0, 0, 0, .16);
+  transition: background var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.work__play:hover { background: rgba(0, 0, 0, .30); }
+/* 播放中：整层让开。
+   视频现在带原生 controls，而那层按钮是 inset:0 盖满的 ——
+   只设 opacity:0 的话它照样吃点击，原生控制条就点不动了。
+   所以必须同时 pointer-events: none，把这一层彻底交出去。 */
+.work__media--video.is-playing .work__play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.work__play-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, .88);
+  background: rgba(0, 0, 0, .22);
+  position: relative;
+}
+
+/* 未播放：三角形 */
+.work__media--video:not(.is-playing) .work__play-icon::after {
+  content: "";
+  position: absolute;
+  left: 54%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-left: 15px solid #fff;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
+/* 播放中：两根竖条 */
+.work__media--video.is-playing .work__play-icon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+  background-size: 5px 20px, 5px 20px;
+  background-position: 18px center, 35px center;
+  background-repeat: no-repeat;
+}
+
+/* 图片占位：换成真图后把 .thumb__hint 删掉即可 */
+.thumb__hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .8125rem;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  background:
+    repeating-linear-gradient(45deg, transparent 0 10px, var(--stripe) 10px 20px);
+}
+
+.work__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  font-size: .8125rem;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: var(--sp-4);
+}
+.work__meta span { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.work__meta span + span::before {
+  content: "";
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .5;
+}
+
+.work__title {
+  font-size: clamp(1.375rem, 2.2vw, 1.875rem);
+  font-weight: var(--fw-bold);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+/* 只有**视频**条目的标题用蓝色（用户指定）。
+   这是收窄过的选择器 —— 一开始我直接写在 .work__title 上，
+   结果平面设计/小游戏/传统文化/大模型部署四页的作品标题也一起变蓝了，
+   而原设计（PSD）那四页是跟随墨色的。
+   想全站都蓝：把下面这条的 .work--video 前缀删掉即可。 */
+.work--video .work__title {
+  color: var(--title-blue);
+}
+
+.work__desc {
+  margin-top: var(--sp-4);
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.75;
+  max-width: 52ch;
+}
+
+.work__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+}
+.tag {
+  font-size: .8125rem;
+  color: var(--ink-2);
+  padding: 3px var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+@media (max-width: 860px) {
+  .work { grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+  .work:nth-child(even) .work__media { order: 0; }
+  .work__media { aspect-ratio: 16 / 10; }
+  /* ⚠️ 这一条不能少。窄屏的 16:10 比 16:9 更高，`object-fit: cover` 会把
+     16:9 的作品页**左右各切掉 5%** —— 而这套版面把栏目名放在左边，
+     正好切在字上。总览页全是 16:9，所以 --wide 在窄屏也必须赢。 */
+  .work__media--wide { aspect-ratio: 16 / 9; }
+}
+
+/* ==========================================================================
+   8. 页脚
+   ========================================================================== */
+
+.site-footer {
+  background: var(--bg-raised);
+  border-top: 1px solid var(--line);
+  padding-block: clamp(var(--sp-7), 8vh, var(--sp-9)) var(--sp-6);
+  font-size: .875rem;
+  color: var(--ink-3);
+}
+
+.site-footer__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+  gap: var(--sp-7) var(--sp-6);
+  padding-bottom: var(--sp-7);
+}
+
+.site-footer__title {
+  font-size: 1.0625rem;
+  font-weight: var(--fw-med);
+  color: var(--ink);
+  margin-bottom: var(--sp-3);
+}
+
+.site-footer__list { display: grid; gap: var(--sp-2); }
+.site-footer__list a:hover { color: var(--ink); }
+
+.site-footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--line);
+  font-size: .8125rem;
+}
+
+@media (max-width: 760px) {
+  .site-footer__grid { grid-template-columns: 1fr; gap: var(--sp-6); }
+}
+
+
+/* ==========================================================================
+   9. 逐行浮现
+
+   比 .reveal（整块淡入）细一层：同一行里每一段按顺序依次浮起。
+   延迟不写死在 CSS 里 —— JS 按元素顺序写进 --d，同一个类放到哪都能用。
+   ========================================================================== */
+
+.js .reveal-line {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 700ms var(--ease),
+    transform 700ms var(--ease);
+  transition-delay: var(--d, 0ms);
+  will-change: opacity, transform;
+}
+.js .reveal-line.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* 视频封面那格：除了上移再加一点点放大，和文字区分开 */
+.js .work__media.reveal-line {
+  transform: translateY(22px) scale(.985);
+}
+.js .work__media.reveal-line.is-in {
+  transform: none;
+}
+
+/* 标签一个个弹出来，而不是整排一起 */
+.js .work__tags.reveal-line { transform: translateY(10px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal-line,
+  .js .work__media.reveal-line,
+  .js .work__tags.reveal-line {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   10. 渐变标题 + 全部作品网格
+
+   网格是页面最底那一块：上方列表只放最新的 10 条，这里是完整归档。
+   参照视频平台的封面墙 —— 缩略图 + 标题，不写作者。
+   ========================================================================== */
+
+/* 「成品展示」的渐变。色值是从参考图「Apple 智能」上逐列取最饱和像素得来：
+   蓝 #3986F6 → 紫 #986CF9 → 品红 #D950A7 → 红 #F0475A → 橙 #F25715。
+   百分比也照采样位置还原，不是均分的。 */
+.title-gradient {
+  /* ⚠️ 必须 inline-block。
+     渐变是按**元素盒子宽度**铺的，不是按文字宽度。h2 默认 block，
+     会撑满整个容器（1320px），而「成品展示」四个字只有 347px ——
+     实测只占到容器宽的 40%，结果渐变只铺开了最前面一小段，
+     五个色段一个都没走到，整行看上去就是一片蓝。
+     收紧成 inline-block 后渐变才会完整铺在字上。 */
+  display: inline-block;
+  /* 渐变色本身定义在 tokens.css 的 --grad-rainbow，一处改全站生效。
+     它有两种消费方式：
+     ① 元素自身直接铺 —— 「成品展示」「作品库」这类没拆字的标题；
+     ② 拆字之后由每个 .char 分摊一段 —— 首页「必有用」，见下面的 .is-split。 */
+  --grad: var(--grad-rainbow);
+  background-image: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .title-gradient { color: #D950A7; -webkit-text-fill-color: #D950A7; }
+}
+
+/* --- 拆成单字之后，渐变改由每个字分摊一段 ------------------------------------
+   首页「必有用」要**逐字**升起（和前面几个字一样），但又不能三段重复 ——
+   每个字各自带一份完整渐变的话，看上去就是同一道彩虹刷了三遍。
+
+   做法：把渐变放大到字数的倍数，再按序号位移，每个字只露出属于自己的那一段。
+   background-position 的百分比含义是「图片与容器的对齐比例」，
+   size 为 N×100% 时：0% → 左对齐（第一段），100% → 右对齐（最后一段），
+   中间按 i/(N-1) 线性插值。（--gs / --gp 由 site.js 按字数写好。）
+   CJK 每个字的推进宽度相同，所以接起来正好是一条连续的渐变。
+------------------------------------------------------------------------- */
+.title-gradient.is-split {
+  background-image: none;          /* 父级交出，避免在自己的文字上再铺一层 */
+}
+.title-gradient.is-split .char {
+  background-image: var(--grad);
+  background-size: var(--gs, 100%) 100%;
+  background-position: var(--gp, 0%) 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* --- 滚动填色标题（首页「把想法做成东西」）-----------------------------------
+   两层文字：深色底字 + 上面的渐变层；滚到这一屏时渐变从上往下漫。
+
+   **上下走向**（需求明确要的）：渐变用 --grad-title（180deg，#E5563E → #F3C6E8），
+   色带在**每个字自己身上**从上色到下 —— 一行字里所有字占的纵向区间一样，
+   所以看上去是「每个字上橙下粉」，不是整句一句渐变。
+   填色也跟着往下走：滚动时颜色从字的上沿往下漫。
+
+   --p 由 site.js 第 12 节按滚动进度写成 **-16% ~ 116%**，
+   两头各留 16% 的羽化带 —— 详见那里的注释，别改成 0~100%。
+
+   ⚠️⚠️ **两层各带一个方向相反的 mask，这是为了消掉「黑边」。**
+   早先只有彩色层带 mask、底字全幅可见，结果彩色层的抗锯齿边缘是半透明的，
+   底下的近黑底字透出来，字就镶了一圈暗边。实测一条水平线：
+   内部 (218,80,163)，而左右边缘掉到 (197,75,149) / (176,89,141)，
+   红通道少 40 多 —— 肉眼一眼就能看见。
+   现在改成**两层互不重叠**：底字只在 --p 以下可见、渐变层只在 --p 以上可见，
+   同一个像素只会被一层画到，边缘自然干净。中间那段是交叉淡出区。
+
+   ⚠️ 必须 inline-block。渐变是按**元素盒子尺寸**铺的，不是按文字尺寸。
+      直接铺在 block 上会横跨整个版心/行高，字上只剩最前面一小段渐变。
+      （和 .title-gradient 踩的是同一个坑。）
+   ⚠️ 彩色层是 site.js **克隆**出来的，底字由 site.js 从 .scroll-fill 里
+      原样搬进 .scroll-fill__base —— HTML 里只有一份文字，改字只改一处。
+------------------------------------------------------------------------- */
+.scroll-fill {
+  position: relative;
+  display: inline-block;
+  /* ⚠️ line-height 必须是 1，不能继承 h2 的 1.2。
+      mask 是按**这个盒子的高度**铺的，而字只占盒子中间一段：
+      h2 的 1.2 会让盒子高 57.6px，实测墨迹只落在 y=8~52（即 13.8%~89.7%），
+      于是填色的前 14% 行程全花在字上方的行距里 —— 滚了半天一个字都没变色。
+      收紧到 1 之后盒子贴合字形，墨迹从约 8% 就开始了。
+      （h2 自己的行盒高度仍由它的 1.2 决定，所以页面布局不变，
+        实测标题到导语依旧精确 24px。） */
+  line-height: 1;
+}
+.scroll-fill__base { display: inline-block; }
+
+.scroll-fill__layer {
+  position: absolute;
+  inset: 0;
+  background-image: var(--grad-title);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  pointer-events: none;
+}
+
+/* 两个 mask 是一对，必须同时存在、方向相反：
+   .scroll-fill__base  下半段可见（transparent → #000）
+   .scroll-fill__layer 上半段可见（#000 → transparent）
+   把任一条删掉，重叠区的暗边就会回来。 */
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .js .scroll-fill__base {
+    -webkit-mask-image: linear-gradient(180deg,
+      transparent calc(var(--p, -16%) - 16%), #000 var(--p, -16%));
+    mask-image: linear-gradient(180deg,
+      transparent calc(var(--p, -16%) - 16%), #000 var(--p, -16%));
+  }
+  .js .scroll-fill__layer {
+    -webkit-mask-image: linear-gradient(180deg,
+      #000 calc(var(--p, -16%) - 16%), transparent var(--p, -16%));
+    mask-image: linear-gradient(180deg,
+      #000 calc(var(--p, -16%) - 16%), transparent var(--p, -16%));
+  }
+}
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  /* 不支持文字裁切的老浏览器：别把字弄没了。
+     彩色层藏掉，底字照常显示（上面的 mask 也一起被这个 @supports 挡掉了）。 */
+  .scroll-fill__layer { display: none; }
+}
+
+/* 固定 4 列，和参考图的封面墙一致。
+   不用 auto-fill —— 1600px 宽下它会排成 5 列，6 条就成了 5+1，
+   第一行差一个、第二行只有一个，很难看。 */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-6) var(--sp-5);
+}
+
+@media (max-width: 1080px) {
+  .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-5) var(--sp-4); }
+}
+
+.gallery__link { display: block; }
+
+.gallery__thumb {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+.gallery__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 420ms var(--ease);
+}
+.gallery__link:hover .gallery__thumb img { transform: scale(1.045); }
+
+.gallery__title {
+  display: block;
+  margin-top: var(--sp-3);
+  font-size: .9375rem;
+  font-weight: var(--fw-med);
+  line-height: 1.45;
+  color: var(--title-blue);      /* 与上方列表同一个蓝 */
+}
+
+.gallery__meta {
+  display: block;
+  margin-top: 3px;
+  font-size: .8125rem;
+  color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery__thumb img { transition: none; }
+  .gallery__link:hover .gallery__thumb img { transform: none; }
+}
+
+@media (max-width: 560px) {
+  .gallery__title { font-size: .875rem; }
+}
+
+/* ==========================================================================
+   11. 精选作品带（首页）
+   --------------------------------------------------------------------------
+   一条**自动向左滑**的作品带，滑到最右就停住；全程可以用鼠标拖动、
+   滚轮横滚、手指滑动。卡片顺序由 site.js 在运行时随机打乱。
+
+   ⚠️ 两处关键实现，改动前先看懂：
+
+   ① 移动统一交给 JS 的 scrollLeft 驱动，**不用 CSS 的 transform 动画**。
+      因为要同时保留手动滚动，而 CSS 动画改的是 transform、
+      手动滚动改的是 scrollLeft —— 两套坐标系混用必然互相打架
+      （拖完一松手会被动画拽回原位）。
+
+   ② 左右两端加了渐隐遮罩。内容一直在动，硬切边看着像渲染出错。
+   ========================================================================== */
+
+.band-sec {
+  padding-block: clamp(44px, 7.5vh, 92px) clamp(36px, 6vh, 72px);
+
+  /* 版心左右留白量。这一个值只用在 .band__track 的 padding-inline 上：
+     它让**首图左边缘**和**末图右边缘**都与内容列（.wrap 的 1080px）对齐 ——
+     起始时左边留白、结束时右边留白，整条带子像内容列上的一个窗口。
+     ⚠️ 必须和 .wrap 的规则保持一致：max-width 1080px，
+        内边距 24px（<768px）/ 32px（≥768px），视口更宽时再加居中留白。 */
+  --band-lead: max(24px, calc((100% - 1080px) / 2 + 32px));
+}
+@media (min-width: 768px) {
+  .band-sec { --band-lead: max(32px, calc((100% - 1080px) / 2 + 32px)); }
+}
+
+.band-sec__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-5);
+}
+
+/* 眉题用视频标题那支蓝（--title-blue，#2471E1）——
+   和 AI视频页的作品标题、作品库标题同一个变量，改色一处全站同步。 */
+.band-sec__eyebrow {
+  color: var(--title-blue);
+}
+
+/* 作品带右上的操作提示（「鼠标左拉查看 →」）。
+   ⚠️ 它**不是链接**：早先链到 design.html，文案后来改成「鼠标左拉查看」，
+      一个在教操作、一个在承诺跳转，对不上，已去掉 <a>。
+      所以这里**不要写 :hover 变色/下划线** —— 那是可点元素的视觉语言，
+      挂在一段纯提示上会让人以为点得动。 */
+.band-sec__more {
+  font-size: .9375rem;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.band {
+  /* 卡片高度。宽度由内容自身的 16:9 决定，不写死 */
+  --band-h: clamp(200px, 34vh, 380px);
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;    /* 划到头不要连带整页回弹 */
+  -webkit-overflow-scrolling: touch;
+
+  /* 隐藏滚动条。不加左右渐隐遮罩 —— 两头本来就有版心留白当视觉边界，
+     再叠一层渐隐会把对齐版心的首图/末图边缘压暗（窄屏下尤其明显：
+     768px 时留白只有 32px，而 4% 的遮罩已经铺到 31px）。 */
+  scrollbar-width: none;
+
+  cursor: grab;
+  user-select: none;                 /* 拖动时别把文字选蓝 */
+}
+.band::-webkit-scrollbar { display: none; }
+.band.is-dragging { cursor: grabbing; }
+
+/* 拖动时不要触发浏览器原生的「拖拽图片」幽灵图 */
+.band img { -webkit-user-drag: none; }
+
+.band__track {
+  display: flex;
+  width: max-content;                /* 撑到内容自然宽度，交给 JS 做回绕 */
+  margin: 0;
+  /* 左右留出版心空白：起始时左边是空的，滑到底时右边是空的 */
+  padding-inline: var(--band-lead);
+  /* ⚠️ 上下内边距必须**大于**卡片浮现时的下移量（下面 .band__item 用了 14px）。
+     overflow-x: auto 会让 overflow-y 也被迫变成裁切，卡片向下位移的那一截
+     会被容器底部切掉。这里给 16px，刚好留出余量。 */
+  padding-block: var(--sp-4);
+  list-style: none;
+}
+
+.band__item {
+  flex: 0 0 auto;
+  height: var(--band-h);
+  margin-right: var(--sp-5);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #0C0E11;               /* 作品集和视频都是暗底，兜底色也用暗的 */
+}
+
+/* ⚠️ 末图不能留右间距。留着的话滑到底时末尾会多出「一个间距 + 版心留白」，
+   末图右边缘就停在版心右边界左侧 24px 处，右边留白宽了一倍。
+   （实测五档宽度全部一致差 24px，正是 --sp-5 的值。） */
+.band__item:last-child { margin-right: 0; }
+
+.band__item a {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+/* 图片和视频用同一套尺寸规则 —— 视频卡片的高度必须和图片卡完全一致，
+   否则一行里会参差不齐。 */
+.band__item img,
+.band__item video {
+  display: block;
+  height: 100%;
+  width: auto;
+  transition: transform 520ms var(--ease);
+}
+.band__item:hover img,
+.band__item:hover video { transform: scale(1.035); }
+
+/* --- 卡片逐张浮现 ---------------------------------------------------------
+   比 .reveal-line（整块浮起）细一层：每张卡片单独浮，延迟由 JS 按 DOM 顺序
+   写进 --d，不写死在样式里 —— 所以加卡片不用改 CSS。
+
+   ⚠️ 自动滑必须等这一轮浮完才开始（见 site.js 第 10 节），
+      否则一边浮现一边横移，糊成一团。
+   ⚠️ 初始态挂在 .js 下：禁用 JS 时卡片必须直接可见，否则整条带子是空的。
+------------------------------------------------------------------------- */
+.js .band__item {
+  opacity: 0;
+  transform: translateY(14px);       /* 别超过容器上下内边距，否则会被裁掉 */
+  transition:
+    opacity 620ms var(--ease),
+    transform 620ms var(--ease);
+  transition-delay: var(--d, 0ms);
+}
+.js .band__item.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* 键盘焦点框画在卡片内侧 —— 画在外面会被滚动容器裁掉 */
+.band__item a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: inherit;
+}
+
+/* 手机上卡片小一档，否则一张图就占满整个屏幕 */
+@media (max-width: 860px) {
+  .band { --band-h: clamp(140px, 23vh, 240px); }
+  .band__item { margin-right: var(--sp-4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band__item img,
+  .band__item video { transition: none; }
+  .band__item:hover img,
+  .band__item:hover video { transform: none; }
+  /* 卡片浮现也关掉，直接显示 —— 这里必须显式写死，
+     因为 JS 那条分支在减弱动态效果下根本不会去点亮卡片。 */
+  .js .band__item {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+
+/* ==========================================================================
+   15. 深色主题（平面设计页）
+
+   给 <html> 挂一个 .theme-dark 就整页转黑，其余五页完全不受影响。
+   做法是**只覆盖色彩令牌** —— 组件读的都是令牌，所以卡片、分隔线、
+   次级文字、页脚、跳转链接会自动一起翻过来，不用一条条改。
+
+   ⚠️ 深色这套不是随便配的：它就是本站浅色版的**两个主色对调**。
+
+        浅色： 底 #F5F5F7   字 #161616
+        深色： 底 #0D0D0D   字 #F5F5F7
+
+   #0D0D0D 也不是拍脑袋 —— 是把《平面设计作品集》那几页 PSD 的四角
+   采样出来的（实测 #0A0A0A ~ #1E1E1E，暗底本身就是中性近黑）。
+   网站的黑和作品集的黑对上，图片贴上去才不会像浮在另一块板子上。
+
+   ⚠️ 蓝要一起换。--title-blue 的 #2471E1 是给浅底配的，
+      搬到 #0D0D0D 上实测对比度只有 4.2:1（AA 要 4.5，作品标题够大
+      但画廊标题 0.9375rem 不够）。换成 #5AA0FF 后 7.3:1。
+   ========================================================================== */
+
+html.theme-dark {
+  color-scheme: dark;          /* 让滚动条、表单控件跟着变暗 */
+
+  --bg:            #0D0D0D;
+  --bg-raised:     #161616;
+  --bg-sunken:     #1C1C1C;
+  --ink:           #F5F5F7;
+  --ink-2:         #A8A8AD;
+  /* ⚠️ -3 这一档要比「看着对」再亮一点。深色页里三级文字大多落在
+     **卡片底色 #161616** 上（作品元信息、画廊元信息），不是页面底色 #0D0D0D。
+     第一版给 #7E7E84，按 #0D0D0D 算有 4.85:1 以为够了，
+     实测在卡片上只有 4.48:1 —— 差 0.02 不达标（AA 要 4.5）。
+     逐元素量对比度才发现的，肉眼绝对看不出来。 */
+  --ink-3:         #8E8E94;
+  --line:          rgba(255, 255, 255, .14);
+  --line-strong:   rgba(255, 255, 255, .26);
+
+  --nav-veil:      rgba(13, 13, 13, .66);
+  --stripe:        rgba(255, 255, 255, .028);
+
+  --title-blue:    #5AA0FF;
+  --accent:        #F5F5F7;
+
+  /* 「品宣海报」项目卡：标题浅蓝、其余纯白（用户 2026-10-09 定的）。
+     浅色基线在 tokens.css —— 见那边的注释，两套必须同时有。 */
+  --promo-title:   #94C8FE;
+  --promo-text:    #FFFFFF;
+}
+
+/* 缩略图描一圈极淡的边。浅色页上图和底色本来就分得开，不需要描边；
+   黑底上不行 —— 暗色作品（比如《玉兔下凡》那几张雨夜）会和底色连成一片，
+   图的边界直接消失。深色界面里「分界」靠边缘，不靠阴影。 */
+html.theme-dark .gallery__thumb {
+  border: 1px solid var(--line);
+}
+
+/* 深色页的粘顶导航：**压在首屏上时抹成首屏那个黑，连分割线和毛玻璃一起收掉**，
+   跟纯黑首屏连成一片；滚过首屏（拿到 .is-stuck）才长出底色和分割线。
+   ⚠️ 为什么非做不可：--nav-veil 是 rgba(13,13,13,.66)，压在首屏上合出来
+      比首屏亮一档；再加一条 rgba(255,255,255,.14) 的分割线，顶上就是
+      「一条灰带 + 一条白线」，跟纯黑首屏接不上（用户 2026-10-08 圈出来要求去掉）。
+   ⚠️⚠️ 这里**不能写 `background: transparent`**。导航是 `position: sticky`，
+      在文档流里正常占位，它背后是 `body` 的 --bg（#0D0D0D）**不是首屏** ——
+      写透明只会露出页面底色，量出来那条带子亮度 13，照样是一条灰带。
+      要真连成一片，只能两边读同一个令牌：--cover-bg。
+   ⚠️ 只做深色页：浅色内页的导航是浅色带压在浅色页头上，本来就顺。
+   ⚠️ 写成 `:not(.is-stuck)` 而不是改基础规则 —— 这样滚起来之后
+      `.site-nav--bar` 原本那套（含 @supports 里的 backdrop-filter）
+      原样生效，不用把那块再抄一遍。
+   ⚠️ transition 写在基础规则上，两个方向都有过渡，滚动时是淡出/淡入
+      而不是硬切。 */
+html.theme-dark .site-nav--bar {
+  transition: background-color 240ms var(--ease),
+              border-bottom-color 240ms var(--ease);
+}
+html.theme-dark .site-nav--bar:not(.is-stuck) {
+  background: var(--cover-bg);
+  border-bottom-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* 跟站里其他地方一个口径：系统开了「减弱动态效果」就不要过渡 */
+@media (prefers-reduced-motion: reduce) {
+  html.theme-dark .site-nav--bar { transition: none; }
+}
+
+
+/* 页头那一段（.cover-hero 的高度、object-fit、暗角）连同「窄屏不要裁」
+   的说明，全部并到第 18 节了 —— 那里现在是同一块内容的唯一出处。
+   这一节原本写的是「整张封面图铺满首屏」，2026-10-08 换成了
+   「干净底图 + 四个文案重排」，所以删掉重复定义，避免两处各写一份、
+   改一处漏一处。 */
+
+/* ==========================================================================
+   17. 全部版面（平面设计页的完整作品列表）
+
+   25 页，一页不落，按 PDF 顺序。跟第 10 节那个 .gallery 的区别：
+     · .gallery 是「挑几张铺个网格」，格子小、信息少
+     · .pages 是「把整套都摆出来」，格子大得多 —— 这套版面把栏目名排在
+       左边、作品板在右边，格子一小那些字就全糊了。所以桌面固定两列、
+       每格 640px 左右，不再往上加列数。
+   ========================================================================== */
+
+/* （2026-10-10 删）这里原本是「作品区开头那段中文导语」的样式：
+   `.cover-hero__lead` 的字号 / 边距 + 它 `.is-split .char` 的逐字升起三条规则。
+   用户当天要求把那段导语整段去掉（截图圈的就是它），样式和 JS（第 5c 节）
+   一起清掉了。
+   ⚠️ 那几条曾经踩过的坑还值得记：①它必须待在 `.section--raised` 里、
+      否则会跟作品区差一层底色（`#0D0D0D` vs `#161616`，实测出过一条色带）；
+      ②字号下限给 1.125rem 会让 1024/390 两档**都顶到 18px**，
+      流体计算等于没做 —— 现在这个词条没了，但同一个坑在别处还会遇上。 */
+
+/* 导语和作品列表之间那台机甲 —— **文案在上、视频在下**（2026-10-08 定稿）
+
+   位置前后改了四轮，每一轮都推翻上一轮，**看最终形态就行**：
+     一：880px 居中 + 四边羽化
+     二：「放大成全屏 + 文案压在视频上面」→ 整幅出血
+     三：「视频缩小一点，排版参考本站首屏，橙色英文改成 <Apple M5 Ultra>」
+         → 80% 宽 + 居中堆叠 + 渐变标题
+     四（现在）：**「视频和英文字再小一点，不要让字盖到视频」**
+         → 视频 66% 宽；文案**整个移出视频**，改成视频上方的一行行居中文字
+         → 遮罩（`.mecha-hero__scrim`）**删掉了** —— 它当初只有一个用途：
+           把大标题从视频背景里拉出来。字不再压在视频上，它就没用了，
+           留着只会平白压暗机甲。
+
+   结构（**没有绝对定位了**，就是一个居中的纵向流，跟首屏 `.cover-hero__inner` 同一个做法）：
+     .mecha-hero
+       .mecha-hero__copy    文案（在文档流里，在视频上方）
+       .mecha-hero__frame   视频框，只管左右羽化
+         .mecha-hero__video   比例 + 上下羽化
+
+   ⚠️⚠️ 这台机甲的素材背景**不是**作品区那层灰，是**打了灯的暗棚**。
+      逐帧量过：底子 19~25（作品区 #161616 = 22）、顶部一道**聚光灯锥**锥心 **95**
+      且被上边缘切断、地面一片**光池**底边内侧 36~42。
+      直接贴上去四周就是一圈硬边 —— 顶边跨边界实测 **+73 级**台阶。
+      所以视频和它的框各带一层 mask，把四条边羽化掉，让边缘化成灰底里的一团光。
+      ⚠️ 羽化带宽度是量出来的，**换素材必须重量**：
+        · 左右 —— 机甲亮甲最宽到 21.5%~75.8%，两侧各留到 12% 都碰不到它
+        · 上   —— 举手那一帧指尖到 **7.1%**，所以只羽化最上面 8%
+        · 下   —— 站姿那一帧**脚在 94%**，所以 94% 以下才开始收；
+                 蹲跪之后膝盖被画幅切断（亮甲量到 99.9%），
+                 正好让那截被切断的腿在灰里化开
+
+   ⚠️ 每个 ramp 都用多个色标写成**近似二次曲线**，不要用「transparent → #000」
+      两点直线：直线两端斜率突变会产生马赫带，看着就是一条淡淡的边。
+   ⚠️ 不用 `mask-composite: intersect`（要较新的 Chrome），嵌套写法万无一失。
+   ⚠️ poster 也受 mask 影响（同一次渲染），所以封面帧一样是羽化的。
+   ⚠️ 比例交给 `width`/`height` 属性（1920×1080），CSS 只写 width + height:auto。
+
+   ⚠️ 静态兜底：万一视频这条路不走，`mecha-walk.webp`（六格精灵图）和
+      那段 `steps(6)` 动画还在备份里，换上是一行的事。 */
+.mecha-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-block: clamp(var(--sp-7), 7vh, var(--sp-9));
+}
+/* 文案：视频**上方**的居中两行。写成 max-content 是为了让渐变盒正好等于字宽
+   （见下面 __en 那条 `width: fit-content` 的说明），再用 align-items 居中。
+   ⚠️⚠️ 千万别改回「绝对定位压在视频上」—— 用户 2026-10-08 明确要求
+      「不要让字盖到视频」。验收脚本会去截图上验这件事：
+      大标题的墨迹包围盒不许和视频矩形相交。 */
+.mecha-hero__copy {
+  width: max-content;
+  max-width: calc(100% - 2vw);
+  text-align: center;
+  /* 跟视频之间的间距。2026-10-09 用户说「文字往下移动一点」——
+     这里把上方的空当收掉，文案整体下移贴近视频（不是移到视频上，
+     用户上一轮明确要求字不许盖到视频，那条约束还在）。
+     ⚠️ 别把这条收到 0 以下或负值：视频顶端还有 8% 的羽化带，
+        字压到它上面会糊在灰里。 */
+  margin-bottom: clamp(var(--sp-2), 1.2vh, var(--sp-4));
+}
+/* 大标题。字重拉到 900（本机 Noto Sans SC 是可变字体，wght 到 900）。
+   ⚠️ 字号系数：Noto Sans SC 900 下 "A SMALL WORLD" 的字符推进总量
+      ≈ **7.98 × 字号**；要墨迹占视口 **53%**（跟本站首屏那行 LITTE WORLD
+      一样宽，用户就是拿它当排版参考的）→ 0.53 ÷ 7.98 ≈ **6.6vw**。
+      改文案（换字数）这个系数就变了，要重量 —— 验收脚本会打印实际占比。
+   ⚠️ vw 和 vh 两侧要**同比例**改（换算点落在 16:9，x vw ↔ 1.78x vh）。 */
+.mecha-hero__en {
+  display: block;
+  font-size: clamp(1.4rem, min(6.6vw, 11.7vh), 6.5rem);
+  white-space: nowrap;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.005em;
+  text-transform: uppercase;
+  /* 渐变字：横向走色，色标见 tokens.css 的 --mecha-grad。
+     `width: fit-content` 是给渐变用的 —— background-clip: text 的渐变盒子
+     就是元素自己的 padding box，块级默认占满整行的话，渐变会被拉到整行宽，
+     字只取到中间那一小段颜色。
+     ⚠️ color: transparent 和 -webkit-text-fill-color 两条都要写 ——
+        只写 color 的话 Safari/老 WebKit 上字会整个消失。
+     ⚠️⚠️ **这里不能挂 text-shadow。** `background-clip: text` 的绘制顺序是
+        「背景（裁进字里）→ text-shadow → 文字」，而渐变字的文字色是 transparent，
+        阴影会整个盖在渐变上面，字看着是一团灰。要阴影只能换
+        `filter: drop-shadow()`（那是对元素整体做的，不受这个顺序影响）。 */
+  width: fit-content;
+  margin-inline: auto;
+  background-image: var(--mecha-grad);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+/* 中文行。字号按本站首屏「平面作品集 / LITTE WORLD」那一对的比例（≈0.26）定。 */
+.mecha-hero__cn {
+  display: block;
+  margin-top: .22em;
+  /* 2026-10-09 用户要求「放大一些」：1.72vw/3.06vh → **2.2vw/3.92vh**
+     （1600 下 27.5px → 35.2px，+28%），跟白色一起改的。
+     ⚠️ vw 和 vh 两侧**同比例**改（换算点落在 16:9，x vw ↔ 1.78x vh）。 */
+  font-size: clamp(1.05rem, min(2.2vw, 3.92vh), 2.3rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: .06em;
+  color: var(--mecha-sub);
+}
+/* 视频框。**视频宽度写在这里**（百分比、没有 px 上限，跟着视口走）。
+   高度 = 宽 ÷ 1.778。
+   ⚠️ 它跟文案的字号**已经不联动了** —— 文案早就移出视频了，
+      所以改这个宽度不用回头改字号（第三轮时是要联动的，第四轮起不用了）。 */
+.mecha-hero__frame {
+  /* ⚠️ 要 `position: relative` —— 里面那个 Siri 式问好（.morb）是按
+     **这个框**的百分比绝对定位的；框不定位的话它会去找更外层的包含块，
+     实测直接跑到整个页面 88% 的位置去（偏了几万像素）。 */
+  position: relative;
+  /* 2026-10-08 起用户连着缩了三轮：100% → 80% → 66% → **58%**
+     （1600 下 928×522）。再小就叫不动了 —— 这已经比站内内容列窄一半。 */
+  width: 58%;
+  /* 左右羽化 */
+  -webkit-mask-image: linear-gradient(to right,
+      transparent 0%, rgba(0, 0, 0, .10) 3%, rgba(0, 0, 0, .45) 7%, #000 12%,
+      #000 88%, rgba(0, 0, 0, .45) 93%, transparent 100%);
+  mask-image: linear-gradient(to right,
+      transparent 0%, rgba(0, 0, 0, .10) 3%, rgba(0, 0, 0, .45) 7%, #000 12%,
+      #000 88%, rgba(0, 0, 0, .45) 93%, transparent 100%);
+}
+.mecha-hero__video {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 上下羽化 */
+  -webkit-mask-image: linear-gradient(to bottom,
+      transparent 0%, rgba(0, 0, 0, .10) 2%, rgba(0, 0, 0, .45) 5%, #000 8%,
+      #000 94%, rgba(0, 0, 0, .45) 97%, transparent 100%);
+  mask-image: linear-gradient(to bottom,
+      transparent 0%, rgba(0, 0, 0, .10) 2%, rgba(0, 0, 0, .45) 5%, #000 8%,
+      #000 94%, rgba(0, 0, 0, .45) 97%, transparent 100%);
+}
+/* 文案的入场：滚到视口时**整块淡入上浮**（2026-10-09 用户要求「给文字加入动画」）。
+   ⚠️⚠️ **绝对不要改成逐字升起**（站里导语那套）。大标题的渐变靠
+      `background-clip: text`，一拆字，每个字各自成一个渐变盒，
+      「一条渐变横跨整个标题」会散成一串单色的字 —— 第 5b 节首屏那段
+      注释里已经写过同一个坑。这里整块动。
+   ⚠️ 初始态只写在 `.js` 下面：`<head>` 里挂了 `.js`，没有 JS 时这两行必须原样可读。
+   ⚠️ 终态 `.is-in` 那条**不能少** —— 少了就是「元素拿到 is-in 但永远停在
+      opacity:0」，控制台一条报错都没有（首页首屏真踩过，见第 5b 节注释）。 */
+.js .mecha-hero__reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 760ms var(--ease), transform 760ms var(--ease);
+  transition-delay: var(--d, 0ms);
+}
+.js .mecha-hero__reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+/* 中文行晚一拍落下来 */
+.mecha-hero__cn.mecha-hero__reveal { --d: 170ms; }
+
+/* ==========================================================================
+   机甲框里的「Siri 问好」：球 → 半透明胶囊 → 欢迎语（2026-10-10 用户要求）
+   用户原话：「我要在这个位置有一个类似于 siri 一样的圆圈弹出来然后动画变换成
+   一个半透明形状，然后出现一段话：欢迎来到我的作品集，字体放在一个类似这样的
+   半透明形状里」（附一张 Siri 那种"深色圆角条 + 波形"的参考图）
+
+   时间线（都在下面几个 keyframes 的 delay 上，改节奏只动这几个数）：
+     0.00s  球在机甲脚前淡入 + 放大（彩色圆锥渐变，一直在慢慢转）
+     0.42s  球"化开"消失，同时胶囊从球的位置**往两边拉出来**（62px 圆 → 300px 圆角条）
+     1.30s  欢迎语淡入；左侧那组小波形开始跳（呼应参考图里的波形）
+   定稿形态：深色磨砂胶囊 + 一圈**轻微外发光**（不是彩色描边，用户第三轮否掉了 —
+   见 .morb__pill 上那条 box-shadow 的注释）
+
+   ⚠️ 位置是**相对 .mecha-hero__frame**（视频可见区）的百分比，
+      1600 下框 928×522 → 1% ≈ 9.3 / 5.2px。现在取的是"机甲脚前"那个点。
+      **换视频 / 改框宽高比要重新量**。
+   ⚠️ 容器 `.morb` 宽高为 0，形状靠子元素各自 `translate(-50%,-50%)` 居中。
+      **它不挂 `.mecha-hero__reveal`** —— 挂过，结果跟上面那两行文案共用一个
+      观察者（观察整个 `.mecha-hero`），框一露头就把动画播完了，
+      用户看到的是「底部的动画提前播放了」。时机现在由 site.js 第 5f 节单独盯。
+   ⚠️ 球的分层：外层动画做 scale/opacity，**旋转放在 ::before** ——
+      两个动画都写 transform 的话，后一个会把前一个顶掉。
+   ⚠️ 初始隐藏态只写在 `no-preference` 里：减弱动态效果时直接给最终形态，
+      否则整块会永远是透明的。
+   ========================================================================== */
+.morb {
+  --morb-x: 50%;
+  --morb-y: 88%;
+  --morb-w: clamp(210px, 19vw, 300px);
+  /* 尺寸全部走变量：**默认值就是机甲视频框里那一版**（2026-10-10 验收过的
+     62 / 56 / 16px…），方板里那一版在 `.morb--plate` 里按 `--morb-w` 的比例覆盖。
+     这样同一套形状/动效能在两种底噪完全不同的场景里复用，而各自的比例都对。 */
+  --morb-b: 62px;                 /* 球的直径（也 = 胶囊的起始尺寸） */
+  --morb-h: 56px;                 /* 胶囊高 */
+  --morb-fs: clamp(12px, 1.02vw, 16px);
+  --morb-pad: 20px;
+  --morb-gap: 12px;
+  --morb-wave-w: 3px;
+  --morb-wave-gap: 3px;
+  --morb-wave-h: 7px;
+  --morb-wave-hi: 17px;
+  --morb-wave-box: 18px;
+  --morb-halo1: 24px;             /* 球/胶囊的蓝紫外发光（内圈） */
+  --morb-halo1s: 7px;
+  --morb-halo2: 70px;             /* 外圈 */
+  --morb-halo2s: 22px;
+  position: absolute;
+  left: var(--morb-x);
+  top: var(--morb-y);
+  width: 0;
+  height: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.morb__ball {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--morb-b);
+  height: var(--morb-b);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* ⚠️ 外发光用**蓝紫**，不要彩虹色 —— 彩虹读起来像玻璃弹珠，不像 AI。
+     2026-10-10 用户：「彩色的球可以优化得更像一个 ai 智能体吗？」 */
+  box-shadow: 0 0 var(--morb-halo1) var(--morb-halo1s) rgba(122, 152, 255, .40),
+              0 0 var(--morb-halo2) var(--morb-halo2s) rgba(150, 96, 255, .22);
+}
+/* 虹彩壳：色相收窄到「蓝 → 紫 → 品红 → 青」，慢转 —— AI 那种流动感就靠它 */
+.morb__ball::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    #5b8bff, #8f6bff, #d45cff, #ff6bb8, #6bd8ff, #5b8bff);
+  filter: blur(6px) saturate(1.25);
+  /* ⚠️ 球的旋转/呼吸**只在它可见的那 ~0.7 秒里需要**，之后球被淡到
+     opacity:0（入场 keyframes 的 `both` 填着），留着 infinite 就是白跑 ——
+     页面上三颗胶囊 = 六个永不停止的合成动画。给个有限次数，跑完就停。 */
+  animation: morb-spin 8s linear 3;
+}
+/* 亮芯 + 呼吸。⚠️ 有芯才像"活的智能体"，纯色团子看着像贴纸。
+   呼吸（scale）只能放在这一层：球的入场动画已经占了 transform。 */
+.morb__ball::after {
+  content: "";
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side,
+    rgba(255, 255, 255, .97),
+    rgba(206, 228, 255, .60) 58%,
+    rgba(255, 255, 255, 0) 100%);
+  animation: morb-breathe 2.6s ease-in-out 4;
+}
+@keyframes morb-breathe {
+  0%, 100% { transform: scale(.88); opacity: .82; }
+  50%      { transform: scale(1.10); opacity: 1; }
+}
+@keyframes morb-spin { to { transform: rotate(360deg); } }
+
+/* 外发光（用户第三轮：「我不要这种形式，我要轻微外发光的形式」）。
+   上一版是**彩色描边**（渐变底 + 双层 mask 挖空中间，留 1.5px 的环）——
+   被否掉了：那条硬边读起来像"被框起来的标签"，他要的是**光**不是**边**。
+   ⚠️ 所以彩色改成只存在于胶囊**外面**，而且是**扩散**的：
+      box-shadow 给不了渐变，只能用几层不同色相的模糊阴影叠出
+      「蓝 → 紫 → 青」的过渡（写在 .morb__pill 上，见下面那条 box-shadow）。
+   ⚠️ 每层 alpha 都压在 .16~.34，"轻微"是这次的验收标准 ——
+      想更明显就调这三层的 alpha，别改 blur（blur 大了光会糊成一片雾）。 */
+
+/* 减弱动态效果：球不显示，胶囊的光留着（box-shadow 与动画无关，天然就在） */
+@media (prefers-reduced-motion: reduce) {
+  .morb__ball::before,
+  .morb__ball::after { animation: none; }
+  .morb__ball { display: none; }      /* 静态版只留胶囊 */
+}
+
+/* 胶囊里那层"球色壳" —— 跟球同款渐变，被 overflow:hidden 剪在胶囊里，
+   随胶囊一起横向拉长，最后淡掉（见 morb-glow 那条说明） */
+.morb__pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* ⚠️ 色板必须**跟球一致**（蓝→紫→品红→青）。这里原来没跟着改，
+     结果球是 AI 蓝紫、一拉长就变成彩虹（带绿和橙）——
+     用户会看到"换个颜色"，很跳。 */
+  background: conic-gradient(from 0deg,
+    #5b8bff, #8f6bff, #d45cff, #ff6bb8, #6bd8ff, #5b8bff);
+  filter: blur(8px) saturate(1.25);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.morb__pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  /* ⚠️ overflow: hidden 是必须的 —— 下面 ::before 里那层"球色渐变"要被剪在胶囊形状里，
+     于是它一开始就是那个球、随胶囊横向拉长而拉长，最后褪掉露出磨砂玻璃。 */
+  overflow: hidden;
+  width: var(--morb-w);
+  height: var(--morb-h);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--morb-gap);
+  padding: 0 var(--morb-pad);
+  /* ⚠️ 底色要**深**的。第一版用淡白（rgba(255,255,255,.10)）——
+     它压在机甲那两条亮腿上会被 backdrop 糊成一条白雾，跟用户给的参考图
+     （深色半透明胶囊）不是一个东西。改成深底 + 细亮边，
+     不管背后是亮腿还是深灰页面，读起来都是"深色磨砂玻璃条"。 */
+  background: rgba(16, 17, 20, .52);
+  /* 只留一条白细线收边，不用彩色 —— 彩色的部分全部交给外面的光 */
+  border: 1px solid rgba(255, 255, 255, .10);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+          backdrop-filter: blur(16px) saturate(1.1);
+  /* ⭐ **轻微外发光**：三层不同色相的模糊阴影 = 蓝 → 紫 → 青的过渡，
+     第一层是黑色落影（不加的话胶囊会在机甲腿上"贴纸化"，失去悬浮感）。
+     ⚠️ 色相跟球、跟胶囊壳同源（#7890ff / #a264ff / #5cb6ff）——
+        这里又踩过"色板不同源"的坑，别再单独调色。
+     ⚠️ 这串 box-shadow 在 morb-pill 的 0% 里有一份**层数相同**的弱化版：
+        层数不一样时浏览器不做插值（直接跳变），光会"啪"地出现。 */
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .42),
+              0 0 16px rgba(120, 142, 255, .34),
+              0 0 38px rgba(162, 100, 255, .24),
+              0 0 76px rgba(92, 182, 255, .16),
+              inset 0 1px 0 rgba(255, 255, 255, .10);
+}
+
+.morb__wave {
+  display: flex;
+  align-items: center;
+  gap: var(--morb-wave-gap);
+  height: var(--morb-wave-box);
+  flex: 0 0 auto;
+}
+.morb__wave i {
+  display: block;
+  width: var(--morb-wave-w);
+  height: var(--morb-wave-h);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .88);
+}
+/* 静止时四根条**不等高**，落成一个"声波"的形状 —— 动画跳完（3 次）就停在这个
+   样子。等高的话读起来像"菜单图标"，不像波形。
+   （动画期间 keyframes 里的高度会盖掉这几条，跑完再回到这里，正好。） */
+.morb__wave i:nth-child(1) { height: calc(var(--morb-w) * .030); }
+.morb__wave i:nth-child(2) { height: calc(var(--morb-w) * .048); }
+.morb__wave i:nth-child(3) { height: calc(var(--morb-w) * .058); }
+.morb__wave i:nth-child(4) { height: calc(var(--morb-w) * .038); }
+.morb__text {
+  font-family: var(--font-sans);
+  font-size: var(--morb-fs);
+  font-weight: var(--fw-bold);
+  letter-spacing: .02em;
+  color: rgba(255, 255, 255, .94);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 进入视口前：整套都藏着（`.morb` 靠 .mecha-hero__reveal 那套拿到 .is-in） */
+  .js .morb:not(.is-in) .morb__ball,
+  .js .morb:not(.is-in) .morb__pill,
+  .js .morb:not(.is-in) .morb__text { opacity: 0; }
+
+  .js .morb.is-in .morb__ball {
+    animation: morb-ball .72s cubic-bezier(.22, .9, .28, 1) both;
+  }
+  /* ⚠️ 胶囊的曲线要**看得出"往两边拉"**：第一版用很陡的 ease-out（cubic-bezier(.22,.9,.28,1)），
+     宽度几乎瞬间就到位了，用户看到的现象是"球直接变成一个胶囊"，
+     反馈「球要往两边延伸成胶囊」。现在改成两端都有缓冲的曲线 + 拉长到 900ms。 */
+  .js .morb.is-in .morb__pill {
+    animation: morb-pill .9s .42s cubic-bezier(.36, .05, .2, 1) both;
+  }
+  .js .morb.is-in .morb__pill::before {
+    animation: morb-glow .95s .42s ease-out both;
+  }
+  /* 填充褪色的同时，光**从球尺寸长到胶囊尺寸**（都在 morb-pill 的 box-shadow 里） */
+  .js .morb.is-in .morb__text {
+    animation: morb-text .62s 1.3s var(--ease) both;
+  }
+  /* ⚠️ **不能 infinite**。2026-10-10 用户：「这两个为什么一直闪烁？」
+     —— 就是这四根条：1.35s 一轮、高度 7.9↔19.3px、透明度 .55↔1，四根还各错开
+     0.16s，**永久循环**。在机甲视频框上被视频的动盖住了不明显，
+     摆在静止的方板上就是"一直在闪"。
+     改成**跳三下就停**（≈4s）：进场还有那个"醒过来"的手势，
+     之后落成一个静止的声波图标。结束后回到静态值（高 --morb-wave-h、透明度 1）。
+     想让它一直微微呼吸：把 `3` 改回 `infinite`，并把 keyframes 的幅度收小
+     （透明度 .82↔1、高度 8↔13px）—— 直接 infinite 就是这个闪烁感的来源。 */
+  .js .morb.is-in .morb__wave i {
+    animation: morb-wave 1.35s ease-in-out 3;
+  }
+  .js .morb.is-in .morb__wave i:nth-child(2) { animation-delay: .16s; }
+  .js .morb.is-in .morb__wave i:nth-child(3) { animation-delay: .32s; }
+  .js .morb.is-in .morb__wave i:nth-child(4) { animation-delay: .48s; }
+}
+@keyframes morb-ball {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.35); }
+  34%  { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  58%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.88); }
+}
+/* 球的"壳"：起点就是那个球（58px 圆 + 彩色渐变），随胶囊横向拉长而拉长，
+   同时慢慢褪掉 —— 于是看到的是「球往两边延伸成胶囊」，而不是"球消失、胶囊冒出来"。 */
+@keyframes morb-pill {
+  0%   { opacity: 0; width: var(--morb-b); height: var(--morb-b); border-radius: 50%;
+         background: rgba(16, 17, 20, 0); border-color: rgba(255, 255, 255, 0);
+         /* ⚠️ 层数必须跟 .morb__pill 上那条定稿的一样多（5 层），
+            否则不插值 → 光会突然跳出来 */
+         box-shadow: 0 0 0 rgba(0, 0, 0, 0),
+                     0 0 20px rgba(120, 142, 255, .30),
+                     0 0 30px rgba(162, 100, 255, .20),
+                     0 0 40px rgba(92, 182, 255, .14),
+                     inset 0 1px 0 rgba(255, 255, 255, .06); }
+  18%  { opacity: 1; }
+  100% { opacity: 1; width: var(--morb-w); height: var(--morb-h); border-radius: 999px;
+         background: rgba(16, 17, 20, .52); border-color: rgba(255, 255, 255, .10);
+         box-shadow: 0 14px 40px rgba(0, 0, 0, .42),
+                     0 0 16px rgba(120, 142, 255, .34),
+                     0 0 38px rgba(162, 100, 255, .24),
+                     0 0 76px rgba(92, 182, 255, .16),
+                     inset 0 1px 0 rgba(255, 255, 255, .10); }
+}
+@keyframes morb-glow {
+  0%   { opacity: 1; }
+  55%  { opacity: .5; }
+  100% { opacity: 0; }
+}
+@keyframes morb-text {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes morb-wave {
+  0%, 100% { height: var(--morb-wave-h);  opacity: .55; }
+  50%      { height: var(--morb-wave-hi); opacity: 1; }
+}
+
+/* ==========================================================================
+   机甲方板里那一颗「继续下滑参观摄影图」（2026-10-10 用户要求）
+
+   > 「再把这个原样搬进来，字就改成：继续下滑参观摄影图」
+
+   **形状和动效原样复用**（球 → 拉成胶囊 → 文案，全部是上面那套 keyframes），
+   这里只覆盖**尺寸和位置**，因为两块底的性质完全不同：
+     · 机甲视频框：定宽 928×522，胶囊可以按 vw 定尺寸（19vw）
+     · 方板：是一张 **13:10、按 cqw 缩放的画**（`container-type: inline-size`）——
+             胶囊必须跟着它一起缩，用 vw 的话视口一窄，胶囊相对方板就变成巨物
+   ⚠️ 但不能**纯**按 cqw 缩：方板在 390 视口下只有 340 宽，纯比例算出来的字号
+      只有 4px，读不出来。所以 `--morb-w` 用 clamp 兜一个 210px 的下限
+      （这个下限正好等于视频框在手机上那一档），其余尺寸再按 `--morb-w` 的比例走。
+   ⚠️ 系数就是"1600 下视频框那一版的数 ÷ 300"：62/300 = .2067、56/300 = .1867 …
+      于是**在 1600 下两块底上的胶囊一模一样大**，这是"原样搬进来"的量化含义。
+   ========================================================================== */
+.morb--plate {
+  --morb-x: 50%;
+  --morb-y: 84%;                    /* 相对**台面**高的位置，两块方板各自微调 */
+  /* 23.885cqw = 300px，在 1600 的方板（舞台宽 1256）上 */
+  --morb-w: clamp(210px, 23.885cqw, 340px);
+  --morb-b: calc(var(--morb-w) * 0.2067);
+  --morb-h: calc(var(--morb-w) * 0.1867);
+  --morb-fs: calc(var(--morb-w) * 0.0533);
+  --morb-pad: calc(var(--morb-w) * 0.0667);
+  --morb-gap: calc(var(--morb-w) * 0.04);
+  --morb-wave-w: calc(var(--morb-w) * 0.01);
+  --morb-wave-gap: calc(var(--morb-w) * 0.01);
+  --morb-wave-h: calc(var(--morb-w) * 0.0233);
+  --morb-wave-hi: calc(var(--morb-w) * 0.0567);
+  --morb-wave-box: calc(var(--morb-w) * 0.06);
+  --morb-halo1: calc(var(--morb-w) * 0.08);
+  --morb-halo1s: calc(var(--morb-w) * 0.0233);
+  --morb-halo2: calc(var(--morb-w) * 0.2333);
+  --morb-halo2s: calc(var(--morb-w) * 0.0733);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .mecha-hero__reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 860px) {
+  /* 窄屏：视频放宽到 92% —— 390px 上 58% 只有 226px，机甲小得看不清。
+     ⚠️ 文案字号**不受这个宽度影响**了（字在视频外面），
+        所以这里只放宽视频，不用动 vw 系数。 */
+  .mecha-hero__frame { width: 92%; }
+}
+
+/* ==========================================================================
+   「品宣海报 · 商场宣传」这一套 —— **用 HTML 排出来的**，不是压平的图片
+   ==========================================================================
+   2026-10-09 用户：「我是要你排在 html 网页里，不是排个图片，文案里的英文不要，
+                     去写到网页里，排版你自己看，不一定要抄我的」
+   随后又：「品宣海报下面的下划线去掉，文字排版参考苹果网页，然后所有字和图片都加入动画」
+
+   ⚠️ 所以这里是**单列居中堆叠**，不是左右两栏 —— 照的是用户给的
+      `素材/首页底图/排版参考-iPadPro渐变字.png`（Apple iPad Pro 那页）：
+      **居中 + 超大粗体 + 极紧字距的多行标题 + 大留白**，主体图排在下面。
+      （本站平面设计页的首屏当初也是照这同一张参考做的，所以口径是一致的。）
+   ⚠️ 英文（MALL PROMOTION / A SMALL WORLD / SERIES ALTITUDE）按用户要求全部去掉。
+   ⚠️ `01.` 和它下面那道短横线都**不要了**（用户：「下面的下划线去掉」）——
+      现在 `01.` 是一个小眉题，跟「商场宣传」并排。
+   ⚠️ 原来这一格是 pages.py 里的一行（PDF#04）。改成 HTML 块之后**那行已删**，
+      不删的话这个项目会在页面里出现两次。
+   ========================================================================== */
+.promo {
+  /* 单列居中。文案块和海报行各自限宽、各自居中，不共用一个栅格。 */
+  text-align: center;
+  margin-bottom: clamp(var(--sp-8), 12vh, 10rem);
+}
+.promo__copy { margin-inline: auto; }
+
+/* （原来这里有一条 `.promo__no` —— 「01. 商场宣传」那行眉题的样式。
+   用户 2026-10-09 说「01.商场宣传 这几个字去掉」，元素和规则一起删了，
+   不留死规则。） */
+
+/* --- 标题 --------------------------------------------------------------
+   照 Apple 那页：字重拉满、**字距收紧到 -0.02em**、行高 1.05。
+   中文本来就没有西文那么需要负字距，但拉到 -0.01 以上才像苹果那个密度。 */
+.promo__title {
+  margin: 0;
+  font-size: clamp(2.5rem, min(4.6vw, 6.8vh), 4.5rem);
+  font-weight: var(--fw-hero);
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  color: var(--promo-title);
+  text-wrap: balance;
+}
+/* 副标题。Apple 那页是「两行同字号」的排法，这里副标题收到约 0.4 倍 —— 
+   「系列品宣海拔」是栏目名不是第二句口号，同字号会喧宾夺主。 */
+.promo__sub {
+  margin: var(--sp-4) 0 0;
+  font-size: clamp(1.06rem, min(1.5vw, 2.3vh), 1.4rem);
+  font-weight: var(--fw-med);
+  line-height: 1.4;
+  letter-spacing: .02em;
+  color: var(--promo-text);
+}
+
+/* --- 正文 --------------------------------------------------------------
+   ⚠️ 苹果的正文行高在 1.5~1.6 之间，比中文习惯的 1.9 紧。
+      中文要留到 1.75 上下才不挤 —— 这里取 1.75，不要照抄 1.5。
+   ⚠️ 行宽收到 34em：中文一行 30~38 字最好读，超了眼睛要来回扫。 */
+.promo__desc {
+  max-width: 34em;
+  margin: clamp(var(--sp-6), 5vh, var(--sp-8)) auto 0;
+  font-size: clamp(1rem, min(1.18vw, 1.95vh), 1.125rem);
+  line-height: 1.75;
+  color: var(--promo-text);
+}
+
+/* --- 四个标签 ---------------------------------------------------------- */
+.promo__tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin: var(--sp-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.promo__tags li {
+  padding: 7px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: clamp(.8125rem, min(.92vw, 1.55vh), .9375rem);
+  letter-spacing: .06em;
+  color: var(--promo-text);
+  white-space: nowrap;
+}
+
+/* --- 三张海报 ----------------------------------------------------------
+   限宽之后居中。不限宽的话 1256px 一排三张，每张 400×860，比上半屏还高。 */
+.promo__posters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(var(--sp-3), 1.8vw, var(--sp-5));
+  max-width: min(100%, 52rem);
+  margin: clamp(var(--sp-7), 7vh, var(--sp-9)) auto 0;
+  padding: 0;
+  list-style: none;
+}
+.promo__posters img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  /* 海报自带白底，压在深灰上要有一圈收边，否则边缘会「毛」 */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .07),
+              0 30px 64px -24px rgba(0, 0, 0, .85);
+}
+
+/* --- 作品区：一行一行，每行左右都顶满 -------------------------------------
+   每个项目卡片的作品图。作品图层**尺寸完全不统一**（实测宽高比从 0.31 到
+   7.52 都有：竖版邀请函、横版效果图、超长横幅混在一页里），所以不能用栅格、
+   也不能定宽，否则不是溢出就是被裁。
+
+   ⚠️⚠️ 用户 2026-10-09 的要求是**「排版规整，不要两边突出/空着太多，
+   你可以随意放大缩小，只要能排整齐」**。所以原来那套「固定行高 + 居中折行」
+   **废掉了**：固定行高意味着某行的图加起来只要不到一列宽，两边就空出来
+   （实测 2+1+1 三行时平均只占 60%，一行一张大图孤零零吊在中间）。
+
+   现在的做法 —— **先决定哪几张算一行（生成器算，写死在 HTML 里），
+   再让这一行的宽度按各自的原始宽高比去分**：
+
+     flex: var(--ar) 1 0        ← basis 为 0、伸展系数取宽高比
+
+   于是每张图的宽度 = 该行总宽 × (自己宽高比 ÷ 该行宽高比之和)，
+   而高度 = 行宽 ÷ 该行宽高比之和 —— **整行等高、左右正好顶满、不变形、不裁切**。
+   只有一张图的「行」也是合法的：它按原始比例撑满整个内容列
+   （那张 7.52 的长横幅就是这么排的，不需要额外的 `.is-wide` 特例）。
+
+   ⚠️ 行**不是**靠 `flex-wrap` 自己折出来的 —— 自己折的话「哪几张成一行」
+      和「行多高」互相牵制，解不出来（`build_design_pages.plan_rows` 里写了
+      这个坑的来龙去脉）。所以行容器是生成器产出的，
+      代价是窄屏不能靠折行自适应，见下面那条。 */
+.promo__works {
+  max-width: 100%;
+  margin: clamp(var(--sp-7), 7vh, var(--sp-9)) 0 0;
+}
+.promo__works__row {
+  display: flex;
+  gap: clamp(10px, 1.1vw, 16px);
+}
+.promo__works__row + .promo__works__row {
+  margin-top: clamp(10px, 1.1vw, 16px);
+}
+.promo__works__row > .promo__work {
+  flex: var(--ar, 1) 1 0;
+  min-width: 0;
+  margin: 0;                /* figure 默认有上下 1em、左右 40px 的 margin */
+}
+.promo__works__row img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  /* 作品图底色各不相同，压在深灰上都要一圈收边，否则边缘会「毛」 */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .07),
+              0 24px 52px -22px rgba(0, 0, 0, .85);
+}
+
+/* --- 入场动画：**所有字和所有图都动** ------------------------------------
+   用户：「所有字和图片都加入动画」。
+
+   ⚠️ 复用站里第 7 节那套 `reveal-line`（`revealRow()` 会按 DOM 顺序给每个
+      `.reveal-line` 发 `--d`，间隔 90ms）—— 所以这里只需要
+      **把 `.reveal-line` 挂到每个要动的元素上**，不用另写观察者。
+      顺序就是 DOM 顺序：标题 → 副标题 → 正文 → 标签 → 作品图 1/2/3…
+      （`site.js` 的 `staggerRows` 里已经含 `.promo`，**新增卡片不用改 JS**）。
+   ⚠️ 动效比站里默认那版**更慢、更"苹果"**：900ms、`cubic-bezier(.16,1,.3,1)`
+      （起步快、尾巴很长地收住），位移 26px。海报额外带一点缩放。
+      站里默认是 700ms / `--ease` / 16px。改成 `.promo` 作用域内的覆盖，
+      **不动全局那条规则**，别的页面一点不受影响。
+   ⚠️ 终态 `.is-in` 那条不能少 —— 少了就是「拿到 is-in 但永远停在 opacity:0」，
+      控制台一条报错都没有。 */
+.js .promo .reveal-line,
+.js .plate .reveal-line {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 900ms cubic-bezier(.16, 1, .3, 1),
+    transform 900ms cubic-bezier(.16, 1, .3, 1);
+  transition-delay: var(--d, 0ms);
+}
+.js .promo .reveal-line.is-in,
+.js .plate .reveal-line.is-in {
+  opacity: 1;
+  transform: none;
+}
+/* 海报 / 作品图：多一点点缩放，落地感更像"摆上去"而不是"浮上来" */
+.js .promo__posters .reveal-line,
+.js .promo__works .reveal-line { transform: translateY(26px) scale(.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .js .promo .reveal-line {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* 窄屏：**放弃「左右顶满」，改回「定高 + 居中折行」。**
+   手机上内容列只有三百多像素，还按桌面那套「一行几张、按比例分宽度」排的话，
+   一行 6 张就变成 6 张 50px 宽的小图，等于没有。所以窄屏改成：
+     · 行高固定 `clamp(180px, 52vw, 320px)`，图按原始比例、不裁切；
+     · 折出来的行居中。
+   `display: contents` 是这里的关键 —— **让桌面的行容器"消失"**，
+   所有图变成同一个 flex 容器下的兄弟节点，于是可以整卡一起折行
+   （不然每个行容器各自折行，"一行几张"还是被桌面那套绑死，
+   实测手机端整页会长出 4000px）。⚠️ 行容器一消失，它的 `margin-top` 也失效，
+   行间距交给容器的 `gap`。
+   ⚠️ 这里**必须**把 `flex-grow` 改回 0：桌面那条是 `flex: var(--ar) 1 0`，
+      不覆盖的话窄屏会按比例撑满，一行 6 张会把竖版海报压成一条细缝。
+   ⚠️ `max-width` 必须**同时**给 figure 和 img：figure 是 `flex: 0 0 auto`，
+      宽度取内容宽（= 图按比例算出来的宽度），一张 2:1 的横图在 390 宽下
+      是 380px、比内容列还宽 → 整行溢出（实测右边界超 78px）。
+      卡住之后再靠 `object-fit: contain` 等比缩到框内，宁可上下留白也不变形。
+   代价是窄屏会有行尾留白（手机端本来就要单独做一轮，见 README「已知的取舍」）。 */
+@media (max-width: 700px) {
+  .promo__works {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .promo__works__row { display: contents; }
+  .promo__works > .promo__works__row > .promo__work,
+  .promo__works__row > .promo__work {
+    flex: 0 0 auto;
+    max-width: 100%;
+    height: clamp(180px, 52vw, 320px);
+  }
+  .promo__works__row img {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
+}
+
+/* ⚠️ **单列，一页一行，跟 PDF 一样从上往下依次排。**
+   曾经是两列网格，用户看过之后要求改成「像 PDF 一样每页展示下来」——
+   两列会打断阅读顺序（左右左右），而这套作品集本身是有页码的，
+   顺序错了就失去意义。单列还有个好处：每页能占满内容宽度，
+   作品板上那些小字才看得清。 */
+.pages {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(var(--sp-7), 6vh, var(--sp-9));
+}
+
+.pages__link {
+  display: block;
+  border-radius: var(--radius);
+}
+
+.pages__thumb {
+  display: block;
+  /* 这套图全是 16:9（1400×788 或 1400×791），所以容器也定 16:9，
+     object-fit 只做兜底 —— 不用它裁任何东西。 */
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+}
+.pages__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 520ms var(--ease);
+}
+@media (hover: hover) {
+  .pages__link:hover .pages__thumb img { transform: scale(1.03); }
+}
+
+/* ⚠️ 原来这里还有一整套题注样式（.pages__cap 序号列 / __idx / __text /
+   __title / __meta），2026-10-08 用户要求「每张作品图下面的小字也去掉，
+   只留图」，题注连 HTML 一起撤了，样式也跟着删干净 ——
+   留着的话下次有人照着类名去找，会找到一堆没有任何元素命中的规则。
+   作品名和页码在 <img> 的 alt 里，没有丢。 */
+
+@media (max-width: 760px) {
+  .pages { gap: clamp(var(--sp-6), 5vh, var(--sp-8)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pages__thumb img { transition: none; }
+  .pages__link:hover .pages__thumb img { transform: none; }
+}
+
+
+/* ==========================================================================
+   18. 平面设计子页的首屏 = 作品集封面
+
+   黑底 + 干净机甲插画铺满（整体压暗）+ 三条文案，**一律水平居中**。
+   垂直位置沿用封面实测比例（用户 2026-10-08 明确只要「水平居中」，
+   垂直方向不动）：
+       平面作品集                 盒子顶边 34.2%
+       2026 Design is thinking…  盒子顶边 43.5%
+   主标题改成「网页自己的字体 + 对角渐变」之后，原封面那套
+   「左 3.45% / 墨迹顶边 5.10% / 占宽 92.7%」的实测比例就作废了 ——
+   它现在靠 width: fit-content + margin: auto 自己居中，
+   垂直靠 line-height: 1 加上一点 padding-top 回到封面的 5.10%。
+
+   ⚠️⚠️ 这段原本误写在 index.html 的首屏（.hero--cover），用户指出
+       「改错了，是改平面设计这一个子页面的首页」，已全部撤回并改到这里。
+       **首页那套 PSD 版首屏（.hero__stage / 天生我材必有用）不许再动。**
+
+   ⚠️⚠️ 2026-10-08 第二版（用户要求）：背景「黑底 + 图铺满但压暗」、
+       主标题改渐变色、英文缩小 20%、三条文案水平居中、
+       字体换成网页自带的（**不再用 Arial Black + scaleX 去仿原版字形**）。
+       ⚠️ 换字体之后「缩小 20%」**不能按字号直接换算** ——
+          原来的 19.7vw 是「Arial Black 压到 0.63 倍后正好占 92.7% 视口宽」
+          量出来的，换成网页字体后同一个 vw 值会得到完全不同的墨迹宽。
+          这里是按 0.8 先给一个上限，再用 `_shots/verify_hero_cover.py`
+          量实际墨迹宽，按「92.7% × 0.8 ≈ 74% 视口宽」回调字号定下来的。
+   ========================================================================== */
+
+.cover-hero {
+  position: relative;
+  height: min(calc(100svh - var(--nav-h)), calc(100vw * 0.5625));
+  min-height: 220px;
+  overflow: hidden;
+  /* 纯黑。主体图的背景也压成纯黑，两边必须一致，否则会露出矩形接缝。
+     走 --cover-bg 令牌 —— 粘顶导航在首屏上时也读它（见第 15 节）。 */
+  background: var(--cover-bg);
+}
+
+/* 纵向流：文案块在上、主体在下，整块水平居中。
+   ⚠️ 这里不再用「绝对定位 + 百分比」了 —— 那是照封面实测比例钉死的做法，
+      改成「文案在上、主体在下」之后，两块的间距本来就是流式的，
+      再用百分比定死，换一次字号整组就漂。 */
+.cover-hero__inner {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6vh clamp(16px, 4vw, 64px) 2vh;
+}
+
+.cover-hero__copy {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.cover-hero__mark {
+  /* width: fit-content 是给渐变用的 —— background-clip: text 的渐变盒子
+     就是元素自己的 padding box。h1 是块级、默认占满整行，那样渐变会被
+     拉到整屏宽，字只取到中间那一小段颜色，两端最浓的橙和蓝全看不到。
+     收缩到内容宽再 auto 外边距，渐变的起止就正好压在字的左右两端。 */
+  width: fit-content;
+  margin: 0 auto;
+  /* 字体 = 网页自带的字体栈（`--font-sans`，本机命中 Noto Sans SC）。
+     用户 2026-10-08 明确要求：就用网页的字体，不要再找相似的。 */
+  font-family: var(--font-sans);
+  font-weight: var(--fw-hero);
+  /* ⚠️ 字号是按**墨迹宽**反推的，不是按「原字号乘系数」拍的。
+     实测 Noto Sans SC 700 下「LITTE WORLD」的墨迹宽恒为 **6.25 × 字号**。
+     用户这版说「都缩小一点」+ 排版参考 Apple 那页（标题本来就只占页面一小条），
+     取墨迹宽 ≈ 视口 50% → 0.50 / 6.25 = **8vw**。
+     vh 那一侧照同一个约定换：x vw ↔ 1.78x vh（换算点落在 16:9），
+     8vw 对应 14.2vh。
+     下限用 clamp 兜住 —— 手机上首屏只有 220px 高，纯按 vw 会小到读不清。
+     四个宽度的实测读数见 README 第二十节。 */
+  font-size: clamp(1.5rem, min(8vw, 14.2vh), 8rem);
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  /* 渐变字：对角走色，色标见 tokens.css 的 --cover-grad。
+     ⚠️ color: transparent 和 -webkit-text-fill-color 两条都要写 ——
+        只写 color 的话 Safari/老 WebKit 上字会整个消失。 */
+  background-image: var(--cover-grad);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 中文行。字号 2026-10-08 按用户要求「放大一点」调过一次：
+   2.36vw/4.2vh → 2.95vw/5.25vh（1600×900 下 37.8px → 47.2px，约 +25%）。
+   ⚠️ vw 和 vh 两侧要**同比例**改，别只动一边 —— 换算点落在 16:9
+      （x vw ↔ 1.78x vh），只改一边会让宽屏和窄屏的字号关系错位。 */
+.cover-hero__cn {
+  margin: .9vh 0 0;
+  font-size: clamp(1.0625rem, min(2.95vw, 5.25vh), 3.2rem);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+  letter-spacing: .06em;
+  color: var(--cover-white);
+}
+
+/* 数字 + 英文那一行。用户要求：跟数字**同一个字号**、**细一点**、**小一点**。
+   ⚠️ 所以「2026」那个 <span> 的样式整个撤掉了 —— 原来是 --fw-bold 的琥珀色，
+      比后面的英文粗一档，看着像两个字号。现在整行共用一条规则，
+      字号/字重/颜色天然一致，不用再靠两边对齐去凑。
+   字重取 --fw-nav（300 = PSD 里那份 SourceHanSansCN-Light）——
+      站里最细的一档，不用另开一个魔数。 */
+.cover-hero__tag {
+  margin: .7vh 0 0;
+  font-size: clamp(.625rem, min(1.24vw, 2.2vh), 1.4rem);
+  font-weight: var(--fw-nav);
+  line-height: 1.2;
+  letter-spacing: .01em;
+  color: var(--cover-white);
+}
+
+/* 主体（抠图）。
+   ⚠️ 图片盒要写成 100% × 100% + object-fit: contain ——
+      只写 height:100% / width:auto 的话，一旦被 max-width 夹紧就会拉变形
+      （object-fit 只在宽高都被显式定住时才生效）。
+   ⚠️ object-position 贴底：机脚落在框的底边上，才有「站在地上」的感觉。 */
+.cover-hero__subject {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: block;
+  width: 100%;
+  margin-top: 3vh;
+}
+.cover-hero__subject img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+/* 首屏文案的入场。⚠️ 跟首页那套逐字升起（.hero__title 拆字）**不共用一个类** ——
+   那一版会把标题的文本节点拆成 .char；这套主标题的渐变靠
+   background-clip: text，拆字之后每个字各自成一个渐变盒，
+   「一条渐变横跨整个标题」的效果会散成一串单色的字。这里整块淡入上浮，不拆字。 */
+.js .cover-hero__reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 760ms var(--ease), transform 760ms var(--ease);
+  transition-delay: var(--d, 0ms);
+}
+/* ⚠️ 这一条不能少 —— 少了就是「元素拿到 is-in 但永远停在 opacity:0」。
+   实测症状：首屏只有底图，三个文案一个都不出现，控制台一条报错都没有，
+   computed opacity 一直是 0。（初始态那条写了、终态忘了写。） */
+.js .cover-hero__reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 860px) {
+  /* ⚠️ 手机端首屏按 16:9 只有 220px 高（390 宽），机甲会被压成很小一坨。
+     这里把高度比例放到 0.86，390 宽下首屏变成 335px，主体能占 80% 宽。
+     这不是「手机端优化」，只是不让它塌掉 —— 最终方案等整体过关后再单独过。
+     上下内边距和文案间距也跟着收紧。 */
+  .cover-hero { height: min(calc(100svh - var(--nav-h)), calc(100vw * 0.86)); }
+  .cover-hero__inner { padding: 3vh clamp(16px, 5vw, 40px) 2vh; }
+  .cover-hero__subject { margin-top: 2vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .cover-hero__reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ==========================================================================
+   平面设计页首屏的「下潜」（2026-10-10）
+   用户：「下拉滚动的过程中上方的字体先行上移消失，然后不断放大机甲的入口
+        （这里速度稍快一点），直至黑屏，然后直接无损切换到下一页」
+
+   机制跟 AI 视频页那套钉住页头一样（滚动进度驱动、不是时间动画，
+   所以滚回去会原样倒放）。差别是这里多了一步"镜头往门洞里扎"。
+   ⚠️ 参数跟那边**完全不同**，所以是独立的 JS 块（第 6b 节），别合并。
+
+   ⚠️ 容器高度必须跟 .cover-hero 的高度公式**保持一致**（下面这行是抄的），
+      改页头高度时要两处一起改。行程 = 容器高 − 页头高（JS 实测）。
+   ⚠️ 只在 .js 下生效；≤860px 和「减弱动态效果」都退回普通页头（不动）。
+   ========================================================================== */
+.js .dive-pin {
+  --dive: 90svh;                 /* 这一段要滚多少距离 */
+  --hero-h: min(calc(100svh - var(--nav-h)), calc(100vw * 0.72));
+  height: calc(var(--hero-h) + var(--dive));
+}
+.js .dive-pin > .cover-hero {
+  position: sticky;
+  top: var(--nav-h);             /* ⚠️ 不能是 0 —— 粘顶导航压在页头上面 */
+  z-index: 1;
+  /* ⚠️ 钉住期间页头要**填满视口**（导航以下那一块）。原来只按 16:9 定高，
+     在 16:10 / 4:3 的窗口里页头下方会露出下一页的一条 —— 下潜到一半
+     底下还有一段亮的，整个"扎进门洞"就破了。0.72 是上限：
+     16:9 及以上本来就是满的（不受影响），16:10 和 4:3 会被补满，
+     极窄的竖窗口才可能还有一条（那种比例很少见，不额外处理）。 */
+  min-height: var(--hero-h);
+}
+/* 要动的那两块提前提层，免得滚动时掉帧 */
+.js .dive-pin .cover-hero__copy { will-change: transform, opacity; }
+.js .dive-pin .cover-hero__subject { will-change: transform; }
+
+/* ==========================================================================
+   ⭐⭐ 作品区「像木板一样覆盖上来」（2026-10-12 用户）
+
+   > 用户：「我想要这个页面的出场动画**像木板一样覆盖上去**」
+   > （给了三个做法，他选的是「推上去压住上一段」）
+
+   做法：**把作品区整块当成一块木板** —— 它推上来，盖住上面那段机甲视频。
+
+     ① 上面那段（`.mecha-hero`）在 `.slab-pin` 里 `position: sticky` **钉住不动**；
+     ② `.slab-pin` 多出来的那段高度就是木板推上来的**行程**（`--slab-travel`）；
+     ③ 作品区（`.slab`）按正常流滚上来，**它的顶边扫过被钉住的那一段** ——
+        而它是一块实心板（底色 = 这一段自己的底色）＋顶边一道淡淡的亮线和
+        一层向上投的影，所以看着就是"一块板子盖上去"。
+
+   ⭐ **一行 JS 都不需要** —— `sticky` 自己就是滚动驱动的，滚回去原样倒放。
+     （同类的另外两处——首屏的「下潜」和视频页的 `hero-pin`——之所以要手写 rAF，
+       是因为它们还要按进度改文案位移/透明度；这一处不需要。）
+
+   ⚠️ 板子的底色必须是 `--bg-raised`（= 这一段 `.section--raised` 自己的底色），
+      **不能用 `--bg`**（那是页面底色 #0D0D0D，比它暗一档）—— 用错的话
+      板子两侧和上沿会露出一条色差缝，反而暴露了"这是一块贴上去的盒子"。
+      深色主题下 `--bg-raised: #161616`、`--bg: #0D0D0D`，两个都不等于黑。
+   ⚠️ 层级：被钉住的那段 `z-index: 1`、板子 `z-index: 2`（两个都要是定位元素）。
+   ⚠️⚠️ **祖先不能有 `overflow: hidden`** —— 有的话 sticky 直接被裁掉、
+     整个效果消失（而且不报错）。`.section` / `.wrap` 现在都没有，
+      但**以后谁给它们加上，这里就坏**。
+   ⚠️ 被钉住的那一段**不必填满视口**：它下面那一截本来就是同一层底色，
+     板子先盖过那截、再盖过机甲，观感一样 —— 也就省掉了给 `.mecha-hero`
+     重排高度（那会改掉他看惯的那一版）。
+   ⚠️⚠️ **板子必须在这层容器"里面"**（跟机甲视频那段同一个父亲）：
+      sticky 的元素只会在**它自己的包含块**里钉着 —— 板子在外面的话，
+      钉子一松两边就同速走，板子的顶边**永远追不上**那一段（实测：一直
+      追到钉子松开都没盖上）。这一条是整件事成立与否的分界，改结构时尤其要看住。
+   ⚠️ 容器**不设高度**：让它自然包住「视频段 + 整块作品区」——
+      这样视频段会在整个作品区里一直钉着（它被板子盖住、看不见，
+      但滚动往回走时会在正确的位置松钉，行为是对的）。
+      反过来说：**别给它设 `height`** —— 作品区两万多像素高，设了就会溢出容器、
+      压到页脚上去。
+   ⚠️ **窄屏（≤860px）不启用**（不 sticky）：手机上少一层钉住更省，
+     也跟「移动端等所有页面做完再统一收拾」的既定节奏一致。
+   ⚠️ **减弱动态效果下不启用**：sticky 复位、边线阴影撤掉 ——
+     回到今天这版排版（这也是"不动"的那一版）。
+   ========================================================================== */
+.js .slab-pin { position: relative; }
+.js .slab-pin > .mecha-hero {
+  position: sticky;
+  top: var(--nav-h);              /* ⚠️ 不能是 0 —— 会让粘顶导航压在它上面 */
+  z-index: 1;
+}
+.js .slab {
+  position: relative;
+  z-index: 2;
+  background: var(--bg-raised);   /* ⚠️ 必须跟这一段自己的底色一致，见上 */
+}
+/* 前缘那道"板子在压过来"的暗带。
+   ⚠️⚠️ **不能用 `box-shadow`**（2026-10-12 用户：「两边不要那个动画了，只有上下有
+      这个动画效果就可以」—— 实测 box-shadow 会从板子的**左右两侧**也糊出去，
+      各糊出一道 40px、暗 2.5 级的带子，而且**跟着一路滚到页面下面**，
+      于是整页两侧都留着两条"这里曾经有块板"的痕迹）。
+      改成伪元素：只贴在**上沿之上**、而且**铺满视口宽**（两端伸到屏幕外，
+      看不到断口）→ 只剩"前缘"这一条，左右干干净净。 */
+.js .slab::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;                   /* 贴在板子上沿之上 */
+  left: 50%;
+  transform: translateX(-50%);
+  /* ⚠️ `100vw − 24px` 而不是 `100vw` 或 `200vw`：前者会撑出横向滚动条
+     （`100vw` 含滚动条宽，这个坑站里踩过），后者的溢出量不可控。 */
+  width: calc(100vw - 24px);
+  height: 84px;
+  background: linear-gradient(to top, rgba(0, 0, 0, .60), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+@media (max-width: 860px) {
+  .js .slab-pin > .mecha-hero { position: static; }
+  .js .slab::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .slab-pin > .mecha-hero { position: static; }
+  .js .slab::before { display: none; }
+}
+
+/* 下潜到底的那层纯黑。z-index 要高过文案和机甲，但它是 pointer-events:none，
+   不会挡住任何交互。 */
+.cover-hero__void {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ⚠️ 下潜收在**纯黑**（#000），而紧挨着的下一段底色是 --bg-raised（#161616）——
+   两者直接对接会露出一条 22 级的横向色带，在黑底上看得见（用户要的是"无损切换"）。
+   给紧跟着的那一段顶部盖一条黑→透明的渐变，松钉住、它从下面升上来时边界就没了。
+   ⚠️ 只挂在 `.dive-pin + .section` 上，别的页面不受影响。 */
+.js .dive-pin + .section {
+  position: relative;
+}
+.js .dive-pin + .section::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 180px;
+  background: linear-gradient(#000, rgba(0, 0, 0, 0));
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (max-width: 860px) {
+  /* 手机端不做这段（用户明确说手机端最后单独过一遍），退回普通页头 */
+  .js .dive-pin { height: auto; }
+  .js .dive-pin > .cover-hero { position: static; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .dive-pin { height: auto; }
+  .js .dive-pin > .cover-hero { position: static; }
+  .js .dive-pin .cover-hero__copy,
+  .js .dive-pin .cover-hero__subject { transform: none !important; opacity: 1 !important; }
+}
+
+
+/* ==========================================================================
+/* ==========================================================================
+   19. 机甲方板：「A SMALL WORLD / 品宣落地摄影图」（平面设计页的章节页）
+
+   这一页用户连着改了四轮，最后一轮是：
+   > **「机甲怎么好像不太一样了，还是参考苹果的排版来吧，这个排版不好看」**
+
+   所以现在是**苹果那套居中排版**：大标题居中 → 中文副标居中 → 主体图居中排在
+   下面 → 四周留大量空白。（站内首屏和平面设计页的页头当初也是照同一张
+   `素材/首页底图/排版参考-iPadPro渐变字.png` 做的，口径一致。）
+   前一版是「文案左上 + 机甲右下」的错落式，机甲会压住字母，不好看。
+
+   ⚠️ 三个要点，改之前先看：
+     1. **机甲必须是透明底抠图。** 现在文案在图上方的独立区带里、两者不重叠，
+        所以不再依赖"字压在机甲后面"那套层级了 —— 但抠图仍然必须，
+        否则带底的那块矩形会连页面底色一起盖住。
+     2. **这块没有面板、没有底板色**（用户：「不要卡贴的形式，要直接融入背景」）：
+        机甲和文案直接落在 `.section--raised` 的 #161616 上。
+     3. **舞台比例只是"给构图多少高度"**，不是一张纸的尺寸。
+        文案在图上、图在下面，竖向要放得下，所以定成 13:10。
+   ========================================================================== */
+.plate {
+  max-width: 100%;
+  margin: clamp(var(--sp-8), 14vh, 13rem) 0;
+  /* ------------------------------------------------------------------
+     ⭐⭐ 2026-10-12 **方板的宽度**（三轮演化，最后定在"跟顶上一段同宽"）
+     ------------------------------------------------------------------
+     ① 第一轮 用户「这两页整体缩小一点」→ 加了个缩放系数 `--plate-s: .86`。
+     ② 第二轮 用户「机甲和字拉近一点」→ 收舞台高度（见 `.plate--bleed` 那条）。
+     ③ **本轮** 用户「这两个的大小和最上面的这个统一」→ 选了"按整块宽度对齐"：
+        两块方板的**舞台宽度 = 顶上机甲视频框的宽度**。
+
+     顶上那条是 `.mecha-hero__frame { width: 58% }`，而它的包含块就是**整页宽**
+     （实测 1600 下 928px、2040 下 1183px），所以这里也用 **58vw**。
+
+     ⭐ 为什么只改"宽度"就能叫"大小统一"：`.plate__stage` 是
+        `container-type: inline-size` + `aspect-ratio`，**整块是一张按比例缩放的画**
+        —— 标题字号、标题的 top、机甲、光晕、胶囊**全是 cqw**（舞台宽的 %）。
+        舞台宽度定了，里面所有东西就一起定，比例不变。所以**宽度就是方板的"大小"**。
+
+     ⚠️ 用 `vw` 不能用 `%`：方板的包含块是 `.wrap--wide`（1256 封顶），
+        跟顶上的包含块（整页宽）不是一个东西，写 % 对不上。
+     ⚠️ `58vw` 含滚动条、顶上的 `58%` 不含，两者差 0.58×滚动条 ≈ 10px（0.8%）——
+        肉眼不可能看出来。**没有**去改顶上那条（他要求动的是这两块）。
+     ⚠️ **窄屏（≤860px）保持 100%**：390 下 58vw 只有 226px，而胶囊宽度的下限
+        `210px` 是**绝对值**，会顶到块宽的 93% —— 整块几乎全是胶囊。
+        这也符合"移动端等所有页面做完再统一收拾"的既定节奏。
+     ⚠️ 上一轮那个 `--plate-s` **已经删掉**（宽度就是新的缩放口径），
+        别把它加回来 —— 两个旋钮管同一件事，迟早打架。
+     ------------------------------------------------------------------ */
+  --plate-w: 100%;
+
+  /* ------------------------------------------------------------------
+     ⭐ 方板的几何变量（2026-10-09 抽出来，两块方板共用这一套）
+     ⚠️ 全部用 cqw（1cqw = **舞台**宽的 1%），不要用百分比：
+        下面那圈光晕的包含块是 `.plate__mecha`，它的宽高比跟舞台不一样，
+        百分比在 X/Y 上换算不同，极易算错（踩过，整体偏了 103 / 309px）。
+     · --mecha-h   机甲按高度排，占舞台高的比例
+     · --mecha-ar  机甲图的宽高比 = 图宽 / 图高（**用实际文件尺寸算**）
+     · --hatch-x / --hatch-y  舱门圆心，占**图宽 / 图高**的比例
+     · --hatch-r   光圈半径，占**图宽**的比例（圆，只用宽度这一套基准）
+     派生：--mh 图高、--mw 图宽、--gr 光圈半径，都是 cqw 长度
+     ⚠️ 换算：舞台 13:10 → 100cqw 宽 = 76.923cqw 高，所以
+        图高 = --mecha-h × 76.923cqw，图宽 = 图高 × --mecha-ar。
+     ⚠️ 改图片尺寸 / 舞台比例 / 机甲高度之后，跑 `_shots/plate_geom.py` 重新核对圆心。
+     ------------------------------------------------------------------ */
+  /* ⚠️⚠️ `--mecha-h` 必须是**无单位系数**（0.68），不能写 68% ——
+     它在 `--mh` 里要跟长度相乘（`calc(--mecha-h × 76.923cqw)`），
+     而 CSS 里**百分比不能乘长度**，写了 68% 整串变量会「计算期无效」：
+     光圈直接变成 0×0、而且**不报任何错**（第一次就栽在这儿）。
+     ⭐ 这套几何是**跟着机甲图走的，不是跟着"第几块方板"走的**：
+        哪台机甲放到哪一块，改 `pages.py` 的 `asset` + `cls` 就行，这里不用动。
+          · 默认（无修饰类）= `castle-mecha`：**横长的履带移动城堡**（2.22，很宽）
+          · `.plate--wide`  = `poster-mecha`：宽扁六足、正面一个大圆舱门
+        ⚠️ 2026-10-10 改过两次：先是两台机甲**对调**（cls 跟着图一起走，所以没错位），
+           之后按用户要求把这一块重做成「移动城堡」（`plate-mecha` 退役）。
+        ⚠️⚠️ **`--mecha-h` 跟宽高比是绑死的**：机甲宽度 = `--mecha-h × 舞台高 × --mecha-ar`，
+           必须 ≤ 舞台宽，否则两端被 `overflow:hidden` 切掉。这台横得很（2.22），
+           所以只能给 0.58（0.58×966×2.222 = 1245 ≤ 1256）。
+           **换更宽的图先算这一条**，别照着上一台的 0.68 抄。 */
+  --mecha-h: 0.56;
+  --mecha-ar: 2.395209;        /* 1600 / 668 —— 2026-10-12 换成 R1「大窗要塞」 */
+  /* ⚠️ 这一块的**光晕是关掉的**（`pages.py` 里 `PLATES[22]["glow"] = False`）——
+     2026-10-10 用户「不需要中间那个能量光球了」，那颗球已经用 LaMa 从图里修掉
+     （`remove_orb.py`）。没有光源还留着一圈呼吸光就成了"鬼火"。
+     ⚠️⚠️ 下面三个数是 **O2 那台旧机甲**留下的记录值（按舱门圆盘量的），
+        2026-10-12 换图之后**已经不对应任何东西**了 —— 只是没删。
+        想恢复光晕必须**按新图重量**（`_shots/plate_geom.py` + 人工读圆心）。 */
+  --hatch-x: 0.500000;         /* ← 旧图记录值，勿用 */
+  --hatch-y: 0.550000;         /* ← 旧图记录值，勿用 */
+  --hatch-r: 0.056250;         /* ← 旧图记录值，勿用 */
+  --mh: calc(var(--mecha-h) * 76.923cqw);
+  --mw: calc(var(--mh) * var(--mecha-ar));
+  --gr: calc(var(--hatch-r) * var(--mw));
+}
+
+/* ⭐ 方板宽度**只在桌面跟顶上对齐**（理由见 `.plate` 里 `--plate-w` 那条注释）。
+   860px 跟站里其它窄屏断点取的是同一个数。 */
+@media (min-width: 861px) {
+  .plate { --plate-w: 58vw; }
+}
+
+/* ⭐ 让某一块方板**突破内容列**（2026-10-10 用户：「机甲放大一点」）。
+   为什么非这样不可：这台机甲宽高比 **2.32**，而
+   `图宽 = --mecha-h × 舞台高 × 宽高比` —— 它在 `--mecha-h: 0.55` 时就已经顶到
+   舞台宽（1232 / 1256）。**宽度是唯一的约束**，所以再调 `--mecha-h` 一点用没有，
+   只能把**舞台本身加宽**（整块跟着 cqw 一起放大，内部比例不变）。
+
+   ⚠️ 宽度用 `min(1440px, 100vw − 48px)`：两边各留 24px，**永远小于视口**，
+      不会撑出横向滚动（`100vw` 是含滚动条的，所以减 48 有富余）。
+   ⚠️ 居中靠负的 `margin-inline`（`50% − 宽/2`）：`.wrap--wide` 只有 1256 宽，
+      负 margin 让它从内容列两侧**对称**溢出。上下 margin 保持 `.plate` 的 clamp。
+   ⚠️ 祖先 `.section` / `.wrap` 都没有 `overflow: hidden`（这点要先确认，
+      有的话溢出部分会被裁掉）。 */
+.plate--bleed {
+  max-width: none;
+  width: min(1440px, 100vw - 48px);
+  margin-inline: calc(50% - min(1440px, 100vw - 48px) / 2);
+}
+
+/* ⭐ 机甲**再单独放大**（2026-10-10 用户第二次说「再放大」）。
+   上一版把舞台加宽到 1440 之后，机甲还是被"舞台宽"卡住（1438/1440）。
+   但舞台那个宽度是给**标题**用的版面尺度 —— 于是这一步把机甲**跟舞台解耦**：
+   机甲按自己的宽度公式走，可以溢出台面两侧（台面只是一块透明的定位盒，
+   本来就没有可见边界），标题字号因此**不会被连带放大**。
+
+   宽度两个上限，缺一不可：
+     · `115cqw` —— **这个数是 ar 推出来的，不是拍脑袋定的**：
+        舞台高 76.923cqw − 中文标题那条带 25.55cqw − 想要的气口 3.5cqw
+        = 47.87cqw 是"机甲能占的最大高度"，换成宽度 = 47.87 × ar。
+        现役那台 ar = 2.395 → 114.6 ≈ **115**。
+       ⭐ 所以**换机甲图必须重算这个数**（ar 一变它就变）：
+        · 旧那台 ar 2.319 → 111cqw（就这么来的）
+        · Q1/Q2 那两稿 ar 1.88 / 2.79 → 90 / 134cqw
+       **这条防的是"机甲顶到标题上"**。
+     · `100vw − 64px` 永远不超出视口（两侧各留 32px）。
+
+   ⚠️ 图改成**宽度驱动**（`width:100%; height:auto`），容器高度跟着变成 `auto` ——
+      否则容器高度还是按 `--mecha-h` 算，图被 max-width 压窄之后会**悬在容器上沿**，
+      底下空出一截、机甲离开台面底部（这是分两步改时最容易踩的一处）。
+   ⚠️ 台面要 `overflow: visible`，不然溢出的两侧会被裁掉。
+   ⚠️ 这一块的 `--mecha-h` 现在**只剩下给 `--mh/--gr` 用**（而这一块的光晕是关的），
+      机甲的实际尺寸看上面这两条 —— 别再去调 `--mecha-h` 了。 */
+/* ⭐ 舞台比例：这一块**跟另一块共用 13/10**，没有例外（2026-10-12 一度收成 13/9，
+   同一天又撤掉了 —— 原因值得记一笔，见下）。
+   ------------------------------------------------------------------
+   当天第二轮用户说「机甲和字拉近一点」，当时量到：第 1 块中文到机甲空 17px、
+   第 2 块空 **127px**。于是把这一块的 `aspect-ratio` 从 13/10 收到 13/9，
+   收掉那条空带（→ 31px）。**第三轮把机甲的比例修回设计值之后，
+   13/9 反而让机甲压到标题上（实测 −39px）** —— 因为 13/9 本来是迁就
+   "被误缩小的机甲"的补丁（见 `.plate--bleed .plate__mecha` 那条注释里
+   关于"乘了两次"的说明）。补丁撤掉、用回共用的 13/10 之后：
+
+       机甲高 = 机甲宽 ÷ ar = 3.504cqw × ar ÷ ar = **3.504cqw**（与 ar 无关✓）
+       空带   = 76.923 − 25.55 − 47.87 = **3.5cqw ≈ 32px** ✓
+
+   —— 正好就是他第二轮认可的那个间距（31px），而且是**设计本来的比例**。
+   ⭐ 教训：**补丁要跟着根因一起撤**。机甲比例修回来之后，13/9 就从"补齐"
+      变成了"压字"。
+   ⚠️ 这个空带是比例（cqw），所以任何宽度下占比一致。
+      想再近/再远就动机甲宽度那个数（它是 ar 推的），**别去动舞台比例** ——
+      舞台比例一动，标题的绝对位置也跟着动（`.plate__en/__cn` 的 top 是 cqw）。 */
+.plate--bleed .plate__stage { overflow: visible; }
+/* 这一块的机甲比另一块矮（0.69 台面高 vs 0.66 但台面更高），
+   84% 那个高度会落在**车身中部**、像贴了张标签；往下挪到贴住履带下沿，
+   跟机甲视频框里那颗"在脚前"的位置一致。 */
+.plate--bleed .morb--plate { --morb-y: 92%; }
+.plate--bleed .plate__mecha {
+  /* ⚠️ 2026-10-12 第三轮：舞台宽度改成 58vw（桌面）之后，这一块机甲的实际宽度
+     就看第一个上限 `115cqw` 了 —— 115% × 928 = **1067px**，
+     而第二个上限 `100vw − 64px` = 1536，**不再咬住**（舞台窄了，cqw 那一项自己变小）。
+     ⚠️ 上一轮这里曾经写成 `min(--plate-s × 111cqw, --plate-s × (100vw − 64px))`，
+     那把 `cqw` 那一项**乘了两次**：`111cqw` 本来就跟着舞台宽度走，
+     再乘一次 `--plate-s` 会让机甲相对舞台**多缩 10%**（106.7% → 95.5%）。
+     现在 `--plate-s` 整个删掉了，这里回到设计意图。
+     ⚠️ **换机甲图时这个数要重算**（= 47.87 × 新图的 ar）：
+     旧那台 ar 2.319 → 111cqw；2026-10-12 换的 **R1「大窗要塞」ar 2.395 → 115cqw**；
+     试过的 Q1/Q2（ar 1.88 / 2.79）分别是 90 / 134cqw。
+     想调"机甲相对舞台多大"就动这个数（`100cqw` = 跟舞台同宽，不溢出）。 */
+  --mech-w: min(115cqw, 100vw - 64px);
+  height: auto;                       /* 高度交给图片按比例算 */
+  width: var(--mech-w);
+  /* ⚠️ 居中**不能**靠 `margin-inline: auto` —— 宽度比包含块还大时（这里就是），
+     浏览器没有按规范把负的剩余空间分摊到两个 auto 边距上，实测整体偏右 48px
+     （= 溢出量的一半）。改成 `left:50%` + 负 `margin-left`（半个宽度）：
+     这是"宽度已知的绝对定位盒"最稳的居中方式。
+     ⚠️ 更不能用 `translateX(-50%)` —— 这一层挂着 `.reveal-line`，入场动画
+        就是用 transform 做的，两者会互相顶掉（站里踩过两次）。 */
+  left: 50%;
+  right: auto;
+  margin-inline: 0;
+  margin-left: calc(var(--mech-w) / -2);
+}
+.plate--bleed .plate__mecha img {
+  width: 100%;
+  height: auto;
+}
+
+/* 另一台机甲：`poster-mecha`「宽扁六足」——更宽更扁，舱门在正中间。
+   ⚠️ 类名原来叫 `plate--poster`（按"第二块方板"命名的），2026-10-10 两台机甲对调后
+      那个名字就指错东西了，改成**按机甲命名**的 `--wide`。 */
+.plate--wide {
+  --mecha-h: 0.66;
+  --mecha-ar: 1.805869;        /* 1600 / 886 */
+  --hatch-x: 0.498800;         /* 798 / 1600（8 颗红指示灯拟合出的圆心） */
+  --hatch-y: 0.314270;         /* 278 / 886 */
+  --hatch-r: 0.095625;         /* 光圈半径 153px ÷ 图宽 1600 = 指示灯环半径 126 × 1.21 */
+}
+
+.plate__stage {
+  /* ⚠️ container-type 是这块排版的地基：下面所有长度都用 **cqw**（容器宽的 1%），
+     于是整块是一张「按比例缩放的画」—— 视口宽窄变化时版式比例不变，
+     不用为每个断点写一套字号。 */
+  container-type: inline-size;
+  position: relative;
+  aspect-ratio: 13 / 10;
+  overflow: hidden;
+  /* ⭐ **方板的"大小"就是这一条**（2026-10-12 第三轮）：宽度 = `--plate-w`
+     （桌面 58vw = 顶上机甲视频框的宽度），里面所有 cqw 长度跟着等比缩。
+     高度由 aspect-ratio 自己算（`--plate-s` 已经删掉，见 `.plate` 那条注释）。
+     ⚠️ 居中用**负 margin** 而不是 `margin-inline: auto`，两个原因：
+        · 宽视口下 `58vw` 会**超过内容列**（`.wrap--wide` 1256 封顶），
+          auto 边距在"盒子比包含块还宽"时不按规范分摊负空间（站里踩过，
+          整体偏右 48px）；
+        · `calc(50% − 宽/2)` 在**两种情况下都自动退化成正确答案** ——
+          放得下时就是普通的居中（等于 `margin: auto`），放不下时对称地
+          往内容列外溢出。实测 1600 下舞台 928 居中在 800 的中线上、
+          2560 下舞台 1485 一样居中，两块方板完全重叠得起来。 */
+  width: var(--plate-w);
+  margin-inline: calc(50% - var(--plate-w) / 2);
+}
+
+/* --- 大标题：「A SMALL WORLD」，居中 ------------------------------------
+   ⚠️ 字形用 **Impact**（Windows 自带的超粗**窄体**）。海报上那支就是窄体；
+      拿 Arial Black 顶会宽一倍、挤不进一行，靠 `scaleX` 压缩又会把字压变形。
+   ⚠️ 渐变字：`background-clip: text` + `color: transparent`，
+      **不能加 `text-shadow`** —— 一加就在字后面糊出一整块阴影。
+   ⚠️ `left:0; right:0` + `text-align:center` 居中（**不用 translateX(-50%)**：
+      这个元素挂着 `.reveal-line`，入场动画会用 transform，两者会打架）。 */
+.plate__en {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  /* 2026-10-11 用户：「这个文字下移一些」→「再低一点」：两次共下移 4cqw
+     （1440 台面上 ≈58px，从 3.4cqw 到 7.4cqw）。
+     ⚠️ `.plate__en` 和 `.plate__cn` 是**各自绝对定位**的，下移要**两个一起改**，
+        只改一个会把两行的间距压掉（这两行本来就贴得比较近）。
+     ⚠️ 两块方板共用这两条规则，所以是一起下移的（两块排版本来就要求一致）。 */
+  top: 7.4cqw;
+  margin: 0;
+  text-align: center;
+  font-family: Impact, "Haettenschweiler", "Arial Black", var(--font-sans);
+  font-size: 14cqw;
+  font-weight: 400;              /* Impact 只有一个字重，别让浏览器合成粗体 */
+  line-height: .88;
+  letter-spacing: -.015em;
+  background: var(--plate-en-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  white-space: nowrap;
+}
+
+/* ⚠️ 两块方板的**机甲高度不一样**（0.66 vs 0.56 台面高），所以标题下移到
+   「地产海报」那块舒服的位置时，「摄影图」那块的机甲顶边就快贴上中文了
+   （实测只剩 8px 气口）。**两块共用一套规则**做不到两边都合适 ——
+   给机甲更高的那一块单独往回收 1cqw，保持两块各自都有气口。 */
+.plate--wide .plate__en { top: 6.4cqw; }
+.plate--wide .plate__cn { top: 19.6cqw; }
+
+/* --- 中文标题：居中，紧跟在大标题下面 ------------------------------------ */
+.plate__cn {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 20.6cqw;               /* 跟 `.plate__en` 同步下移，行距保持不变 */
+  margin: 0;
+  text-align: center;
+  font-size: max(13px, 4.5cqw);
+  font-weight: var(--fw-hero);
+  line-height: 1.1;
+  letter-spacing: .04em;
+  color: var(--plate-cn);
+}
+
+/* --- 机甲（抠图）：居中、贴底、尽量大 -----------------------------------
+   宽高比由图片自己带（1600×1001）。`img` 用 `margin-inline:auto` 居中，
+   **不要用在父级上做 transform 居中** —— 这一层挂着 `.reveal-line`,
+   入场动画的 transform 会把它冲掉。 */
+.plate__mecha {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* 高度走 `--mecha-h`（第一块 68% —— 71% 时机甲顶边离中文只剩 9px，太挤；
+     68% 留出约 38px 气口。1600 下 = 657 高、1050 宽，舞台 1256×966。
+     第二块方板 60%：那台机甲宽高比 1.806，太高会宽到顶满舞台）。 */
+  height: calc(var(--mecha-h) * 100%);
+  /* ⚠️ `width: max-content` + `margin-inline: auto`：这一层要**缩到跟图片一样大**，
+     下面那圈呼吸光晕是按图片的比例定位的（left/top 的百分比要相对图片算）。 */
+  width: max-content;
+  margin-inline: auto;
+  pointer-events: none;
+}
+.plate__mecha img {
+  display: block;
+  height: 100%;
+  width: auto;
+}
+
+/* --- 舱门那层光的呼吸（见 README 第二十三节）-----------------------------
+   这一层配的是**实心光斑版**的资产（`制作过程缓存数据/add_reactor_glow_blob.py`）。
+   ⚠️ 用 `mix-blend-mode: screen`：screen 只会"加亮"，正好是光的行为；
+      普通叠加会把舱门中心本来就亮的芯再盖一层蓝，反而变暗。
+   ⚠️ 它是**软盘**不是环：这版的形状就是"整个舱门被点亮、光漫出到舱门外一圈"，
+      所以覆盖层比舱门本身大一圈（直径 22% ≈ 18.393cqw，半径 9.197cqw），
+      中心不设透明 —— 中心留空会变成环（那是另一版，见 README 第二十三节）。
+   ⚠️⚠️ 几何用 cqw，且**必须减掉机甲在舞台里的偏移**（左 8.198 / 上 24.615 cqw）：
+      `cqw` 的数值按舞台宽算，但 `left/top` 的落位基准是包含块 `.plate__mecha`。
+      不减就会整体偏右下（实测偏 103 / 309px）。数都是 `_shots/plate_geom.py` 量的。 */
+.plate__glow {
+  position: absolute;
+  width: calc(2 * var(--gr));
+  aspect-ratio: 1;
+  /* 圆心 − 半径。`left/top` 的落位基准就是包含块 `.plate__mecha`（= 图片盒本身），
+     所以直接用「比例 × 图宽/图高」，**不用再让机甲在舞台里的偏移**
+     （那是舞台坐标才要的事，旧版就是在那儿翻的车）。 */
+  left: calc(var(--hatch-x) * var(--mw) - var(--gr));
+  top: calc(var(--hatch-y) * var(--mh) - var(--gr));
+  border-radius: 50%;
+  /* 软盘：中心已经很亮（图里那层烘到接近白），所以中间这圈几乎不再加亮，
+     真正"呼吸"的是中间偏外那一段和漫到装甲上的那圈。
+     ⚠️⚠️ 浓度是**对着当时那张成品渲染调出来的**（`_shots/21_plate_full.png`）：
+        把这一层藏起来渲染一次、跟那张做逐像素差，实测
+        · 现在这几个值 → 光斑区平均只差 **+7 级**、光斑之外 **0 级**（静帧观感基本一致）
+        · 早先那版更浓的值 → 光斑区 +12.6 级，整片装甲都被提亮，远看"发灰"
+        再往上加就会明显改变静帧的样子，而这一层只需要负责"呼吸"。 */
+  background: radial-gradient(closest-side,
+    rgba(222, 243, 255, .18)  0%,
+    rgba(160, 212, 255, .28) 42%,
+    rgba(104, 174, 255, .13) 68%,
+    rgba(66, 138, 255, .05)  88%,
+    rgba(60, 132, 255, 0)   100%);
+  mix-blend-mode: screen;
+  opacity: .62;                     /* 不播动画时（减弱动态效果）停在这个亮度 */
+  animation: plate-glow-pulse 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes plate-glow-pulse {
+  /* ⚠️ "呼吸"主要交给**缩放**，亮度只做小幅配合：实测纯靠亮度的话，呼吸幅度只有
+     4 级，几乎看不出来；而把亮度**整体堆上去**又会让静帧比"金标准渲染"亮一大截
+     （光斑区 +12 级以上，远看装甲发灰）。缩放不动静帧的平均亮度，所以以它为主。
+
+     2026-10-10 用户：「这一页的机甲上面的光动效明显一点」。
+     做法是**把摆幅两头拉开，不抬平均亮度**：
+       · 缩放      .90 ↔ 1.10  →  **.84 ↔ 1.20**（光晕边缘摆动 23px → 42px）
+       · 不透明度  .22 ↔ .95   →  **.10 ↔ 1**（谷压得更暗）
+       · 明度      ——         →  **.85 ↔ 1.35**（`filter: brightness`，只在峰上加亮）
+       · 周期      3.6s        →  **2.8s**（更像"呼吸"，不像慢慢漂）
+
+     ⚠️ 为什么多加一个 `filter: brightness` 而不是直接把渐变调浓：
+        调浓是**整段**都亮 —— 静帧会比"金标准渲染"亮一大截（README 第二十三节记过，
+        光斑区 +12 级以上，远看装甲发灰）。brightness 只挂在**峰**那一帧上，
+        平均亮度几乎不动。
+     实测（`_shots/verify_plate_pulse.py`，把动画钉在谷/峰两态各截一张，
+     同一块 312×312 的固定区域算平均亮度）：
+        呼吸幅度 **3.71 级 → 7.10 级**（1.9 倍）；两头平均 **111.58 → 112.91**。
+     ⚠️ 覆盖层是软盘、形状没有硬边，缩放不会露出错位的轮廓。 */
+  0%, 100% { opacity: .10; transform: scale(.84); filter: brightness(.85); }
+  50%      { opacity: 1;   transform: scale(1.20); filter: brightness(1.35); }
+}
+
+/* --- 窗户的灯光层（2026-10-10 用户：「我想让窗户发光可以做到吗？」）---------
+   这一层是**从同一张机甲图里抠出来的**（`make_light_layer.py`：够亮 + 够暖的像素，
+   再加两级辉光），所以跟 `<img>` **同尺寸同位置** —— `inset: 0` 叠上去天生对齐，
+   不需要任何坐标。这就是这套做法的全部价值：上百个窗户，一个坐标都不用量。
+
+   ⚠️ 必须 `mix-blend-mode: screen`（只会加亮，正是光的行为）。普通叠加会把窗户
+      原来的颜色盖掉，看着像贴了一张贴纸。
+   ⚠️ 背景图是生成器内联写进来的（`image-set` 先 webp 后 png）——
+      换机甲图时**灯光层要跟着重抠**，两张尺寸必须一致，否则窗户会飘。
+   ⚠️ 提取时按「亮 + 暖」两个条件筛：只按亮度筛会把机甲边缘那道**冷色轮廓光**
+      也圈进来，叠上去就是"整台机甲发光"（实测踩过）。 */
+.plate__light {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: plate-win 5.6s ease-in-out infinite;
+}
+@keyframes plate-win {
+  /* 缓慢的明暗呼吸，中间夹一次很轻的"抖"（像老灯接触不良）。
+     ⚠️ 幅度别大：谷 .82 峰 1，跨度再大就变成霓虹灯了。 */
+  0%, 100% { opacity: .82; }
+  38%      { opacity: 1; }
+  44%      { opacity: .88; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .plate .reveal-line { opacity: 1; transform: none; transition: none; }
+  .plate__glow { animation: none; opacity: .62; transform: none; }
+  .plate__light { animation: none; opacity: .92; }
+}
+
+/* ==========================================================================
+   20. 图片查看器（lightbox）—— 点作品图看大图、可缩放平移，点空白处 / Esc 退出
+
+   2026-10-10 用户两轮要求：
+     ①「用户点击图片要可以查看图片详情，然后点击空白的地方要退出查看模式」
+     ②「查看图片详情的时候要可以放大缩小」
+
+   ⚠️ 这个节点是 **site.js 第 13 节运行时建出来的**，六个页面的 HTML 一行都不用改。
+      代价是禁用 JS 时没有这个功能 —— 可接受，它是"增强"不是内容。
+      （同理也**没有**给图片套 `<a href>`：那样禁用 JS 点了会跳到一张裸图，
+       体验更差。）
+   ⚠️ 颜色全部**硬写**，不读主题变量：节点挂在 <body> 上，而换色靠
+      `html.theme-dark` 那套变量，浅色页上它会拿到浅色 token。
+      查看器要的就是「不管哪一页都是近黑底 + 亮图」，写死反而稳。
+   ⚠️ z-index 要**高过导航条（50）** —— 看图时背后不该还立着一排导航。
+   ⚠️ 遮罩用 `display` 切换，不做淡入：`display` 上挂 transition 是无效的，
+      要淡入就得再加一层专门做 opacity 的节点，不值得。
+   ========================================================================== */
+.lb {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  /* ⚠️ 用**纵向 flex 流**（图在上、说明紧跟其下），说明那层不要绝对定位到视口底部 ——
+     竖幅的作品图（463×1000 那批）会一直长到贴着视口底，绝对定位的说明就压在图上。
+     这样做还有个好处：横幅图下面是空的，说明自然贴在它正下方，不用对着一大片空白。 */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 1.6vh, 18px);
+  padding: clamp(16px, 3.5vw, 56px);
+  background: rgba(8, 8, 10, .93);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+  /* ⚠️ 放大之后图片会超出这个盒子（transform 不影响布局），不裁的话
+     溢出部分会顶到视口外面去 —— 虽然浏览器会自己裁，但显式裁掉更稳。 */
+  overflow: hidden;
+}
+.lb.is-open { display: flex; }
+
+/* ⚠️ 大图**自己不是**"空白处" —— 点它不该关掉（JS 里按 e.target 判断）。
+   另外它放大之后是能拖动的，光标交给下面两条 .is-zoomed 规则。 */
+.lb__img {
+  /* ⚠️ `min-height: 0` 是必须的：flex 子项的默认 min-height 是 auto，
+     被替换元素（img）会拿**固有高度**当底线 → 竖幅图不肯缩，把说明挤出视口。 */
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  background: #101012;               /* 图还没解码出来时不是一片透明 */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .10),
+              0 30px 80px rgba(0, 0, 0, .62);
+  /* ⚠️ origin 必须在**图片自己**的正中：JS 里那套"缩放时盯住鼠标那一点"的
+     坐标关系（屏幕位置 = 图片中心 + t + s × 图内偏移）就是按它推的。 */
+  transform-origin: 50% 50%;
+  /* ⚠️ touch-action: none —— 双指捏合和单指拖动都由 JS 接管，
+     不交给浏览器（否则捏合会去缩放整页 / 触发下拉刷新）。 */
+  touch-action: none;
+  -webkit-user-select: none;
+          user-select: none;
+}
+/* 放大之后才可拖：光标要给出"能抓"的信号（+ JS 里拖动时加 .is-dragging） */
+.lb.is-zoomed .lb__img { cursor: grab; }
+.lb.is-dragging .lb__img { cursor: grabbing; }
+
+.lb__cap {
+  flex: 0 0 auto;
+  max-width: 100%;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: .875rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, .80);
+  pointer-events: none;              /* 这层压在遮罩上，别把"点空白处"挡住 */
+}
+.lb__hint {
+  display: block;
+  margin-top: 2px;
+  font-size: .75rem;
+  color: rgba(255, 255, 255, .42);
+}
+
+/* 右上角那组控件：− [百分比] + ×
+   ⚠️ 整组**一起**绝对定位（不是各自定位），否则窄屏上四个东西会撞在一起。 */
+.lb__tools {
+  position: absolute;
+  top: clamp(10px, 2.2vh, 22px);
+  right: clamp(10px, 2.2vw, 22px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* ⚠️ 底色要**深**的（不是极淡的白）。放大之后图片会铺到按钮底下 ——
+   淡白底压在一张亮图上，按钮基本看不见（390 档实测就是这样，图上那个 44px
+   的圆圈几乎融进画面）。深色玻璃球压在任何底上都读得出来。 */
+.lb__btn {
+  width: 44px;                       /* 44px 是触摸的最小可靠尺寸 */
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 1;
+  color: rgba(255, 255, 255, .90);
+  background: rgba(18, 19, 23, .62);
+  border: 1px solid rgba(255, 255, 255, .20);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+  transition: background 160ms var(--ease), color 160ms var(--ease);
+}
+.lb__btn:hover { background: rgba(44, 46, 54, .88); color: #fff; }
+.lb__close { font-size: 26px; }      /* × 比 + / − 大一点才显眼 */
+
+/* 缩放百分比。读的是**相对原图**的比例（竖幅图一打开就是 79%，因为屏幕上放不下），
+   不是"相对适口大小"的 100% —— 设计师看的是前者。
+   ⚠️ 等宽数字 + fixed 宽度：不然从 79% 跳到 100% 时后面那几个按钮会整体挪一下。 */
+.lb__pct {
+  min-width: 52px;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: .8125rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, .72);
+}
+
+@media (max-width: 480px) {
+  /* 窄屏：四个控件 + 间距 ≈ 200px，右上一个就够了 ——
+     百分比读数在这时候信息量最低，收成两行也太挤，不如去掉（按钮变三个）。 */
+  .lb__pct { display: none; }
+}
+
+/* 可点开的图：鼠标悬停给一个"能放大"的信号。
+   ⚠️ 类名由 JS 加（`is-zoomable`）—— 禁用 JS 时不该出现 zoom-in 光标，
+      否则点了没反应，比没有这个光标更糟。 */
+.js img.is-zoomable { cursor: zoom-in; }

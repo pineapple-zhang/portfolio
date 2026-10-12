@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>个人网页开发</title>
+<meta name="description" content="张杰波的作品集：平面设计、AI 视频、小游戏开发、传统文化、大模型部署五个方向的实践与作品。">
+<meta name="theme-color" content="#F5F5F7">
+
+<!-- 分享卡片。上线换成真实域名后把 og:url / og:image 一并改掉 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="张杰波 · 平面设计师｜作品集">
+<meta property="og:description" content="一个人，从一张画面做到能跑起来的成品">
+<meta property="og:locale" content="zh_CN">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
+
+<!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
+     首屏入场的初始态（opacity:0）只写在 `.js` 选择器下面 ——
+     .js 挂晚了的话，浏览器已经按「全可见」画过一帧，
+     挂上 .js 时元素是从 1 变成 0（还带着 110ms 的 transition-delay），
+     紧接着两个 rAF 后又加 is-in 把它拉回 1，
+     这次过渡是 1→1，**入场动画直接看不出来**（刷新时偶发，取决于谁先到）。
+     标题的单字没有这个问题 —— 它们是 JS 之后才创建的，首个计算值就是 0。 -->
+<script>document.documentElement.classList.remove('no-js');
+document.documentElement.classList.add('js');
+/* 兜底：site.js 万一没跑起来（文件缺失、被杀软拦、路径写错），
+   就把 .js 撤掉。否则所有 .reveal 元素会永远停在 opacity:0 —— 整页白屏。
+   site.js 一旦执行就会置上 window.__siteReady，这个定时器就什么都不做。 */
+setTimeout(function () {
+  if (!window.__siteReady) document.documentElement.classList.remove('js');
+}, 4000);</script>
+
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<!-- ======================================================================
+     首屏
+     位置严格照 PSD：导航组垂直中心在画布高 3.06% 处、跨度 55.6% 画布宽；
+     标题块垂直中心在画布高 38.8% 处。比例见 tokens.css 顶部注释。
+     ====================================================================== -->
+<header class="hero">
+
+  <nav class="site-nav site-nav--hero" aria-label="主导航">
+    <div class="site-nav__inner">
+
+      <button class="nav-toggle" type="button"
+              aria-expanded="false" aria-controls="nav-list" aria-label="打开菜单">
+        <span class="nav-toggle__bar"></span>
+      </button>
+
+      <ul class="site-nav__list" id="nav-list">
+        <li><a class="site-nav__link" href="design.html">平面设计</a></li>
+        <li><a class="site-nav__link" href="ai-video.html">AI视频</a></li>
+        <li><a class="site-nav__link" href="game.html">小游戏开发</a></li>
+        <li><a class="site-nav__link" href="culture.html">传统文化</a></li>
+        <li><a class="site-nav__link" href="llm.html">大模型部署</a></li>
+      </ul>
+
+    </div>
+  </nav>
+
+  <div class="hero__stage">
+    <p class="eyebrow hero__eyebrow">张杰波 · 平面设计师</p>
+    <h1 class="hero__title">天生我材<span class="title-gradient">必有用</span></h1>
+    <p class="hero__sub">一个人，从一张画面做到能跑起来的成品</p>
+  </div>
+
+  <!-- 滚动提示：白色小卡贴 + 右侧蓝色圆圈（圈里是白色向下箭头）。
+       出场是一条五段时间线：弹出白底蓝边的圆 → 拉长成胶囊 → 出文字和蓝圆
+       → 出箭头 → 箭头缓缓闪烁。时间点写在 site.css 的 .hero__cue-pill 上，
+       起点由 site.js 给 --d 对齐首屏 1→2→3→4 的节奏。
+       外层 .hero__cue 只管「随滚动淡出」，与出场分开（见 CSS 注释）。 -->
+  <div class="hero__cue" aria-hidden="true">
+    <div class="hero__cue-pill">
+      <span class="hero__cue-text">向下滚动继续</span>
+      <span class="hero__cue-dot">
+        <!-- 粗圆角的向下雪佛龙（参考 Material 那种「>」的粗细和圆头），
+             不是带竖杆的细箭头 -->
+        <svg class="hero__cue-arrow" viewBox="0 0 24 24" fill="none">
+          <path d="M6 9.2 12 15.4l6-6.2" stroke="currentColor"
+                stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+    </div>
+  </div>
+
+</header>
+
+<div class="nav-scrim" aria-hidden="true"></div>
+
+<main id="main">
+
+  <!-- ====================================================================
+       精选作品带
+       横向滚动，左右出血到视口边缘，但**第一张图的左边缘与内容列对齐**。
+       对齐靠 .band__track 的 padding-inline 实现，不用 width:100vw ——
+       有滚动条时 100vw 比可用宽度大，会直接造出文档级横向滚动条。
+       滚动条隐藏，靠「右侧那张被切掉一半」当提示，不加渐隐遮罩
+       （左边缘加渐隐会把对齐内容列的第一张图压暗，看着像渲染出错）。
+       ==================================================================== -->
+  <section class="band-sec" aria-labelledby="band-label">
+    <div class="band-sec__head wrap">
+      <p class="eyebrow band-sec__eyebrow" id="band-label">精选作品</p>
+      <!-- 这行是**操作提示**，不是入口 —— 所以用 <p> 不用 <a>。
+           早先是「查看全部 →」链到 design.html，后来文案改成「鼠标左拉查看」，
+           文案在教操作、行为却是跳转，两者对不上，已按需求去掉链接。 -->
+      <p class="band-sec__more">鼠标左拉查看<span aria-hidden="true"> →</span></p>
+    </div>
+
+    <!-- 每张卡片都指向自己那个方向的子页面：平面作品 → design、AI 视频 → ai-video、
+         小游戏 → game。加新卡片只要照抄一个 <li> 追加在最后 ——
+         顺序由 JS 每次刷新随机打乱，不用手动排。
+
+         ⚠️ 视频卡片用的是**真的视频**，静音自动循环。挑的是时长较短的两支
+            （8 / 18 秒）。播放由 JS 按「是否真的露出来」控制，不是无脑全播。 -->
+    <div class="band" data-hscroll role="region" aria-label="精选作品，可左右拖动浏览">
+      <ul class="band__track">
+
+        <!-- ===== 平面作品集（4）→ 平面设计页 ===== -->
+        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/01-cover.jpg"
+          alt="《平面作品集 2026》封面" width="1100" height="619" loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/03-guofeng.jpg"
+          alt="国风系列商业街招商海报" width="1100" height="621" loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/12-annual.jpg"
+          alt="企业年会视觉方案" width="1100" height="621" loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/19-rabbit.jpg"
+          alt="原创 IP《玉兔下凡》AI 短剧视觉" width="1100" height="621" loading="lazy" decoding="async"></a></li>
+
+        <!-- ===== AI 视频（2）→ AI视频页 ===== -->
+        <li class="band__item"><a href="ai-video.html" aria-label="AI 视频《神像》，8 秒">
+          <video muted loop playsinline preload="metadata" width="1280" height="720"
+                 poster="assets/video/03-deity-poster.jpg">
+            <source src="assets/video/03-deity.mp4" type="video/mp4">
+          </video></a></li>
+        <li class="band__item"><a href="ai-video.html" aria-label="AI 视频《巨型猩猩》，18 秒">
+          <video muted loop playsinline preload="metadata" width="1280" height="720"
+                 poster="assets/video/02-giant-ape-poster.jpg">
+            <source src="assets/video/02-giant-ape.mp4" type="video/mp4">
+          </video></a></li>
+
+        <!-- ===== 小游戏（1）→ 小游戏开发页 ===== -->
+        <li class="band__item"><a href="game.html"><img src="assets/img/portfolio/game-shop.jpg"
+          alt="《雨夜便利店街角》3D 场景" width="1100" height="619" loading="lazy" decoding="async"></a></li>
+
+      </ul>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       五个方向
+       ==================================================================== -->
+  <section class="section">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <!-- 眉题「五个方向」已按需求去掉。
+             标题用 <span class="scroll-fill"> 包住：滚到这一屏时它从左往右变成彩虹色，
+             彩色层由 site.js 克隆出来，HTML 里只有这一份文字。
+             ⚠️ 不能让 .scroll-fill 直接落在 <h2> 上 —— h2 变成 inline-block 之后，
+                外层 div 会用 1.75 的行高撑出一个「struts」，标题底下凭空多出十几像素；
+                套一层 span，struts 由 h2 自己的 1.2 决定，几乎看不出差。 -->
+        <h2 class="section-title"><span class="scroll-fill">把想法做成东西</span></h2>
+        <p class="section__intro">
+          平面设计是看家的手艺，另外四个方向是我这几年自己趟出来的。
+          它们看起来不一样，做的其实是同一件事——把一个模糊的念头，变成能拿出手的成品。
+        </p>
+      </div>
+
+      <ul class="pillars">
+        <li class="pillar reveal">
+          <div class="pillar__body">
+            <h3 class="pillar__name">平面设计</h3>
+            <p class="pillar__desc">
+              品牌视觉、营销物料、终端规范。在运营商行业做了多年落地设计，
+              习惯从传播意图倒推画面，而不是从好看出发。
+            </p>
+          </div>
+          <p class="pillar__meta">主职 · 持续</p>
+          <span class="pillar__arrow" aria-hidden="true">→</span>
+          <div class="pillar__media">
+            <img src="assets/img/portfolio/pillar-design.jpg"
+                 alt="沃特罗伦开业品宣「生生不息」物料" width="720" height="405"
+                 loading="lazy" decoding="async">
+          </div>
+          <a class="pillar__hit" href="design.html" aria-label="查看平面设计"></a>
+        </li>
+
+        <li class="pillar reveal">
+          <div class="pillar__body">
+            <h3 class="pillar__name">AI视频</h3>
+            <p class="pillar__desc">
+              用提示词调度视频模型，把脚本拆成分镜再生成成片。
+              擅长长镜头的时间分段控制、首尾帧接力，以及中文文字渲染的降风险方案。
+            </p>
+          </div>
+          <p class="pillar__meta">研究 · 2025 起</p>
+          <span class="pillar__arrow" aria-hidden="true">→</span>
+          <div class="pillar__media">
+            <img src="assets/video/05-rabbit-warrior-poster.jpg"
+                 alt="AI 视频《兔子武士》" width="1280" height="720"
+                 loading="lazy" decoding="async">
+          </div>
+          <a class="pillar__hit" href="ai-video.html" aria-label="查看 AI视频"></a>
+        </li>
+
+        <li class="pillar reveal">
+          <div class="pillar__body">
+            <h3 class="pillar__name">小游戏开发</h3>
+            <p class="pillar__desc">
+              微信小程序《修仙小游戏-修仙》的设计与开发。
+              从视觉系统到七个页面的交互，一个人从头做到尾。
+            </p>
+          </div>
+          <p class="pillar__meta">项目 · 2025</p>
+          <span class="pillar__arrow" aria-hidden="true">→</span>
+          <div class="pillar__media">
+            <img src="assets/img/portfolio/game-bomber.jpg"
+                 alt="《炸弹人双人对战》实际游戏画面" width="1100" height="619"
+                 loading="lazy" decoding="async">
+          </div>
+          <a class="pillar__hit" href="game.html" aria-label="查看小游戏开发"></a>
+        </li>
+
+        <li class="pillar reveal">
+          <div class="pillar__body">
+            <h3 class="pillar__name">传统文化</h3>
+            <p class="pillar__desc">
+              把传统视觉语法拆开再装回现代媒介里——水墨的层次、书法的骨架、
+              篆刻的构成，落到界面和画面上还能站得住。
+            </p>
+          </div>
+          <p class="pillar__meta">兴趣 · 持续</p>
+          <span class="pillar__arrow" aria-hidden="true">→</span>
+          <div class="pillar__media">
+            <img src="assets/img/portfolio/pillar-culture.jpg"
+                 alt="保利秋拍 × 中秋「美好家居生活」海报" width="720" height="405"
+                 loading="lazy" decoding="async">
+          </div>
+          <a class="pillar__hit" href="culture.html" aria-label="查看传统文化"></a>
+        </li>
+
+        <li class="pillar reveal">
+          <div class="pillar__body">
+            <h3 class="pillar__name">大模型部署</h3>
+            <p class="pillar__desc">
+              在本地把模型跑起来：量化部署、多模态推理、语音输入输出链路。
+              关心的是能不能落在自己的机器上，而不是只会调 API。
+            </p>
+          </div>
+          <p class="pillar__meta">实践 · 持续</p>
+          <span class="pillar__arrow" aria-hidden="true">→</span>
+          <div class="pillar__media">
+            <img src="assets/img/portfolio/pillar-llm.svg"
+                 alt="大模型部署示意图" width="1600" height="900"
+                 loading="lazy" decoding="async">
+          </div>
+          <a class="pillar__hit" href="llm.html" aria-label="查看大模型部署"></a>
+        </li>
+
+      </ul>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       简介
+       ==================================================================== -->
+  <section class="section section--raised">
+    <div class="wrap">
+      <div class="section__head section__head--solo reveal">
+        <p class="eyebrow section__eyebrow">关于</p>
+      </div>
+      <div class="prose reveal">
+        <p>
+          我是张杰波，平面设计师。日常工作围绕运营商行业的品牌与营销物料展开，
+          从主视觉到落地执行的整套链路都做。
+        </p>
+        <p>
+          业余时间精力主要花在两件事上：一是琢磨 AI 工具到底能替人做到哪一步，
+          为此写过成套的提示词方法论，也在本地部署过模型、搭过语音链路；
+          二是把中国传统视觉里的东西，试着用现代的方式讲出来。
+        </p>
+        <p>
+          目前的状态是：手上能落地，脑子里还在往外扩。
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ======================================================================
+     页脚
+     联系方式是占位符，务必换成你真实的邮箱和社交账号。
+     ====================================================================== -->
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__grid">
+      <div>
+        <p class="site-footer__title">张杰波</p>
+        <p>平面设计师 · 视觉设计 / AI 影像 / 交互开发</p>
+      </div>
+      <div>
+        <p class="site-footer__title">联系方式</p>
+        <ul class="site-footer__list">
+          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="#">微信：待填写</a></li>
+          <li><a href="#">小红书：待填写</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="site-footer__title">五个方向</p>
+        <ul class="site-footer__list">
+          <li><a href="design.html">平面设计</a></li>
+          <li><a href="ai-video.html">AI视频</a></li>
+          <li><a href="game.html">小游戏开发</a></li>
+          <li><a href="culture.html">传统文化</a></li>
+          <li><a href="llm.html">大模型部署</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="site-footer__bottom">
+      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利</span>
+      <span>本网站全部由个人开发</span>
+      <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+</body>
+</html>
