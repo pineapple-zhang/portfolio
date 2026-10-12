@@ -75,19 +75,29 @@ setTimeout(function () {
        出场是一条五段时间线：弹出白底蓝边的圆 → 拉长成胶囊 → 出文字和蓝圆
        → 出箭头 → 箭头缓缓闪烁。时间点写在 site.css 的 .hero__cue-pill 上，
        起点由 site.js 给 --d 对齐首屏 1→2→3→4 的节奏。
-       外层 .hero__cue 只管「随滚动淡出」，与出场分开（见 CSS 注释）。 -->
-  <div class="hero__cue" aria-hidden="true">
-    <div class="hero__cue-pill">
+       外层 .hero__cue 只管「随滚动淡出」，与出场分开（见 CSS 注释）。
+
+       ⚠️ 2026-10-12：卡贴从 <div> 改成 <a href="#main"> —— 用户要求
+          「点这个蓝色小箭头，自动滑到下一页」。
+          · 用 <a> 不用 <button>：这一下干的事就是「跳到下一段」，
+            是内容型锚点；而且**没 JS 时锚点自己就能跳**，
+            做成 <button> 的话没 JS 就是个点不动的死按钮。
+          · 同时去掉了外层那个 aria-hidden="true" —— 里面有了可聚焦元素
+            就不能再对读屏隐藏（Chrome 会因「焦点落在隐藏子树里」直接拦掉）。
+          · 锚点只是兜底，真实落点由 site.js 第 12b 节接管
+            （平滑滚到下一段的顶边，会先把这次点击 preventDefault 掉）。 -->
+  <div class="hero__cue">
+    <a class="hero__cue-pill" href="#main" aria-label="向下滚动到精选作品">
       <span class="hero__cue-text">向下滚动继续</span>
       <span class="hero__cue-dot">
         <!-- 粗圆角的向下雪佛龙（参考 Material 那种「>」的粗细和圆头），
              不是带竖杆的细箭头 -->
-        <svg class="hero__cue-arrow" viewBox="0 0 24 24" fill="none">
+        <svg class="hero__cue-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M6 9.2 12 15.4l6-6.2" stroke="currentColor"
                 stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </span>
-    </div>
+    </a>
   </div>
 
 </header>

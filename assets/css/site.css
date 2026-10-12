@@ -464,6 +464,39 @@
   display: block;
 }
 
+/* --- 卡贴是「跳到下一段」的入口（2026-10-12 用户要求）--------------------
+   点它平滑滚到首屏之后的第一块（精选作品带），落点逻辑在 site.js 第 12b 节。
+
+   ⚠️ 外层 .hero__cue 是 pointer-events:none（纯定位壳，不能挡住首屏），
+      所以点击权限得**由卡贴自己开回来** —— 少了下面这条整块点不动。
+   ⚠️ 悬停反馈**不能写在 .hero__cue-pill 的 transform 上**：它的 scale 是
+      site.js 逐帧写进去的（出场放大 + 退场缩回），CSS 这边一动 transform
+      就会跟内联样式打架。所以反馈只做在里面的蓝球和箭头上。
+   ⚠️ 蓝球不换色、只做「放大 + 泛蓝光」—— tokens 里没有比 --title-blue 更深的
+      蓝，临时编一个色号会在深色主题/其它页面里对不上。 */
+.hero__cue-pill {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.hero__cue-dot,
+.hero__cue-arrow {
+  transition: transform 180ms var(--ease), box-shadow 180ms var(--ease);
+}
+.hero__cue-pill:hover .hero__cue-dot,
+.hero__cue-pill:focus-visible .hero__cue-dot {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px -4px rgba(36, 113, 225, .55);
+}
+.hero__cue-pill:hover .hero__cue-arrow,
+.hero__cue-pill:focus-visible .hero__cue-arrow {
+  transform: translateY(2px);
+}
+/* 键盘聚焦时给一圈蓝环（盖掉 base.css 那条通用的深色 outline） */
+.hero__cue-pill:focus-visible {
+  outline: 3px solid var(--title-blue);
+  outline-offset: 4px;
+}
+
 /* 起始态：一个很小的圆。JS 会从这儿把它一路放大、去边、拉长。 */
 .js .hero__cue-pill {
   width: var(--cue-d);         /* = 高，所以是正圆 */
@@ -496,6 +529,9 @@
   .js .hero__cue-dot,
   .js .hero__cue-arrow { opacity: 1; }
   .js .hero__cue-arrow.is-blink { animation: none; }
+  /* 卡贴可点之后，悬停/聚焦那点位移也不做（瞬时到位） */
+  .hero__cue-dot,
+  .hero__cue-arrow { transition: none; }
 }
 
 /* --- 首屏入场（只在首页）-------------------------------------------------

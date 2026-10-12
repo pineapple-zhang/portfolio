@@ -698,6 +698,30 @@
       });
     };
 
+    /* 点卡贴 → 平滑滚到下一段（首屏之后的第一块 = 精选作品带）。
+       HTML 那边它是 <a href="#main">，这里接管掉这次跳转：
+       锚点是**没 JS 时的兜底**，有 JS 时按下面这个落点走。
+
+       ⚠️ 落点取「下一段自己的顶边」，**不要减 --nav-h** ——
+          减了的话会把那段的顶部内边距吃掉一截（.band-sec 约 44~92px），
+          眉题「精选作品」正好钻进 sticky 导航底下。
+          不减的话那段整体正好铺满视口，导航压在它的留白上，谁也不碰谁。
+       ⚠️ 只在首页有下一段时才拦（子页面没有 .hero__cue，进来也白搭）。 */
+    var cueNext = doc.querySelector('#main > section');
+    if (cueNext) {
+      cuePill.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        var to = cueNext.getBoundingClientRect().top +
+                 (window.pageYOffset || doc.documentElement.scrollTop || 0);
+        window.scrollTo({
+          top: Math.max(0, Math.round(to)),
+          /* 减弱动态效果：CSS 那边 html{scroll-behavior:auto} 已经管了，
+             这里必须显式给 'auto' —— 传 'smooth' 会盖过那条 CSS。 */
+          behavior: prefersReduced ? 'auto' : 'smooth'
+        });
+      });
+    }
+
     cueT0 = performance.now();
     cueLooping = true;
     window.requestAnimationFrame(cueLoop);
