@@ -1245,15 +1245,34 @@ PAT = re.compile(r'(<a\b[^>]*\bhref="culture\.html"[^>]*>)传统文化(</a>)')
    **检查项全过却以退出码 1 收场**（假的失败）。`_shots/` 下 **43 个脚本**
    统一加了 `kill()` 兜底。
 
-#### 还没动的（等用户拍板，**不要擅自改**）
+#### 第二轮：用户说「都改了」→ 剩下 7 处一起换
 
-| 位置 | 现在写着 |
+| 位置 | 改成 |
 |---|---|
-| `culture.html` 的 `<title>` / meta / 面包屑 / `<h1>` | 传统文化 |
-| `index.html` 的「五个方向」那行（`pillar__name`）+ 它的 `aria-label` | 传统文化 |
-| `index.html` 的 meta description（列举五个方向） | 传统文化 |
+| `culture.html` 的 `<title>` | `文学馆 · 个人网页开发` |
+| `culture.html` 的 meta description | 「张杰波的**文学馆**：水墨视觉语言、书法与篆刻元素的现代转译、传统配色的界面应用。」 |
+| `culture.html` 的面包屑末尾那格 + `<h1 class="page-head__title">` | 文学馆 |
+| `index.html` 的方向卡 `<h3 class="pillar__name">` | 文学馆 |
+| 那张卡的读屏标签 `aria-label` | `查看文学馆` |
+| `index.html` 的 meta description | 五个方向里那一项改「文学馆」 |
+| `site.css:1179` 一条注释里列页面名的地方 | 文学馆（代码注释，看不见，但名字要跟着走） |
 
-这几处是**这个栏目自己的名字**，不是导航标签 —— 要不要跟着改，得他一句话。
+> ⚠️ meta description 那一句**不是简单替换**：原文是「张杰波**在传统文化方向**的
+> 视觉实践」，「在文学馆方向」读不通，改成了「张杰波的**文学馆**：…」——
+> 后半句（水墨/书法篆刻/传统配色）一字未动。
+> ⚠️ 页面**正文**（`page-head__lead`、四个作品标题、首页方向卡的描述句）也没动 ——
+> 那几句话讲的是水墨/书法/篆刻，换不换得看用户是不是要把内容也换成文学。
+
+**验收**：`verify_nav_label.py` 扩到十项 —— 每页多量 `<title>`、`<h1>`、
+面包屑、meta description，`index` 那页还量方向卡名称与它的 `aria-label`；
+最后加一条**兜底**：把每页 `body.innerText` 抓下来，**整页可见文字里不许再出现
+「传统文化」**（以后谁再往页面里写一次，这条就会响）。
+`audit.py`（六页 × 五宽度）与 `verify_nav.py`（6×6）也全过。
+
+**踩到的坑**：第一版探针用 `document.querySelector('.pillar__name')` 取方向卡名 ——
+那取到的是**第一张卡（平面设计）**，于是误报「方向卡没改」。改成先按
+`href="culture.html"` 找到那张卡的 `.pillar__hit`，再 `closest('.pillar')` 往上找名字。
+（页面是好的，脚本是错的 —— 这类误报要么当场查清，要么就会一直挂着。）
 
 ---
 
