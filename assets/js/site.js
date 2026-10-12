@@ -487,7 +487,6 @@
       void pill.offsetWidth;          /* 强制重排：让"摘类"真的生效 */
     };
     var canObserve = !prefersReduced && ('IntersectionObserver' in window);
-    var pairs = [];                   /* 下面那条"被盖住"的检查要用 */
 
     for (var m = 0; m < morbs.length; m++) {
       (function (morb) {
@@ -496,7 +495,6 @@
           show(morb);                 /* 静止版/老浏览器：直接给最终形态 */
           return;
         }
-        pairs.push({ morb: morb, pill: pill });
         var io = new IntersectionObserver(function (entries) {
           for (var i = 0; i < entries.length; i++) {
             var e = entries[i];
@@ -510,48 +508,23 @@
       })(morbs[m]);
     }
 
-    /* ⭐ 2026-10-12 追加：**被"木板"盖住也算消失** ---------------------------
-       机甲视频那段从这一版起被钉住、并被作品区那块板子（`.slab`）盖住 ——
-       胶囊**几何上还在视口里**（只是被板子挡住了），而 IntersectionObserver
-       只看几何、**看不见"被盖住"**。不补这一条的话，用户上一轮刚要求的
-       「下滑消失后动画要重置、下一次滑动继续出现」在往下滚时就失效了。
+    /* ⛔ 2026-10-12：这里原来还有一条「**被"木板"盖住也算消失**」的检查 ——
+       机甲视频那段被 `position: sticky` 钉住、又被作品区那块板子（`.slab`）
+       盖住时，胶囊**几何上还在视口里**，而 IntersectionObserver 只看几何、
+       看不见"被挡住"，所以得靠它手动复位/重播。
 
-       判据（跟观察者那条触发线对齐，别自己另立一套）：
-         · 板子的顶边**盖过整颗胶囊**（`slabTop < pillTop − 1`）→ 复位；
-         · 板子**退回胶囊下边**且胶囊已经进了触发区（`pillTop ≤ 视口 82%`）→ 重播；
-         · 中间那段（板子正扫过胶囊）**什么都不做** —— 免得扫过去一次闪一下。
-       ⚠️ `slabTop >= 视口高` 直接 return：那是"板子还没进屏幕"的常态，
-          少了这一条，页面一加载就会把胶囊当成"已露出来"给放出去（提前播）。
-       ⚠️ 重播那一支必须带上"已进触发区"的判断，否则会**抢在观察者前面**
-          把还没滚到的胶囊点亮（2026-10-10 用户报过的"提前播放"就是这个形状）。 */
-    var slab = doc.querySelector('.slab');
-    if (!slab || !pairs.length || prefersReduced) return;
+       当天晚些时候用户要求「这个木板的动画去掉」，板子连同钉住一起去掉了
+       （见 site.css 那段「已去掉」的注释），这条检查随即失去意义 ——
+       留着只会跟上面的观察者重复干活。
 
-    var coverTick = false;
-    var coverCheck = function () {
-      coverTick = false;
-      var vh = window.innerHeight || doc.documentElement.clientHeight;
-      var st = slab.getBoundingClientRect().top;
-      if (st >= vh) return;                    /* 板子还没进视口 */
-      var line = vh * 0.82;                    /* ⚠️ 跟观察者的 rootMargin -18% 一致 */
-      for (var i = 0; i < pairs.length; i++) {
-        /* ⚠️⚠️ **板子里面的胶囊不参与**（两块方板里那两颗"继续下滑"）。
-           它们本来就在板子上，`slabTop < pillTop` 永远成立 —— 不排除的话
-           会被这条一直判成"被盖住"，就再也不显示了。 */
-        if (slab.contains(pairs[i].pill)) continue;
-        var r = pairs[i].pill.getBoundingClientRect();
-        if (r.bottom <= 0 || r.top >= vh) continue;   /* 不在视口里：交给观察者 */
-        if (st < r.top - 1) reset(pairs[i].morb, pairs[i].pill);
-        else if (st > r.bottom + 1 && r.top <= line) show(pairs[i].morb);
-      }
-    };
-    var coverScroll = function () {
-      if (coverTick) return;
-      coverTick = true;
-      window.requestAnimationFrame(coverCheck);
-    };
-    window.addEventListener('scroll', coverScroll, { passive: true });
-    coverCheck();
+       ⚠️⚠️ **哪天又把木板贴回来，这条必须跟着回来**，判据是：
+            板子顶边盖过整颗胶囊（`slabTop < pillTop − 1`）→ 复位；
+            板子退回胶囊下边、且胶囊已进触发区（`pillTop ≤ 视口 82%`）→ 重播；
+            中间那一段什么都不做（免得扫过去一次闪一下）。
+          ⚠️ 还要排除「板子里面的胶囊」（两块方板里那两颗"继续下滑"）——
+             它们本来就在板子上，`slabTop < pillTop` 永远成立，
+             不排除的话会被判成"一直被盖住"、再也不显示。
+          两个坑的完整版都能在 git 历史里捞回来（`git log -S slabTop`）。 */
   })();
 
   /* ----------------------------------------------------------------------

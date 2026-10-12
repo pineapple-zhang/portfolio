@@ -167,62 +167,57 @@ setTimeout(function () {
             就是媒体元素，用 aria-label 给它一个名字。
          ⚠️ 万一视频这条路不走，对应的静态兜底是那张六格精灵图
             （`mecha-walk.webp` + site.css 里那段 steps() 动画，已备份）。 -->
-    <!-- ⭐ 2026-10-12 用户：「我想要这个页面的出场动画**像木板一样覆盖上去**」
-         （选项里选的是「推上去压住上一段」）。
-         这一层就是那件事的**钉住容器**：它多出来的高度 = 作品区那块"木板"
-         推上来的行程；里面那段机甲视频 `position: sticky` 钉住不动，
-         于是下面的作品区推上来时，**它的顶边会扫过这一段把它盖住**。
-         ⚠️ 机制跟上面首屏的 `.dive-pin` 是同一个（多一段高度 + 子元素 sticky），
-            但**没有 JS** —— sticky 自己就是滚动驱动的。
-         ⚠️ 行程与细节全在 site.css 的 `.slab-pin / .slab` 那一块注释里。 -->
-    <div class="slab-pin">
-      <div class="mecha-hero">
-        <p class="mecha-hero__copy">
-          <span class="mecha-hero__en mecha-hero__reveal">A SMALL WORLD</span>
-          <span class="mecha-hero__cn mecha-hero__reveal">品宣活动海报物料</span>
-        </p>
-        <div class="mecha-hero__frame">
-          <!-- ⚠️ `disablepictureinpicture` + `controlslist` 是 2026-10-09 加的：
-              用户截图圈出视频左上角浮着一个小胶囊（画中画 + 投屏两个图标），
-              问「这个是什么，可以去掉吗」。那**不是页面里的东西** ——
-              全站没有任何图标资源，是浏览器给 `<video>` 挂的媒体控件浮层。
-              这两个属性正好对应那两个按钮：`disablepictureinpicture` 去掉画中画，
-              `controlslist="noremoteplayback"` 去掉投屏。
-              ⚠️ 它们只对**浏览器原生控件**生效；要是那浮层还在，就是浏览器自带的
-                 悬浮媒体控件（跟页面无关），得从浏览器设置关。 -->
-          <video class="mecha-hero__video" src="assets/video/mecha-greet.mp4"
-                 poster="assets/video/mecha-greet-poster.jpg"
-                 width="1920" height="1080"
-                 muted loop playsinline autoplay preload="metadata"
-                 disablepictureinpicture
-                 controlslist="nodownload noplaybackrate noremoteplayback"
-                 aria-label="机甲从站姿单膝蹲跪下来，面罩亮起，抬起手臂向观众挥手"></video>
+    <!-- ⛔ 2026-10-12：这里原来有一层 `<div class="slab-pin">` 钉住容器 ——
+         用户当天先要了「木板盖上来」，同一天又要求去掉（「这个木板的动画去掉」）。
+         现在机甲那段就是个普通块，跟着页面一起滚；作品区紧接在它后面。
+         原做法与回滚方式记在 site.css 那段「已去掉」的注释里。 -->
+    <div class="mecha-hero">
+      <p class="mecha-hero__copy">
+        <span class="mecha-hero__en mecha-hero__reveal">A SMALL WORLD</span>
+        <span class="mecha-hero__cn mecha-hero__reveal">品宣活动海报物料</span>
+      </p>
+      <div class="mecha-hero__frame">
+        <!-- ⚠️ `disablepictureinpicture` + `controlslist` 是 2026-10-09 加的：
+            用户截图圈出视频左上角浮着一个小胶囊（画中画 + 投屏两个图标），
+            问「这个是什么，可以去掉吗」。那**不是页面里的东西** ——
+            全站没有任何图标资源，是浏览器给 `<video>` 挂的媒体控件浮层。
+            这两个属性正好对应那两个按钮：`disablepictureinpicture` 去掉画中画，
+            `controlslist="noremoteplayback"` 去掉投屏。
+            ⚠️ 它们只对**浏览器原生控件**生效；要是那浮层还在，就是浏览器自带的
+               悬浮媒体控件（跟页面无关），得从浏览器设置关。 -->
+        <video class="mecha-hero__video" src="assets/video/mecha-greet.mp4"
+               poster="assets/video/mecha-greet-poster.jpg"
+               width="1920" height="1080"
+               muted loop playsinline autoplay preload="metadata"
+               disablepictureinpicture
+               controlslist="nodownload noplaybackrate noremoteplayback"
+               aria-label="机甲从站姿单膝蹲跪下来，面罩亮起，抬起手臂向观众挥手"></video>
 
-          <!-- ⭐ Siri 式的问好（用户 2026-10-10 要求）：
-               先在机甲脚前弹出一个会转的彩色圆球 → 变形成半透明胶囊
-               → 胶囊里出现「欢迎来到我的作品集」。
-               ⚠️ 位置 left/top 是**相对这个框**的百分比（框 = 视频的可见区）。
-                  改视频尺寸 / 换素材要重新量那个点（见 site.css 那一节的说明）。
-               ⚠️ 容器本身宽高 0，形状靠子元素各自 translate(-50%,-50%) 居中。
-               ⚠️⚠️ **不要给它加 `.mecha-hero__reveal`。** 加过（2026-10-10 早些时候），
-                  后果是它跟着上面那两行文案共用一个观察者 —— 观察的是整个
-                  `.mecha-hero`，问好却在**视频框的下沿**（top = 框高的 88%），
-                  框一露头就把动画播完了，等滚到胶囊那儿只剩一座空框。
-                  用户原话：「底部的动画怎么提前就播放了，应该用户下拉到出现在
-                  屏幕里才能开始播放吧」。现在时机由 site.js 第 5f 节单独盯。
-               ⚠️ aria-hidden：它是装饰性的动效，欢迎语本身在下面 .wrap 里
-                  已经有了可读文本，读屏重复念一遍反而吵。 -->
-          <span class="morb" aria-hidden="true">
-            <span class="morb__ball"></span>
-            <span class="morb__pill">
-              <span class="morb__wave"><i></i><i></i><i></i><i></i></span>
-              <span class="morb__text">欢迎来到我的作品集</span>
-            </span>
+        <!-- ⭐ Siri 式的问好（用户 2026-10-10 要求）：
+             先在机甲脚前弹出一个会转的彩色圆球 → 变形成半透明胶囊
+             → 胶囊里出现「欢迎来到我的作品集」。
+             ⚠️ 位置 left/top 是**相对这个框**的百分比（框 = 视频的可见区）。
+                改视频尺寸 / 换素材要重新量那个点（见 site.css 那一节的说明）。
+             ⚠️ 容器本身宽高 0，形状靠子元素各自 translate(-50%,-50%) 居中。
+             ⚠️⚠️ **不要给它加 `.mecha-hero__reveal`。** 加过（2026-10-10 早些时候），
+                后果是它跟着上面那两行文案共用一个观察者 —— 观察的是整个
+                `.mecha-hero`，问好却在**视频框的下沿**（top = 框高的 88%），
+                框一露头就把动画播完了，等滚到胶囊那儿只剩一座空框。
+                用户原话：「底部的动画怎么提前就播放了，应该用户下拉到出现在
+                屏幕里才能开始播放吧」。现在时机由 site.js 第 5f 节单独盯。
+             ⚠️ aria-hidden：它是装饰性的动效，欢迎语本身在下面 .wrap 里
+                已经有了可读文本，读屏重复念一遍反而吵。 -->
+        <span class="morb" aria-hidden="true">
+          <span class="morb__ball"></span>
+          <span class="morb__pill">
+            <span class="morb__wave"><i></i><i></i><i></i><i></i></span>
+            <span class="morb__text">欢迎来到我的作品集</span>
           </span>
-        </div>
+        </span>
       </div>
+    </div>
 
-    <div class="wrap wrap--wide slab">
+    <div class="wrap wrap--wide">
       <!-- ================================================================
            「品宣海报 · 商场宣传」这一套 —— **用 HTML 排的，不是压平的图片**。
            ⚠️ 2026-10-09 用户：「我是要你排在 html 网页里，不是排个图片，
@@ -694,9 +689,6 @@ setTimeout(function () {
       </article>
       <!-- PAGES:END -->
     </div>
-    </div><!-- /.slab-pin
-      钉住容器：里面除机甲视频那段，**整块作品区也在里面** —— 板子必须在容器
-      内部才追得上被钉住的那一段；在外面的话钉子一松两边就同步走、永远盖不上。 -->
   </section>
 
 </main>
