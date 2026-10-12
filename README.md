@@ -1,5 +1,14 @@
 # 发布到 GitHub Pages
 
+⭐ **已经发布上线**：<https://pineapple-zhang.github.io/portfolio/>
+仓库：<https://github.com/pineapple-zhang/portfolio>（Public，main 分支 / root 目录）
+
+**以后改完东西怎么更新**：双击上一层的 `推送更新.bat`（它自动 add / commit / push）。
+⚠️ 推送时必须**临时绕开全局的 gh-proxy 改道**（`url.gh-proxy.com…insteadOf` 那条
+只支持下载、不支持推送），脚本里已经帮你做了，手工推的话要自己 `--unset` 再 `--add` 回来。
+⚠️ 在**这台机器上**打开站点需要开着代理：实测 `*.github.io` 直连不通（github.com 直连是通的）。
+
+
 这个文件夹**本身就是一份可以直接发布的静态站点**（根目录就是 `index.html`）。
 2026-10-12 按"能上传 GitHub Pages"的要求梳理过一遍：
 
