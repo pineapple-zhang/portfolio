@@ -3429,3 +3429,70 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
 .clip__no { color: var(--title-blue); letter-spacing: .08em; }
 .clip__title { font-size: 1.0625rem; font-weight: var(--fw-med); }
 .clip__desc { color: var(--ink-2); font-size: .9375rem; line-height: 1.65; }
+
+/* ==========================================================================
+   22. 讲课板块的「章节带」（2026-10-13）
+
+   用户：「我想让这块教学内容，在页面里更明显一点」→ 在四个方案里选了
+   「做成章节横幅」，但**明确要求不要那么暗**：
+   > 「只做②试试，但是不要那么暗，不然视频看不见了。」
+
+   所以这里**不做深色**，而是用一层很浅的靛蓝底 + 上下两条发丝线 +
+   顶上 3px 的蓝条，把它从前后两块之间拎出来：
+
+       成果展示（页面底 #F5F5F7）  →  ⬛ 讲课章节带（#E7EFFA→#EEF3FA）
+       →  作品库（白 #FFFFFF）
+
+   ⚠️⚠️ **底色不能往深走。** 卡片里的画面本身就是"浅底里的浅底"
+      （工具界面、提示词文档都是白的），底一暗，卡片边界和画面就糊在一起，
+      正好是他担心的那件事。要更明显就**加线、加蓝条、加信息**，别压暗。
+   ⚠️ 这块**不用深色主题那套**（`html.theme-dark` 是整页转黑的机制），
+      要的只是"一块浅蓝的章节带"，所以写成自带的局部背景。
+   ⚠️ 内边距用 `.section.band-lecture` 提高优先级 —— 否则会被
+      `.section + .section { padding-top: … }` 那条（同级、但在后面之外）
+      把上边距压掉一半，带子顶上会显得憋。
+   ========================================================================== */
+.section.band-lecture {
+  position: relative;
+  background: linear-gradient(180deg, #E7EFFA 0%, #EEF3FA 100%);
+  border-block: 1px solid var(--line);
+  padding-block: clamp(var(--sp-8), 10vh, var(--sp-10));
+}
+
+/* 带子顶上那道细蓝条，往右淡出 —— 一眼看出"这一块是单独的一章" */
+.band-lecture::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--title-blue) 0%,
+                              rgba(36, 113, 225, .12) 62%,
+                              rgba(36, 113, 225, 0) 100%);
+}
+
+/* 标题下面那行信息。这块原本就没有"排面"，加上它信息密度才撑得住 */
+.band-lecture__kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-5);
+  margin-top: var(--sp-5);
+  font-size: .875rem;
+  color: var(--ink-2);
+  letter-spacing: .01em;
+}
+.band-lecture__kicker span { display: inline-flex; gap: .35em; align-items: baseline; }
+.band-lecture__kicker b {
+  font-weight: var(--fw-med);
+  color: var(--title-blue);
+  font-variant-numeric: tabular-nums;
+}
+/* 每一项之间一个小圆点（用伪元素，别在 HTML 里塞分隔符）。
+   ⚠️ 点挂在**后一项的前面**（`span + span::before`），不是前一项的后面 ——
+      手机 390 下实测：挂成 `::after` 时那行正好在「原片 60 分钟」后换行，
+      点上不去、孤零零留在行尾；前导点最差也只是落在新行开头，看着是设计。 */
+.band-lecture__kicker span + span::before {
+  content: "·";
+  color: var(--ink-3);
+  margin-right: var(--sp-2);
+}
