@@ -3431,52 +3431,53 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
 .clip__desc { color: var(--ink-2); font-size: .9375rem; line-height: 1.65; }
 
 /* ==========================================================================
-   22. 讲课板块的「章节带」（2026-10-13）
+   22. 讲课板块的「章节带」（2026-10-13，两轮改定）
 
-   用户：「我想让这块教学内容，在页面里更明显一点」→ 四档方案里选了
-   "做成章节横幅"，并给了两条硬要求：
-   > 「只做②试试，但是不要那么暗，不然视频看不见了」
-   > 「改成这样蓝色的渐变，然后**两边不留缝隙**」（附蓝色渐变面板参考图）
+   用户：「我想让这块教学内容，在页面里更明显一点」→ 选了"做成章节横幅"，
+   并逐轮给了三条硬要求：
+     > 「只做②试试，但是不要那么暗，不然视频看不见了」
+     > 「改成这样蓝色的渐变，然后两边不留缝隙」（附蓝色渐变面板参考图）
+     > 「左右两边的弧形还是要的，蓝色太蓝了，颜色改淡一点的」
 
-   于是：**通版的蓝色渐变面板** —— 顶上深（标题落在这儿，白字够对比），
-   往下渐浅（卡片落在浅蓝区，文字沿用站里的深色）。整块铺满视口宽，
-   不设圆角、不留左右边距、不画上下发丝线（那两条线会被看成"缝隙"）。
+   定型成：**通版浅蓝渐变面板 + 圆角**。
+     · 左右不留边距（通版），四角有弧形
+     · 底色只是"一层浅蓝的洗色"，最深的一档也只有 #CFE1F9
+     · 正因为底浅，**文字全部是深色**（白字压浅蓝会糊）：
+       眉题/导语/信息行/卡片文字都在带内各压深一档，数据见下面的注释
 
-   ⚠️⚠️ **为什么是"竖向"渐变而不是参考图那种斜向**：斜向的话，导语和信息行
-      会横跨深浅两端，右半边的白字会掉到 3:1 以下（AA 要 4.5:1）。
-      竖着铺，整行处在同一个明度带上，就不会一半够一半不够。
-   ⚠️ 深蓝那一段必须**够长**（到 26% 才离开 #2A76E0）：标题、导语、信息行
-      都压在这段上，白字对比度靠它撑。想调渐变，先来这儿对一下比例。
-   ⚠️ 卡片那一侧不要再转白字：底已经浅了，白字会糊（这也是他最初那句
-      「不要那么暗」的另一面）。
+   ⚠️⚠️ **深蓝那版（白字压 #1A64D2）已被用户否掉**：他原话是"太蓝了"。
+      教训：**对比度达标 ≠ 观感对**。白字压深蓝各项都过 AA，
+      但还是被要求调淡 —— 这类"太浓/太淡"只能靠人看，脚本量不出来。
+   ⚠️ 圆角是 `border-radius` 而不是加左右边距：他明确说过"两边不留缝隙"，
+      所以面板照样通版，只是四个角切弧形（弧口露出的是页面底色）。
+   ⚠️ 换底色后**必须重跑** `_shots/check_band_contrast.py`：
+      `--ink-2` / `--ink-3` / `--title-blue` 这几支压在浅蓝上都在 4:1 上下，
+      肉眼看不出来，只能从渲染像素上量。
    ========================================================================== */
 .section.band-lecture {
   position: relative;
-  /* 通版：不加圆角、不留边距 —— 这块就是要"像一整条横幅"。
-     ⚠️ 这几档不是随手写的：白字要撑在 24% 以前（标题+导语+信息行都在这段），
-        而卡片文字（约 50% 之后）必须已经落到接近白的地方 ——
-        实测第一版 46% 才到 #7CB0F2，卡片说明只有 3.03:1，不达标。 */
+  /* 通版：没有左右边距；弧形交给 border-radius */
+  border-radius: clamp(18px, 1.8vw, 30px);
+  /* 浅蓝洗色：0% 也只有 #CFE1F9，到 100% 基本回到页面白 */
   background: linear-gradient(180deg,
-      #1A64D2 0%,
-      #2470DE 24%,
-      #6FA7F0 36%,
-      #D9E9FB 48%,
-      #EFF5FD 64%,
-      #F8FBFF 100%);
+      #CFE1F9 0%,
+      #DEECFB 20%,
+      #EBF3FD 48%,
+      #F5FAFE 76%,
+      #FBFDFF 100%);
   padding-block: clamp(var(--sp-8), 10vh, var(--sp-10));
 }
 
-/* --- 深蓝区里的字：全部转白 ---
-   ⚠️ 标题原本挂着 `.title-gradient`（彩虹渐变 + background-clip:text），
-      所以这里得**同时**把 background-image 和 -webkit-text-fill-color 清掉，
-      只清 color 是不生效的（那两条才是它真正的上色方式）。 */
-.band-lecture .section__eyebrow { color: rgba(255, 255, 255, .88); }
-.band-lecture .section-title {
-  background-image: none;
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-}
-.band-lecture .section__intro { color: rgba(255, 255, 255, .94); }
+/* --- 深色字（不再有白字）：带内各压深一档 ---
+   ⚠️ 只在带内覆盖，**不动全局令牌** —— 这几支在站里其它浅底（#F5F5F7）上是够用的。 */
+.band-lecture .section__eyebrow { color: #14509F; }   /* 原 --title-blue #2471E1 */
+.band-lecture .section__intro   { color: #4F4F55; }   /* 原 --ink-2      #6E6E73 */
+.band-lecture .clip__no         { color: #14509F; }   /* 原 --title-blue #2471E1 */
+.band-lecture .clip__meta       { color: #5A5A60; }   /* 原 --ink-3      #86868B */
+.band-lecture .clip__desc       { color: #4C4C52; }   /* 原 --ink-2      #6E6E73 */
+/* 标题回到站里那支彩虹渐变（`.title-gradient` 自带 background-clip:text，
+   那版白字时被这里清掉的 background-image / -webkit-text-fill-color 已经不再覆盖，
+   自动恢复） */
 
 /* 标题下面那行信息。这块原本没有"排面"，加上它信息密度才撑得住 */
 .band-lecture__kicker {
@@ -3486,13 +3487,13 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
   gap: var(--sp-2) var(--sp-5);
   margin-top: var(--sp-5);
   font-size: .875rem;
-  color: rgba(255, 255, 255, .88);
+  color: #4A4A50;
   letter-spacing: .01em;
 }
 .band-lecture__kicker span { display: inline-flex; gap: .35em; align-items: baseline; }
 .band-lecture__kicker b {
   font-weight: var(--fw-med);
-  color: #fff;
+  color: #14509F;
   font-variant-numeric: tabular-nums;
 }
 /* 每一项之间一个小圆点（用伪元素，别在 HTML 里塞分隔符）。
@@ -3501,17 +3502,6 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
       点上不去、孤零零留在行尾；前导点最差也只是落在新行开头，看着是设计。 */
 .band-lecture__kicker span + span::before {
   content: "·";
-  color: rgba(255, 255, 255, .55);
+  color: var(--ink-3);
   margin-right: var(--sp-2);
 }
-
-/* --- 浅蓝区里的卡片：沿用站里的深色字，但**都要压深一档** ---
-   ⚠️ 这里是被 _shots/check_band_contrast.py 从**渲染像素**上量出来的：
-      第一版把卡片小字（`--ink-3` #86868B）压在 rgb(144,188,244) 上，
-      对比度只有 **1.84:1**（AA 要 4.5）；卡片说明 3.03、编号 3.99，全不达标。
-      光靠看截图根本看不出来"这行灰字其实糊了"。
-   ⚠️ 只在带内改，**不动全局令牌** —— 这两支灰在浅灰底（#F5F5F7）上是够用的，
-      离开带子还是原样。 */
-.band-lecture .clip__no   { color: #14509F; }   /* 原 --title-blue #2471E1 → 6:1 */
-.band-lecture .clip__meta { color: #5A5A60; }   /* 原 --ink-3      #86868B */
-.band-lecture .clip__desc { color: #4C4C52; }   /* 原 --ink-2      #6E6E73 */
