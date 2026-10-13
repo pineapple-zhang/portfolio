@@ -3372,3 +3372,60 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
    ⚠️ 类名由 JS 加（`is-zoomable`）—— 禁用 JS 时不该出现 zoom-in 光标，
       否则点了没反应，比没有这个光标更糟。 */
 .js img.is-zoomable { cursor: zoom-in; }
+
+/* ==========================================================================
+   21. 课堂片段（AI 视频页的讲课板块）
+
+   2026-10-13 用户：在 ai-video.html 的「作品库」**上方**加一个小板块 ——
+   「我给人家讲课的（内容是 ai 视频生成课）」，只放挑出来的**精彩片段**。
+
+   · 2 列卡片（≤860px 收成 1 列），每张 = 视频 + 序号/时长 + 标题 + 一句说明
+   · 播放机制**直接复用** `.work__media--video` 那一套 —— site.js 第 3 节是按
+     这个类名挂的（播放键、滚出视口暂停、放新的先暂停别的）。所以那层必须留着
+     这个类名，这里只覆盖它的**画幅**。
+   ⚠️⚠️ 画幅必须 16:10（跟讲义录屏的素材一致）：`.work__video` 是
+      `object-fit: cover`，套进默认的 16:9 盒子会**上下各切掉一截** ——
+      讲义标题正好在那两刀上。所以下面用后代选择器提高优先级覆盖，
+      别去改 `.work__media--video` 本身（作品视频是 16:9，不能动）。
+   ⚠️⚠️ 卡片的文字挂了 `.reveal-line`，而 `.clips` **必须**加进 site.js 第 7 节
+      那个 staggerRows 列表 —— 漏了的话整块内容永远是 opacity: 0
+      （第 7 节注释里记着 2026-10-08 踩过的同款事故）。
+   ========================================================================== */
+.clips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(var(--sp-5), 3vw, var(--sp-8)) clamp(var(--sp-5), 2.4vw, var(--sp-7));
+  list-style: none;
+}
+@media (max-width: 860px) {
+  .clips { grid-template-columns: minmax(0, 1fr); }
+}
+
+.clip { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.clips .clip__media {
+  aspect-ratio: 16 / 10;
+  background: #0C0E11;
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  margin-bottom: var(--sp-2);
+}
+.clips .clip__video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.clip__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  font-size: .8125rem;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.clip__no { color: var(--title-blue); letter-spacing: .08em; }
+.clip__title { font-size: 1.0625rem; font-weight: var(--fw-med); }
+.clip__desc { color: var(--ink-2); font-size: .9375rem; line-height: 1.65; }

@@ -953,8 +953,12 @@
           **不包含 row 自己**。所以放进这个列表的必须是一个**容器**
           （里面裹着若干 .reveal-line），或者用下面那句把自身也带上。
      ---------------------------------------------------------------------- */
+  /* ⚠️ 这个列表**就是**「哪些容器里的 .reveal-line 会被点亮」的白名单。
+     新加一整块带 .reveal-line 的内容时，必须把它的容器加进来 ——
+     漏了不会报错，只是那一块永远停在 opacity: 0（见上面的注释）。
+     2026-10-13 加 `.clips`（AI视频页的讲课片段卡片）。 */
   var staggerRows = doc.querySelectorAll(
-    '.work, .section__head, .gallery, .pages__item, .promo, .plate');
+    '.work, .section__head, .gallery, .pages__item, .promo, .plate, .clips');
   if (staggerRows.length) {
     var revealRow = function (row) {
       var lines = row.querySelectorAll('.reveal-line');

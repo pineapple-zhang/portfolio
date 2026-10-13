@@ -249,6 +249,113 @@ setTimeout(function () {
     </div>
   </section>
 
+  <!-- 课堂片段（2026-10-13 用户要求：「在作品库上方再加一个小板块，
+       是我给人家讲课的（内容是 ai 视频生成课）…挑几个精彩片段放进去，
+       标题上备注精彩片段；里面的 ppt 是参考，不需要放进去」）。
+
+       素材：`素材/AI视频成果展示/ai视频创作 讲义/ai视频创作 讲义.mp4`
+             = 60 分 36 秒、2560×1600 的录屏（301MB、变帧率 VFR）。
+       这里放的是从里面剪出来的 4 段（合计 2 分 5 秒，约 6.9MB），
+       已按网页体积重压到 1280×800；整段原片**不上站**。
+       ⚠️ 换片段/重剪的注意点（VFR 换算坑、画幅 16:10、staggerRows）
+          都写在 site.css 第 21 节那一段注释里。 -->
+  <section class="section" aria-label="讲课片段">
+    <div class="wrap wrap--wide">
+      <div class="section__head">
+        <p class="eyebrow section__eyebrow reveal-line">讲课实录</p>
+        <h2 class="section-title reveal-line title-gradient">课堂精彩片段</h2>
+        <p class="section__intro reveal-line">
+          一堂 60 分钟的 AI 视频生成实战课：从工具工作流、镜头语言，
+          一直讲到提示词公式和人像一致性。原片太长，这里挑出四段。
+        </p>
+      </div>
+
+      <ul class="clips">
+
+        <li class="clip">
+          <div class="clip__media work__media--video reveal-line">
+            <video class="clip__video work__video" preload="none" playsinline
+                   controls loop poster="assets/video/lecture/01-open-poster.jpg">
+              <source src="assets/video/lecture/01-open.mp4" type="video/mp4">
+            </video>
+            <button class="work__play" type="button" aria-label="播放：课程开场">
+              <span class="work__play-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+          <p class="clip__meta reveal-line">
+            <span class="clip__no">01</span><span>课程开场</span><span>30 秒</span>
+          </p>
+          <h3 class="clip__title reveal-line">用 AI 生成画面剪的片头</h3>
+          <p class="clip__desc reveal-line">
+            整堂课的开场：片头画面全部由 AI 生成，主题、副标和这门课要走的
+            六个板块一起立在画面上。开场即定调。
+          </p>
+        </li>
+
+        <li class="clip">
+          <div class="clip__media work__media--video reveal-line">
+            <video class="clip__video work__video" preload="none" playsinline
+                   controls loop poster="assets/video/lecture/02-lens-poster.jpg">
+              <source src="assets/video/lecture/02-lens.mp4" type="video/mp4">
+            </video>
+            <button class="work__play" type="button" aria-label="播放：六种电影光线">
+              <span class="work__play-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+          <p class="clip__meta reveal-line">
+            <span class="clip__no">02</span><span>镜头语言</span><span>32 秒</span>
+          </p>
+          <h3 class="clip__title reveal-line">六种电影光线，怎么写进提示词</h3>
+          <p class="clip__desc reveal-line">
+            黄金时刻、蓝调时刻、冷光、侧光、柔光、霓虹光 —— 同一个人像在六种
+            光型下的对照，讲到「光」这一步时现场翻的这一页。
+          </p>
+        </li>
+
+        <li class="clip">
+          <div class="clip__media work__media--video reveal-line">
+            <video class="clip__video work__video" preload="none" playsinline
+                   controls loop poster="assets/video/lecture/03-face-poster.jpg">
+              <source src="assets/video/lecture/03-face.mp4" type="video/mp4">
+            </video>
+            <button class="work__play" type="button" aria-label="播放：人像一致性">
+              <span class="work__play-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+          <p class="clip__meta reveal-line">
+            <span class="clip__no">03</span><span>人像一致性</span><span>33 秒</span>
+          </p>
+          <h3 class="clip__title reveal-line">外貌锚点：让同一个人不换脸</h3>
+          <p class="clip__desc reveal-line">
+            把长相拆成年龄/性别、脸型/肤色、眼睛、发型、五官/体型五个维度写进
+            提示词 —— 后面接的是同一个角色的成片，翻页之间脸没有变。
+          </p>
+        </li>
+
+        <li class="clip">
+          <div class="clip__media work__media--video reveal-line">
+            <video class="clip__video work__video" preload="none" playsinline
+                   controls loop poster="assets/video/lecture/04-workflow-poster.jpg">
+              <source src="assets/video/lecture/04-workflow.mp4" type="video/mp4">
+            </video>
+            <button class="work__play" type="button" aria-label="播放：创作工作流">
+              <span class="work__play-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+          <p class="clip__meta reveal-line">
+            <span class="clip__no">04</span><span>工作流</span><span>30 秒</span>
+          </p>
+          <h3 class="clip__title reveal-line">六步工作流：每一步产出什么</h3>
+          <p class="clip__desc reveal-line">
+            创意构思 → 脚本解构 → 分镜生成 → 迭代优化 → 视频生成 → 剪辑输出，
+            每一步的产出物和大致耗时都摊在表里，照着走就不会卡在某一步。
+          </p>
+        </li>
+
+      </ul>
+    </div>
+  </section>
+
   <!-- 全部作品归档。上方列表最多 10 条，这里是完整的一份。
   由 制作过程缓存数据/build_ai_video.py 生成，不要手改中间那段。 -->
   <section class="section section--raised" aria-label="全部作品">
