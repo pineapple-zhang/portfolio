@@ -3456,8 +3456,11 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
    ========================================================================== */
 .section.band-lecture {
   position: relative;
-  /* 通版：没有左右边距；弧形交给 border-radius */
-  border-radius: clamp(18px, 1.8vw, 30px);
+  /* 通版：没有左右边距；弧形交给 border-radius。
+     ⚠️ 弧度是**用户调过一轮**的：第一版 30px 他说「圆角大一点」，
+        现在是 clamp(28px, 3.2vw, 56px)（1600px 下约 51px）。
+        再要改，只动这一行；verify_lecture.py 里有一条"半径要够大"的断言。 */
+  border-radius: clamp(28px, 3.2vw, 56px);
   /* 浅蓝洗色：0% 也只有 #CFE1F9，到 100% 基本回到页面白 */
   background: linear-gradient(180deg,
       #CFE1F9 0%,
