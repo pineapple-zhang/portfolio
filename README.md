@@ -237,7 +237,7 @@ Noto Sans CJK、Noto Sans SC 是同一套字的不同发行名。你本机装了
   <header class="page-hero">
     <video class="page-hero__bg" autoplay muted loop playsinline
            preload="auto" poster="assets/video/hero-poster.jpg">
-      <source src="assets/video/hero-900p.mp4" type="video/mp4">
+      <source src="assets/video/hero-1080p.mp4" type="video/mp4">
     </video>
     <div class="page-hero__veil" aria-hidden="true"></div>
     <div class="page-hero__stage">
@@ -293,6 +293,48 @@ ffmpeg -i "素材/网页背景02.mp4" \
 
 实测：桌面 + 手机都是 `hero-900p.mp4 / 1600×900 / readyState=4 / 正在播`，
 粘顶条 50、页头高 = 视口−50、无缝无重叠 —— 全部通过。
+
+#### 再来一稿：**原生 1080p，体积几乎不变**（同日）
+
+> 用户：「那有办法更清晰一点吗？」
+
+第一版是 1600×900 —— 在 1920 宽的屏上要**放大 1.2 倍**，所以发虚。
+这次把四档都编出来量了一遍（同一个 1080p30 参考源，SSIM 用 ffmpeg 内置滤波器）：
+
+| 方案 | 体积 | SSIM All |
+|---|---|---|
+| 1600×900 · CRF 30（第一版） | 12.2MB | 0.9755 |
+| VP9 1920×1080 · 2pass 1250kbps | 12.1MB | 0.9613 |
+| 1920×1080 · CRF 30 | 17.0MB | 0.9791 |
+| **1920×1080 · CRF 32 · preset veryslow** | **12.9MB** | **0.9746** ✅ 定为交付值 |
+
+⭐ 结论是**"分辨率买的是清晰度，不是 SSIM"**：最后这版比第一版只重 **0.7MB（+6%）**，
+SSIM 反而略低（0.9746 vs 0.9755）—— 因为 SSIM 对"上采样造成的均匀模糊"几乎不敏感。
+但把两张图 **1:1 裁同一块 640×400 拼起来看**，900p 上采样那档的毛发和远处楼群
+明显糊，原生 1080p 那一档干净得多。
+
+> ⚠️ **教训（和"对比度达标 ≠ 观感对"是同一族）：分辨率这种维度，**
+> **别只看一个数字。** SSIM 说"几乎一样"，眼睛说"这个明显清楚"，
+> 而用户要的正是后者。**该做的是裁 1:1 拼图对比，而不是比一个标量。**
+
+> ⚠️ 顺手试过 **AV1**（libaom，CRF 34 / cpu-used 8）：估算能再省约 20%，
+> 但编码速度只有 ~0.7MB/分钟（这支片要 20 分钟以上），而且 AV1 在 Safari 上
+> 要配一份 H.264 兜底源（`<source>` 里还得写 `codecs="av01…"` 让浏览器自己挑）
+> —— 收益不值这个复杂度，**停掉了**（进程已 kill，没留后台任务）。
+
+```bash
+ffmpeg -i "素材/网页背景02.mp4" \
+  -vf "scale=1920:-2,fps=30" \
+  -c:v libx264 -preset veryslow -crf 32 -pix_fmt yuv420p -an \
+  -movflags +faststart "成品交接/assets/video/hero-1080p.mp4"
+```
+
+> ⚠️ 名字又跟着分辨率改了一次（`hero-900p` → `hero-1080p`），900p 那支已删。
+> 页头只认一个源，留着两份就是纯占体积。
+
+**验收**：`verify_pin_hero.py` —— 桌面 + 手机都读到
+`hero-1080p.mp4 / 1920×1080 / readyState=4 / 正在播`，几何全过；
+`audit.py` 六页 × 五宽度也过。
 
 外面那层 `.hero-pin` 是下拉动画用的容器，见「七、动画 → 钉住式页头」。
 **外层高度和 sticky 都写在 `.js` 下**，禁用 JS 时这层容器等于不存在。
