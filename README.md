@@ -237,7 +237,7 @@ Noto Sans CJK、Noto Sans SC 是同一套字的不同发行名。你本机装了
   <header class="page-hero">
     <video class="page-hero__bg" autoplay muted loop playsinline
            preload="auto" poster="assets/video/hero-poster.jpg">
-      <source src="assets/video/hero-720p.mp4" type="video/mp4">
+      <source src="assets/video/hero-900p.mp4" type="video/mp4">
     </video>
     <div class="page-hero__veil" aria-hidden="true"></div>
     <div class="page-hero__stage">
@@ -247,6 +247,52 @@ Noto Sans CJK、Noto Sans SC 是同一套字的不同发行名。你本机装了
   </header>
 </div>
 ```
+
+#### 换页头视频：`网页背景02` → `hero-900p.mp4`（2026-10-14）
+
+> 用户：「ai 视频这个子页面的首页的视频我改了一下，现在是：网页背景02，你换上去」
+
+素材 `素材/网页背景02.mp4` 是模型直出的原片：**1920×1080 / 60fps / HEVC / 77.5 秒 /
+105MB（10.9Mbps）**。三个问题要一起解决，所以**必须重编码**，不能直接换文件名：
+
+| 问题 | 处理 |
+|---|---|
+| **HEVC**（H.265）在 Firefox 不支持、Chrome 只在有硬解的机器上支持 | 转 **H.264** —— 页头是这一页的门面，不能赌浏览器 |
+| 原片是**60fps**，数据量翻倍 | 降到 **30fps**（背景视频，观感差别很小） |
+| 自带一条 AAC 音轨，但这个视频是 `muted` 播的 | `-an` **整条去掉**（顺带彻底没有"突然出声"的可能） |
+
+实测三档体积（同一支片、30fps）：
+
+| 参数 | 体积 |
+|---|---|
+| 1920×1080 · CRF 27 | 24.0MB ✗ |
+| 1600×900 · CRF 28 | 14.6MB |
+| **1600×900 · CRF 30** | **12.2MB** ✅ 与旧片（12.1MB）持平，定为交付值 |
+
+```bash
+ffmpeg -i "素材/网页背景02.mp4" \
+  -vf "scale=1600:-2,fps=30" \
+  -c:v libx264 -preset slow -crf 30 -pix_fmt yuv420p -an \
+  -movflags +faststart "成品交接/assets/video/hero-900p.mp4"
+```
+
+> ⚠️ 名字从 `hero-720p` 改成 **`hero-900p`** —— 这串数字是**分辨率**，
+> 换了片子就得跟着换名字，不然下次谁都得去开文件看。
+> `hero-poster.jpg` 取的是新片 **第 0.2 秒那一帧**：poster 和视频首帧一致，
+> 加载完接上去才不会闪一下。（旧 poster 是"云上宫殿"那张，新片里也有类似的镜头，
+> 所以观感是连续的。）
+> 旧的 `hero-720p.mp4`（12.1MB）**已删** —— 页头只认一个源，留着就是纯占体积。
+
+**验收**：`_shots/verify_pin_hero.py`。顺手修了两处：
+
+1. 脚本里粘顶条高**写死 30px** —— 但 2026-10-09 起六页的任务栏都是 **50px**，
+   这条一直误报（条高的逐档验收本来就在 `verify_nav.py` 里，那边是过的）；
+2. 脚本原来**只量几何、不碰视频**，换了片源却播不起来它查不出来。
+   现在补了一条：读 `.page-hero__bg` 的 `src / videoWidth / readyState /
+   currentTime`，要求**真的在跑**且宽度 ≥1200。
+
+实测：桌面 + 手机都是 `hero-900p.mp4 / 1600×900 / readyState=4 / 正在播`，
+粘顶条 50、页头高 = 视口−50、无缝无重叠 —— 全部通过。
 
 外面那层 `.hero-pin` 是下拉动画用的容器，见「七、动画 → 钉住式页头」。
 **外层高度和 sticky 都写在 `.js` 下**，禁用 JS 时这层容器等于不存在。
