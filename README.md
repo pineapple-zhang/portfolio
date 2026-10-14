@@ -365,6 +365,36 @@ cd 成品交接 && python ../制作过程缓存数据/build_ai_video.py
 > 底部归档那段在 HTML 里夹在 `<!-- GALLERY:START -->` / `<!-- GALLERY:END -->`
 > 之间，**不要手改中间**，跑脚本会覆盖。
 
+#### ⚠️ 2026-10-14 补两条（加《剑落水月》时踩的）
+
+**① `build_ai_video.py` 写文件必须带 `newline="\n"`。**
+原来是 `io.open(page, "w", encoding="utf-8")` —— Windows 上默认按 `\r\n` 落盘，
+而交付目录里所有文本文件都是 LF，**跑一次脚本就是"整个文件全变了"的假 diff**
+（真正的改动会被淹没在几千行换行噪音里）。改掉之后再加一条作品，diff 只有 +36 行。
+
+**② 素材是模型直出原片，先压再上站。**
+《剑落水月》原片 1280×720 / 24fps / **30 秒就有 40MB**（10.6Mbps），
+直接放上去页面会重十倍；压到 CRF 24 后 7.1MB，和站里其它作品一个量级。
+
+```bash
+ffmpeg -i "素材/AI视频成果展示/剑落水月_全片30秒_一稿.mp4" \
+  -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p \
+  -c:a aac -b:a 96k -movflags +faststart "成品交接/assets/video/07-jianluo.mp4"
+
+# 封面帧：挑的是"前景剑虚焦 + 光柱里的蓝衣剑客"那一下（t=15.6s）
+ffmpeg -ss 15.6 -i "素材/AI视频成果展示/剑落水月_全片30秒_一稿.mp4" \
+  -frames:v 1 -q:v 3 "成品交接/assets/video/07-jianluo-poster.jpg"
+```
+
+> ⚠️ 文件名里的「**一稿**」**没有写进页面文案** —— 站上只叫《剑落水月》。
+> 要标明是第一稿，改 `build_ai_video.py` 里那条的 `desc` 即可。
+
+**验收**：新脚本 `_shots/verify_ai_works.py` 守这条链路 —— 上方条数 = 归档条数、
+每条 row 的 poster / mp4 / 锚点**三样都要指得对、而且文件真的在磁盘上**、
+归档每条链接的锚点能在上方找到、第一条是新加的那支、真点播放键能播且分辨率对得上。
+（只跑 `audit.py` 是查不出"生成器把某条吞了"这种事的。）
+
+
 ---
 
 ## 六、五个方向的顺序
