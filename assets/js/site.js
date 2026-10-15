@@ -958,7 +958,8 @@
      漏了不会报错，只是那一块永远停在 opacity: 0（见上面的注释）。
      2026-10-13 加 `.clips`（AI视频页的讲课片段卡片）。 */
   var staggerRows = doc.querySelectorAll(
-    '.work, .section__head, .gallery, .pages__item, .promo, .plate, .clips');
+    '.work, .section__head, .gallery, .pages__item, .promo, .plate, .clips,'
+    + ' .gx-head, .gx-card, .gx-shot--wide');
   if (staggerRows.length) {
     var revealRow = function (row) {
       var lines = row.querySelectorAll('.reveal-line');

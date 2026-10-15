@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="no-js">
+<html lang="zh-CN" class="no-js theme-dark page-game">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>小游戏开发 · 个人网页开发</title>
 <meta name="description" content="张杰波的五个网页小游戏：炸弹人双人对战、玉兔下凡、雨夜便利店街角、祈年殿、五子棋 —— 原生 Canvas 与 three.js，零构建，打开就能玩。">
-<meta name="theme-color" content="#F5F5F7">
+<meta name="theme-color" content="#0A0A0A">
 <link rel="preload" as="image" href="assets/video/game-hero-poster.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
 <!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
@@ -83,122 +83,88 @@ setTimeout(function () {
       </div>
     </div>
   </header>
-    </header>
-  </div>
 
 
-  <!-- 五个网页小游戏（2026-10-15 加）。
-       图都是从 `_shots/cap_games.py` 的实机录制里抽的帧，不是渲染图。 -->
-  <section class="section wrap wrap--wide" aria-label="五个网页小游戏">
-    <div class="section__head">
-      <p class="eyebrow section__eyebrow reveal-line">小游戏开发</p>
-      <h2 class="section-title reveal-line title-gradient">五个能直接打开玩的小游戏</h2>
-      <p class="section__intro reveal-line">
-        都不是引擎工程 —— 每个游戏就是一个 HTML 文件，逻辑、画面、音效全在里面，
-        双击就能玩（3D 那两个用 three.js）。下面五张图都是实机跑出来的。
+  <!-- 代码窗口区（2026-10-15 用户：「下面的排版也参考这个网页…把你写的网页代码
+       截图几个展示出来，页面颜色也全部照抄」）。
+       参考页版式 = 居中标题 + 一个大窗口 + 2×2 卡片（每张卡「标题 + 一句说明 + 一块图」）。
+       这儿把"图"换成**真正的源码截图** —— 五张都由 `_shots/make_code_shots.py`
+       从素材里的源文件**原样切行**、套进深色窗口渲出来，没有一句改动过。 -->
+  <section class="gx-sec wrap wrap--wide" aria-label="源码">
+    <div class="gx-head">
+      <p class="gx-kicker reveal-line">源码</p>
+      <h2 class="gx-title reveal-line">一个文件，就是一个游戏</h2>
+      <p class="gx-sub reveal-line">
+        没有引擎、没有构建、没有依赖 —— 下面这几段是从源码里原样切出来的，
+        也就是这一页五张实拍图背后真正在跑的东西。
       </p>
     </div>
 
-    <div class="works">
+    <figure class="gx-shot gx-shot--wide reveal-line">
+      <!-- data-hscroll：手机上这层会变成横向滚动区。见 site.css 第 24 节。 -->
+      <div class="gx-shot__scroll" data-hscroll>
+        <img src="assets/img/code/outline-shader.png"
+           alt="《雨夜便利店街角》的三渲二描边材质：顶点着色器把顶点沿法线朝相机方向外扩，材质只画背面"
+             width="2516" height="1088" loading="lazy" decoding="async">
+      </div>
+      <figcaption>
+        描边不是描上去的：同一份几何体再画一遍，顶点沿法线外扩、只留背面 ——
+        所以不管离镜头多远，屏幕上的线粗细都不变。
+      </figcaption>
+    </figure>
 
-      <article class="work reveal-line">
-        <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/bomberman.jpg" alt="炸弹人双人对战：可破坏方块的地图、四名角色与倒计时 HUD"
-               width="1280" height="720" loading="lazy" decoding="async">
-        </figure>
-        <div>
-          <div class="work__meta reveal-line">
-            <span>01</span>
-            <span>双人同屏 · 3 分钟一局</span>
-          </div>
-          <h3 class="work__title reveal-line">炸弹人双人对战</h3>
-          <p class="work__desc reveal-line">两个人共用一台键盘打同一张地图：WASD + 空格 对 方向键 + 回车。木箱能炸开，会掉随机道具——加速、护盾、火箭筒、地雷、推箱……一局三分钟。</p>
-          <div class="work__tags reveal-line">
-            <span class="tag">双人同屏</span>
-            <span class="tag">道具系统</span>
-            <span class="tag">追焦镜头</span>
-          </div>
-        </div>
-      </article>
+    <div class="gx-grid">
 
-      <article class="work reveal-line">
-        <div>
-          <div class="work__meta reveal-line">
-            <span>02</span>
-            <span>横版动作 · 关卡制</span>
-          </div>
-          <h3 class="work__title reveal-line">玉兔下凡</h3>
-          <p class="work__desc reveal-line">像素风的横版动作。除了跑、跳、二段跳，还有轻击、重击、气功波、冲刺、升龙这些连招；城镇里用点数强化攻击力、生命上限和护甲，再进关卡。</p>
-          <div class="work__tags reveal-line">
-            <span class="tag">像素动作</span>
-            <span class="tag">连招</span>
-            <span class="tag">强化成长</span>
-          </div>
-        </div>
-        <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/rabbit.jpg" alt="玉兔下凡：夜间城市背景里的横版战斗，角色与敌人血量条"
-               width="1280" height="720" loading="lazy" decoding="async">
+      <article class="gx-card reveal-line">
+        <h3 class="gx-card__title">AI 逃命前，先数一遍还剩多少空地</h3>
+        <p class="gx-card__desc">
+          电脑角色会躲炸弹，但光躲不够 —— 它得先确认落脚点周围还有多大地方，
+          否则会一头钻进自己炸出来的死胡同。
+        </p>
+        <figure class="gx-card__shot">
+          <img src="assets/img/code/bomberman-ai.png"
+               alt="《炸弹人双人对战》里 AI.openArea 的广度优先搜索，用来数逃逸点周围的可达空地"
+               width="1164" height="980" loading="lazy" decoding="async">
         </figure>
       </article>
 
-      <article class="work reveal-line">
-        <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/store.jpg" alt="雨夜便利店街角：湿路面反光、霓虹招牌与雨丝的三渲二街景"
-               width="1280" height="720" loading="lazy" decoding="async">
-        </figure>
-        <div>
-          <div class="work__meta reveal-line">
-            <span>03</span>
-            <span>three.js · 三渲二</span>
-          </div>
-          <h3 class="work__title reveal-line">雨夜便利店街角</h3>
-          <p class="work__desc reveal-line">雨夜的街角便利店。湿路面的反光、招牌霓虹、路灯下的雨丝都是实时算的；拖拽可以转视角，手一停它就自己慢慢运镜。</p>
-          <div class="work__tags reveal-line">
-            <span class="tag">three.js</span>
-            <span class="tag">夜景</span>
-            <span class="tag">实时光照</span>
-          </div>
-        </div>
-      </article>
-
-      <article class="work reveal-line">
-        <div>
-          <div class="work__meta reveal-line">
-            <span>04</span>
-            <span>three.js · 古建场景</span>
-          </div>
-          <h3 class="work__title reveal-line">祈年殿</h3>
-          <p class="work__desc reveal-line">祈年殿的三维复原：三重檐、鎏金宝顶、汉白玉台基与栏杆。画面右侧有视角按钮、雷声开关，以及一键回到初始机位。</p>
-          <div class="work__tags reveal-line">
-            <span class="tag">three.js</span>
-            <span class="tag">古建</span>
-            <span class="tag">可交互</span>
-          </div>
-        </div>
-        <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/temple.jpg" alt="祈年殿：三重檐鎏金宝顶的三维复原，蓝天下带台基栏杆"
-               width="1280" height="720" loading="lazy" decoding="async">
+      <article class="gx-card reveal-line">
+        <h3 class="gx-card__title">三条属性，写在一张表里</h3>
+        <p class="gx-card__desc">
+          攻击力、生命上限、护甲 —— 上限和显示格式都在同一个表里。
+          城镇界面、存档、结算读的都是它，以后加一档不用改三个地方。
+        </p>
+        <figure class="gx-card__shot">
+          <img src="assets/img/code/rabbit-upgrade.png"
+               alt="《玉兔下凡》的强化属性表 UP_INFO：攻击力、生命上限、护甲的数值与显示格式"
+               width="1164" height="860" loading="lazy" decoding="async">
         </figure>
       </article>
 
-      <article class="work reveal-line">
-        <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/gomoku.jpg" alt="五子棋：木纹棋盘上双方已经下出的棋子"
-               width="1280" height="720" loading="lazy" decoding="async">
+      <article class="gx-card reveal-line">
+        <h3 class="gx-card__title">屋顶是「转」出来的</h3>
+        <p class="gx-card__desc">
+          三重檐的曲线先画成一个二维剖面，绕轴转 84 段就成了屋脊；
+          瓦垄贴图沿 U 方向重复，正好是一圈放射状的筒瓦。
+        </p>
+        <figure class="gx-card__shot">
+          <img src="assets/img/code/temple-roof.png"
+               alt="《祈年殿》里用 LatheGeometry 旋转生成屋顶的 buildRoof 函数"
+               width="1164" height="624" loading="lazy" decoding="async">
         </figure>
-        <div>
-          <div class="work__meta reveal-line">
-            <span>05</span>
-            <span>人机对战 · 每回合限时</span>
-          </div>
-          <h3 class="work__title reveal-line">五子棋</h3>
-          <p class="work__desc reveal-line">15×15 的木纹棋盘，跟电脑下。每回合限时一分钟，超时判负；旁边有悔棋、重开和音效开关。</p>
-          <div class="work__tags reveal-line">
-            <span class="tag">人机对战</span>
-            <span class="tag">限时</span>
-            <span class="tag">木纹棋盘</span>
-          </div>
-        </div>
+      </article>
+
+      <article class="gx-card reveal-line">
+        <h3 class="gx-card__title">判胜负，只看刚落下的那一颗</h3>
+        <p class="gx-card__desc">
+          不用每一手都扫全盘 —— 从新落下的这颗出发，四个方向正反各数一遍，
+          连到五颗就赢。棋盘再大，这一步也只是个常数。
+        </p>
+        <figure class="gx-card__shot">
+          <img src="assets/img/code/gomoku-win.png"
+               alt="《五子棋》的 checkWin：从落子点向四个方向双向数连子"
+               width="1164" height="822" loading="lazy" decoding="async">
+        </figure>
       </article>
 
     </div>
@@ -296,6 +262,122 @@ setTimeout(function () {
     </div>
   </section>
 
+  <!-- 五个网页小游戏（2026-10-15 加）。
+       图都是从 `_shots/cap_games.py` 的实机录制里抽的帧，不是渲染图。 -->
+  <section class="section wrap wrap--wide" aria-label="五个网页小游戏">
+    <div class="section__head">
+      <p class="eyebrow section__eyebrow reveal-line">小游戏</p>
+      <h2 class="section-title reveal-line">五个能直接打开玩的小游戏</h2>
+      <p class="section__intro reveal-line">
+        都不是引擎工程 —— 每个游戏就是一个 HTML 文件，逻辑、画面、音效全在里面，
+        双击就能玩（3D 那两个用 three.js）。下面五张图都是实机跑出来的。
+      </p>
+    </div>
+
+    <div class="works">
+
+      <article class="work reveal-line">
+        <figure class="work__media work__media--wide reveal-line">
+          <img src="assets/img/game/bomberman.jpg" alt="炸弹人双人对战：可破坏方块的地图、四名角色与倒计时 HUD"
+               width="1280" height="720" loading="lazy" decoding="async">
+        </figure>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>01</span>
+            <span>双人同屏 · 3 分钟一局</span>
+          </div>
+          <h3 class="work__title reveal-line">炸弹人双人对战</h3>
+          <p class="work__desc reveal-line">两个人共用一台键盘打同一张地图：WASD + 空格 对 方向键 + 回车。木箱能炸开，会掉随机道具——加速、护盾、火箭筒、地雷、推箱……一局三分钟。</p>
+          <div class="work__tags reveal-line">
+            <span class="tag">双人同屏</span>
+            <span class="tag">道具系统</span>
+            <span class="tag">追焦镜头</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal-line">
+        <div>
+          <div class="work__meta reveal-line">
+            <span>02</span>
+            <span>横版动作 · 关卡制</span>
+          </div>
+          <h3 class="work__title reveal-line">玉兔下凡</h3>
+          <p class="work__desc reveal-line">像素风的横版动作。除了跑、跳、二段跳，还有轻击、重击、气功波、冲刺、升龙这些连招；城镇里用点数强化攻击力、生命上限和护甲，再进关卡。</p>
+          <div class="work__tags reveal-line">
+            <span class="tag">像素动作</span>
+            <span class="tag">连招</span>
+            <span class="tag">强化成长</span>
+          </div>
+        </div>
+        <figure class="work__media work__media--wide reveal-line">
+          <img src="assets/img/game/rabbit.jpg" alt="玉兔下凡：夜间城市背景里的横版战斗，角色与敌人血量条"
+               width="1280" height="720" loading="lazy" decoding="async">
+        </figure>
+      </article>
+
+      <article class="work reveal-line">
+        <figure class="work__media work__media--wide reveal-line">
+          <img src="assets/img/game/store.jpg" alt="雨夜便利店街角：湿路面反光、霓虹招牌与雨丝的三渲二街景"
+               width="1280" height="720" loading="lazy" decoding="async">
+        </figure>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>03</span>
+            <span>three.js · 三渲二</span>
+          </div>
+          <h3 class="work__title reveal-line">雨夜便利店街角</h3>
+          <p class="work__desc reveal-line">雨夜的街角便利店。湿路面的反光、招牌霓虹、路灯下的雨丝都是实时算的；拖拽可以转视角，手一停它就自己慢慢运镜。</p>
+          <div class="work__tags reveal-line">
+            <span class="tag">three.js</span>
+            <span class="tag">夜景</span>
+            <span class="tag">实时光照</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="work reveal-line">
+        <div>
+          <div class="work__meta reveal-line">
+            <span>04</span>
+            <span>three.js · 古建场景</span>
+          </div>
+          <h3 class="work__title reveal-line">祈年殿</h3>
+          <p class="work__desc reveal-line">祈年殿的三维复原：三重檐、鎏金宝顶、汉白玉台基与栏杆。画面右侧有视角按钮、雷声开关，以及一键回到初始机位。</p>
+          <div class="work__tags reveal-line">
+            <span class="tag">three.js</span>
+            <span class="tag">古建</span>
+            <span class="tag">可交互</span>
+          </div>
+        </div>
+        <figure class="work__media work__media--wide reveal-line">
+          <img src="assets/img/game/temple.jpg" alt="祈年殿：三重檐鎏金宝顶的三维复原，蓝天下带台基栏杆"
+               width="1280" height="720" loading="lazy" decoding="async">
+        </figure>
+      </article>
+
+      <article class="work reveal-line">
+        <figure class="work__media work__media--wide reveal-line">
+          <img src="assets/img/game/gomoku.jpg" alt="五子棋：木纹棋盘上双方已经下出的棋子"
+               width="1280" height="720" loading="lazy" decoding="async">
+        </figure>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>05</span>
+            <span>双人同屏 · 每回合限时</span>
+          </div>
+          <h3 class="work__title reveal-line">五子棋</h3>
+          <p class="work__desc reveal-line">15×15 的木纹棋盘，两个人轮流下（🍉 对 🍍）。每回合限时一分钟，超时判负；旁边有悔棋、重开和音效开关。</p>
+          <div class="work__tags reveal-line">
+            <span class="tag">双人同屏</span>
+            <span class="tag">限时</span>
+            <span class="tag">木纹棋盘</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
 
 </main>
 
