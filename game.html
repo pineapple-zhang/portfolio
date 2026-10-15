@@ -51,21 +51,38 @@ setTimeout(function () {
 
 <main id="main">
 
-  <!-- 视频首屏：五个游戏的高光剪在一起（`_shots/cap_games.py` 录屏 +
-       `_shots/build_game_hero.py` 剪成片，见 README 第三十三节）。
-       结构、钉住和褪灰跟 AI视频页同款 —— site.js 第 6 节按 `.hero-pin` 自动接管。 -->
-  <div class="hero-pin">
-    <header class="page-hero">
-      <video class="page-hero__bg" autoplay muted loop playsinline
-             preload="auto" poster="assets/video/game-hero-poster.jpg"
-             aria-label="五个小游戏的实机演示" aria-hidden="true">
-        <source src="assets/video/game-hero.mp4" type="video/mp4">
-      </video>
-      <div class="page-hero__veil" aria-hidden="true"></div>
-      <div class="page-hero__stage">
-        <h1 class="page-hero__title">这几个游戏<span class="grad">都能玩</span></h1>
-        <p class="page-hero__sub">五个网页小游戏：原生 Canvas 与 three.js，没有引擎、没有构建。</p>
+  <!-- 暗底首屏：参考 deepseek.com/harness 的版式（2026-10-15 用户指定）。
+       视频放在圆角矩形里，不通版铺满；配色与尺寸的来路见 site.css 第 23 节。 -->
+  <header class="harness-hero">
+    <div class="harness-hero__inner">
+      <p class="harness-hero__badge">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2.6c.5 3.9 2.4 6.3 6.1 7.2-3.7.9-5.6 3.3-6.1 7.2-.5-3.9-2.4-6.3-6.1-7.2
+                   3.7-.9 5.6-3.3 6.1-7.2Z" fill="currentColor"/>
+          <path d="M19.4 15.2c.24 1.9 1.16 3 2.9 3.4-1.74.4-2.66 1.5-2.9 3.4-.24-1.9-1.16-3-2.9-3.4
+                   1.74-.4 2.66-1.5 2.9-3.4Z" fill="currentColor" opacity=".8"/>
+        </svg>
+        五个网页小游戏
+      </p>
+
+      <h1 class="harness-hero__title">
+        <span>这几个游戏</span>
+        <span>现在，打开就能玩</span>
+      </h1>
+
+      <p class="harness-hero__sub">
+        都是单文件 HTML：逻辑、画面、音效全在里面，没有引擎、没有构建。
+        3D 那两个用 three.js。
+      </p>
+
+      <div class="harness-hero__frame">
+        <video autoplay muted loop playsinline preload="auto"
+               poster="assets/video/game-hero-poster.jpg"
+               aria-label="五个小游戏的实机演示">  <source src="assets/video/game-hero.mp4" type="video/mp4">
+        </video>
       </div>
+    </div>
+  </header>
     </header>
   </div>
 
