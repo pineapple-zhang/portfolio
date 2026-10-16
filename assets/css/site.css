@@ -4557,3 +4557,149 @@ html.is-playing { overflow: hidden; }
   /* ⚠️ 表格在窄屏不要硬挤 —— 横向滚动，别把列压成一字一行 */
   .llm-table--wide { display: block; overflow-x: auto; white-space: nowrap; }
 }
+
+
+/* ==========================================================================
+   29. 手机端专项修正（2026-10-16）
+
+   全量实测：六个页面 × 390 / 360 / 414 三档视口，逐项量下来 ——
+   横向溢出 0、文字被截断 0、用 100vh 的盒子 0、抽屉导航 5 个链接 72–90×55px 达标。
+   真问题有三类：
+     ① 触摸目标 <44px 共 33 处（Apple HIG 下限 44，Material 要 48）
+     ② 字号 <12px 共 279 处，绝大多数在大模型部署页的代码块里
+     ③ AI 视频页 7 张作品图缺 width/height —— 图没到时高度是 0，图一到整页往下抖
+   外加一类**量不出来、也没有人报过**的：六个页面都设了 viewport-fit=cover
+   （内容会伸到刘海和底部横条下面），但全站**一处 env(safe-area-inset-*) 都没用**。
+
+   ⚠️ 安全区这一块我在这台机器上**验不了**：CDP 没有模拟刘海的能力，
+      env() 在本机恒为 0。所以下面的写法有一条硬要求 ——
+      **insets 为 0 时必须和改之前逐像素一致**。全部写成 `calc(原值 + env(...))`
+      而不是直接替换，就是为了这个；验收时要重跑一遍审计，
+      所有指标必须一字不差，那才说明桌面端没被改动。
+      另外只改 padding、不改宽度：padding 只会让内容变窄，
+      **不会**撑出横向溢出（宽度相关的 100vw 那些一律没碰）。
+   ========================================================================== */
+
+/* --- 页内锚点：粘顶条会盖住落点 --- */
+/* 原来只有 #main 有 scroll-margin-top。AI 视频页那 7 个作品锚点、
+   大模型页的 4 个全漏了 —— 点「跳到某一镜」之后，标题正好压在 50px 的条子底下。
+   用 [id] 兜住全部，以后加锚点不用回来补（#main 自己那条更具体，不受影响）。 */
+[id] {
+  scroll-margin-top: calc(max(var(--nav-h), var(--nav-h-sub)) + var(--sp-4));
+}
+
+/* --- 安全区（刘海 / 底部横条） --- */
+/* 粘顶条：横屏拿手机时刘海在左或右，左右各 44px 会被吃掉，而条子左右内边距只有 24px。
+   ⚠️ 这条**只在手机生效** —— 桌面端 .site-nav--bar .site-nav__inner 那条
+      `padding-inline: clamp(20px, 3.2vw, 64px)` 特异性比它高，会照常胜出。 */
+@media (max-width: 860px) {
+  .site-nav__inner {
+    padding-inline: calc(var(--sp-5) + env(safe-area-inset-left))
+                    calc(var(--sp-5) + env(safe-area-inset-right));
+  }
+  /* 抽屉从右边滑出来：靠右那条边会被侧面的刘海吃掉，最后一项会被底部横条压住 */
+  .site-nav__list {
+    padding-right: calc(var(--sp-6) + env(safe-area-inset-right));
+    padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+  }
+}
+/* 页脚最后一行同样会被底部横条压住 */
+.site-footer {
+  padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+}
+
+/* --- 关掉「双击缩放」，保留双指缩放 --- */
+/* ⚠️ 手机 Safari 从 iOS 10 起**不再理会** viewport 里的 user-scalable=no，
+   想拦住误触的双击缩放只剩 touch-action 这一条路。
+   manipulation = 允许 pan 和 pinch-zoom，只禁掉双击缩放。 */
+html { touch-action: manipulation; }
+
+@media (max-width: 860px) {
+
+  /* ======================================================================
+     ① 触摸目标：把盒子本身撑到 44px
+     ⚠️ 下面两个都是「文字 + 一条细下划线」的结构。撑高盒子一定会把下划线
+        （一个在 ::after 上、一个是 border-bottom）推到文字下方十几像素，
+        设计当场就毁 —— 所以**撑盒子的同时必须把下划线重定位**，
+        两件事要一起做，只做前一半等于把版式弄坏。
+     ⚠️ 中途试过更省事的法子：不动盒子，只在 ::before 里铺一块隐形命中区。
+        页面上的确能用，但**判断不出来** —— 审计量的是 getBoundingClientRect，
+        盒子还是 24×22，永远报红。（改用 elementFromPoint 采样的方案也试了，
+        整条路都不成立，原因写在 audit_mobile.py 里。）最后选了能自证的这条。
+     ====================================================================== */
+
+  /* 内页粘顶条左上角的「首页」：整块只有 24×22 —— 全站最小的可点目标。
+     宽高都要撑到 44：左右各加 10px 内边距（24 → 46），高度写 min-height。
+     ⚠️ 盒子一撑高，那条下划线（.site-nav__home::after，原本钉在 bottom:0）
+        就掉到文字下方十几像素去了，设计当场毁掉。所以同步把它挪到
+        「正好贴着文字底边」的位置：文字在盒子里垂直居中，它底边距盒子底
+        = (44 − 行高) / 2，直接把这个式子写进 calc ——
+        以后改字号或改 --lh-nav 都会自动跟着走，不会留下魔数。
+        左右各收 10px，让下划线仍然只盖住文字本身、不盖撑出来的内边距。
+     margin-inline:-10px 让视觉位置不动，只有命中区向外扩。
+     字号也提一档：11.7px 是 --fs-nav 在手机上的取值（--fs-nav-scale .78 × 15px），
+     条子上就这一个文字，13px 不占地方，读起来却是另一回事。 */
+  .site-nav--bar .site-nav__home {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding-inline: 10px;
+    margin-inline: -10px;
+    font-size: 13px;
+  }
+  .site-nav--bar .site-nav__home::after {
+    left: 10px;
+    right: 10px;
+    bottom: calc((44px - var(--lh-nav) * 13px) / 2);
+  }
+
+  /* 大模型页首屏那颗「看怎么选模型 →」：只有 29px 高，要补到 44。
+     它原来的下划线是 border-bottom —— 一加内边距边框就跟着往下跑，
+     所以改成用 ::after 画一条。盒子上下内边距对称时，
+     「文字的底边」恰好就在 bottom:<内边距> 的位置，不用算魔数。 */
+  .llm-hero__link {
+    display: inline-block;
+    padding-block: 9px;
+    border-bottom: 0;
+    position: relative;
+  }
+  .llm-hero__link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 9px;
+    height: 1px;
+    background: rgba(255, 255, 255, .24);
+  }
+  .llm-hero__link:hover::after { background: rgba(255, 255, 255, .6); }
+
+  /* 小游戏页每张卡右下角的「打开玩」：91×34。它是实心胶囊按钮，
+     直接长高即可，不存在下划线问题。 */
+  .work__launch { min-height: 44px; }
+
+  /* ======================================================================
+     ② 字号下限 12px
+     ====================================================================== */
+
+  /* ⚠️ 部署页的代码在手机上是被**主动调小**的（第 28 节末尾写的 11.5px，
+     桌面反而是 12.5px）—— 方向反了。手机拿得比显示器远，代码又要一行行看。
+     代码块本来就横向滚动，放大 1px 只多一点滑动，换来的是读得清。 */
+  .llm-code { font-size: 12.5px; }
+  /* 代码块里的 <code>（如 --mcp-servers-config 那几个参数）会再乘一层 .875em，
+     12.5 → 10.9px。它本身就是代码，不该比周围矮一截。 */
+  .llm-code code { font-size: inherit; }
+  /* 代码窗口右上角那个「Windows / CUDA 12.4」小标签 */
+  .llm-win__tag { font-size: 12px; }
+  /* 行内 <code>（如 mcp-config.json 那几个）按 .875em 缩，父容器是 13px 时
+     缩到 11.4px。用 max() 给它一个 12px 的下限：父容器够大时照旧按比例缩，
+     够小的时候不再低于 12。 */
+  .llm-cap code,
+  .llm-card code,
+  .llm-table code,
+  .llm-tile code,
+  .llm-fix code { font-size: max(12px, .875em); }
+  /* 平面设计页封面首屏下那行英文：clamp 的下限 .625rem 就是 10px */
+  .cover-hero__tag { font-size: 12px; }
+}

@@ -6,6 +6,20 @@
 <title>🍉 西瓜菠萝五子棋 🍍</title>
 <style>
   *{ box-sizing: border-box; }
+  /* ⚠️⚠️ 三端适配的三条地基（2026-10-16 全量实测后补，都不是可选项）
+     1. touch-action:manipulation —— 关掉「双击缩放」和点击的 300ms 延迟。
+        iOS Safari **从 10.0 起就不再理会 viewport 里的 user-scalable=no**，
+        所以指望那行 meta 挡双击缩放是无效的，只能靠这一条。
+        它保留双指缩放（那是有意留给无障碍的）。
+     2. overscroll-behavior:none —— 安卓 Chrome 的**下拉刷新**：页面本来就停在
+        滚动顶部，手指往下一拖就刷新整页、对局直接没了。这条是唯一能拦住它的。
+     3. color-scheme:light —— 安卓 Chrome 的「强制深色」。游戏没有声明配色方案时，
+        系统开了深色模式，Chrome 会把整页反色，这套粉色的设计会变得面目全非。 */
+  html{
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    color-scheme: light;
+  }
   html, body{ height:100%; margin:0; }
   body{
     font-family: 'Nunito','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Segoe UI',system-ui,sans-serif;
@@ -15,6 +29,7 @@
     user-select:none;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select:none;
+    -webkit-touch-callout:none;   /* iOS 长按 emoji 会弹「拷贝/共享」气泡，去掉 */
   }
 
   /* ---------- 背景漂浮装饰 ---------- */
@@ -166,6 +181,8 @@
     font:inherit; color:#a97c68;
     display:flex; flex-direction:column; align-items:center; gap:3px;
     padding: clamp(9px,1.7vh,14px) 6px;
+    min-height: 44px;
+    touch-action: manipulation;
     border-radius:22px;
     border:3px solid transparent;
     background: rgba(255,255,255,.9);
@@ -211,11 +228,52 @@
   }
 
   .timer-track.idle{ opacity:.6; }
+
+  /* 棋盘：canvas 只画木框 / 网格 / 最后一手标记；
+     **棋子是上面的 DOM 图层**（见下面 .stones 的注释），所以这里要多套一层定位盒。 */
+  .board-wrap{
+    position:relative;
+    width:0; height:0;          /* 真实尺寸由 resize() 设成 size×size */
+  }
   canvas{
     display:block;
     touch-action: manipulation;
     filter: drop-shadow(0 12px 24px rgba(214,140,170,.38));
     border-radius: 4%;
+  }
+
+  /* ---------- 棋子图层 ---------- */
+  /* ⚠️⚠️ 为什么棋子不走 canvas 的 fillText，而是 DOM：
+     2026-10-16 用户在 iPhone 上反馈「棋盘上的图标消失了」。
+     实测对下来：canvas 画的木框、网格、最后一手的虚线圈**都正常**，
+     只有 fillText 画的 🍉 不见；而**页面上 DOM 里的 emoji（标题、头像、按钮、
+     撒花）全部正常**。桌面端用同一个文件跑，棋子是画得出来的。
+     也就是说这是 iOS 上 canvas 画 emoji 的老问题，跟字体栈怎么写无关 ——
+     与其赌某个 ctx.font 写法，不如走**已经被这台设备证明能显示**的那条路。
+     DOM 图层的另一个好处：Windows 的 Segoe UI Emoji、苹果的 Apple Color Emoji
+     长得不一样，改成 DOM 之后各端至少是同一套渲染逻辑。 */
+  .stones{ position:absolute; inset:0; pointer-events:none; }
+  /* ⚠️ 这里**不要**写 will-change:transform。一盘棋最多 225 颗子，
+     写上去等于让每颗子各占一个合成层（每层还带 text-shadow 的位图），
+     手机 Safari / 安卓 Chrome 的内存和合成器都会吃紧。
+     弹出动画只跑 0.26s，transform 动画浏览器本来就会自动上合成层，不需要提前声明。 */
+  .stone{
+    position:absolute;
+    transform: translate(-50%,-50%);
+    line-height:1;
+    /* 三端各自的彩色 emoji 字体：Windows / 苹果 / 安卓。缺一个就往后落到下一个，
+       都没有还有 sans-serif 兜底。 */
+    font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;
+    text-shadow: 0 2px 3px rgba(150,100,55,.35);
+  }
+  /* 落子的弹出动画（原来在 canvas 里用 scale 算，现在交给 CSS） */
+  .stone.pop{ animation: stonePop .26s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes stonePop{
+    from{ transform: translate(-50%,-50%) scale(.25); }
+    to{   transform: translate(-50%,-50%) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .stone.pop{ animation: none; }
   }
 
   /* ---------- 侧栏 ---------- */
@@ -236,7 +294,7 @@
   }
   .pcard .emoji{ font-size: clamp(22px,3.2vh,30px); line-height:1; transition: transform .25s; }
   .pcard .info{ display:flex; flex-direction:column; min-width:0; }
-  .pcard .name{ font-weight:900; font-size: clamp(13px,1.8vh,16px); }
+  .pcard .name{ font-weight:900; font-size: clamp(13px,1.8vh,16px); white-space:nowrap; }
   .pcard .tag{ font-size: clamp(9px,1.3vh,11px); opacity:.55; font-weight:800; letter-spacing:.5px; }
   .pcard .score{
     margin-left:auto; font-weight:900; font-size: clamp(15px,2.2vh,20px);
@@ -294,6 +352,11 @@
     border:none; border-radius:999px;
     padding: clamp(9px,1.5vh,13px) 16px;
     font-size: clamp(12px,1.75vh,15px);
+    /* ⚠️ 实测：光靠 vh 内边距算出的是 39~43 px —— **三端 12 种视口全不达标**。
+       44 是 Apple HIG 的最小触摸边长（Material 要 48）。写死一个下限最省事，
+       桌面上从 43 变成 44，肉眼看不出来。 */
+    min-height: 44px;
+    touch-action: manipulation;
     color:#6b3b2e;
     background:#fff;
     box-shadow: 0 4px 0 #ffd0e0, 0 8px 16px rgba(255,150,190,.22);
@@ -369,18 +432,91 @@
   }
 
   /* ---------- 响应式 ---------- */
+  /* 窄屏（手机）通用：侧栏里的卡片改成横排、按钮两列 ——
+     竖排会把高度吃光，横排能省下一半。跟横竖屏无关，所以放在最外面对两种都生效。 */
   @media (max-width: 860px){
-    .stage{ flex-direction: column; }
-    .panel{ flex:0 0 auto; }
     .players{ display:flex; gap:8px; order:1; }
     .setting{ order:2; }
     .controls{ order:3; }
     .pcard{ flex:1 1 0; padding:8px 10px; border-radius:16px; }
     .pcard .tag{ display:none; }
-    .controls{ flex-direction:row; flex-wrap:wrap; }
-    .controls .btn{ flex:1 1 calc(50% - 5px); padding:11px 6px; }
+    /* ⚠️ 这里必须用 grid，不能用 flex + flex-wrap。
+       flex 下每个按钮的 min-width 默认是「内容的宽度」，而「🔄 重新开始」
+       比一半栏宽还宽、又不能再缩 → 它会被挤到**第三行**，侧栏随之变高，
+       最后两个按钮直接被顶出屏幕（实测 667×375 溢出 13px）。
+       grid 的两条轨道宽度是定死的，永远两行，高度可预测。 */
+    .controls{ display:grid; grid-template-columns:1fr 1fr; }
+    .controls .btn{ padding:11px 6px; }
     .moves{ display:none; }
     .hint{ display:none; }
+  }
+  /* 竖屏手机：棋盘和侧栏**上下叠**（手机竖屏太窄，侧栏挤不下并排） */
+  @media (max-width: 860px) and (orientation: portrait){
+    .stage{ flex-direction: column; }
+    .panel{ flex:0 0 auto; }
+  }
+  /* ⚠️⚠️ 横屏手机（844×390 这类）**绝不能沿用竖屏的「上下叠」**。
+     横屏只剩约 300px 高，减掉侧栏后棋盘区被压到 100px 以下，
+     resize() 里那个 220px 下限就会把画布顶出容器 —— 而画布是溢出绘制的，
+     结果**直接压在侧栏的「西瓜/菠萝」卡片上**（实测第 4、5 颗棋子被盖住看不见）。
+     横屏的宽度是富余的，所以改成**左右排 + 侧栏收窄**，棋盘反而更大
+     （实测棋盘从 220px 变 307px，格距 13.0 → 18.2）。 */
+  @media (max-width: 860px) and (orientation: landscape){
+    .stage{ flex-direction: row; }
+    /* 侧栏放宽到 168px 起：横屏的棋盘是**被高度限制**的，侧栏变宽并不会让棋盘变小，
+       但能让「🔄 重新开始」在两条轨道里都放得下。 */
+    .panel{ flex:0 0 clamp(168px, 26vw, 210px); }
+    /* 横屏侧栏只有 ~150–200px 宽，两张玩家卡并排会把「西瓜」挤成竖着的两个字
+       （实测 667×375 时每张卡只剩 72px）。改回竖排，每张卡拿到整栏宽度。 */
+    .players{ display:block; }
+    .players .pcard + .pcard{ margin-top:8px; }
+  }
+  /* ⚠️⚠️ 特别矮的视口。除了横屏手机本身，**更要紧的是从站点浮层里打开的情形**：
+     .play 浮层还要占掉顶上的标题栏和底部的提示条，iframe 只剩 ~290px 高，
+     棋盘区就只剩 ~205px，而侧栏排下来要 261px —— 又溢。
+     这时把「本局先手」那张卡收掉（纯冗余：顶部那颗胶囊已经在报轮到谁），
+     玩家卡改回一行、间距收紧，侧栏 261px → 155px，装得下。
+     兜底再给侧栏允许纵向滚动：宁可能滚，也不能让「重新开始」被切在屏幕外。 */
+  @media (max-height: 480px){
+    .setting{ display:none; }
+    .players{ display:flex; gap:6px; }
+    .players .pcard + .pcard{ margin-top:0; }
+    .pcard{ padding:6px 8px; }
+    .pcard .emoji{ font-size:18px; }
+    .panel{ gap:6px; overflow-y:auto; overscroll-behavior:contain; }
+  }
+  /* ⚠️⚠️ 矮 + 横屏：竖向实在不够，改成**两列**——棋盘独占左侧整列。
+     为什么非要这么改：手机横屏本身就只有 ~390px 高，要是从站点浮层打开，
+     浮层还要占掉标题栏和底部提示，iframe 只剩 ~273px。而这 273px 里
+     标题 28 + 倒计时 21 + 两个间隙 16 就吃掉 65px，棋盘只剩 **187px、格距 11px**
+     —— 能落子但看着难受。
+     横屏的**宽度**是富余的（822px），所以把「标题 / 轮到谁 / 倒计时 / 侧栏」
+     全挤到右侧那一列（210px 够放下），左边整列都留给棋盘：
+     棋盘 187 → 255px、格距 11.0 → 15.1px。
+     .stage 用 display:contents，让它的两个孩子直接参与外层栅格 —— 不用改 DOM。 */
+  @media (max-height: 480px) and (orientation: landscape){
+    .app{
+      display:grid;
+      grid-template-columns: minmax(0, 1fr) clamp(168px, 26vw, 210px);
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 6px 10px;
+    }
+    .stage{ display:contents; }
+    /* 标题和「轮到谁」在右列上下排 —— 并排的话两行都会缩到看不清 */
+    header{
+      grid-column:2; grid-row:1;
+      flex-direction:column; align-items:stretch; gap:5px;
+    }
+    h1{ font-size: clamp(11px, 3.2vh, 15px); }
+    .turn-pill{ justify-content:center; font-size:11px; padding:5px 10px 5px 8px; }
+    .timer-track{ grid-column:2; grid-row:2; height:16px; }
+    .board-area{ grid-column:1; grid-row:1 / 4; }
+    .panel{ grid-column:2; grid-row:3; }
+    /* 右列只有 168–210px，两张玩家卡并排会挤 → 图标和间距再收一点 */
+    .players{ display:flex; gap:6px; }
+    .pcard{ padding:6px 6px; gap:6px; }
+    .pcard .emoji{ font-size:16px; }
+    .pcard .score{ min-width:12px; }
   }
 </style>
 </head>
@@ -404,7 +540,10 @@
 
   <div class="stage">
     <div class="board-area" id="boardArea">
-      <canvas id="board"></canvas>
+      <div class="board-wrap" id="boardWrap">
+        <canvas id="board"></canvas>
+        <div class="stones" id="stones" aria-hidden="true"></div>
+      </div>
 
       <div class="ready" id="readyOverlay">
         <div class="ready-card">
@@ -528,6 +667,8 @@
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
   const boardArea = document.getElementById('boardArea');
+  const boardWrap = document.getElementById('boardWrap');   // 棋盘尺寸的定位盒
+  const stonesLayer = document.getElementById('stones');    // 棋子 DOM 图层
 
   /* ================= 音频 ================= */
   let audioCtx = null, bgmBus = null;
@@ -770,12 +911,18 @@
   /* ================= 画布尺寸 ================= */
   function resize(){
     const r = boardArea.getBoundingClientRect();
-    const s = Math.max(220, Math.floor(Math.min(r.width, r.height)));
+    // ⚠️ 这个下限是**兜底**，不是常规路径：正常布局下 min(宽,高) 一定会 ≥ 它。
+    //    原来写的 220 太高了 —— 横屏手机（844×390）棋盘区只剩 ~300px 高、
+    //    竖屏叠法下甚至不到 100px，220 的下限把画布顶出容器、压到侧栏上。
+    //    横屏改成左右排之后棋盘区有 300+，所以这里调到 160 就够兜底了。
+    const s = Math.max(160, Math.floor(Math.min(r.width, r.height)));
     dpr = Math.min(window.devicePixelRatio || 1, 2.5);
 
     size = s;
     canvas.style.width = s + 'px';
     canvas.style.height = s + 'px';
+    boardWrap.style.width = s + 'px';       // 棋子图层的定位盒，必须与画布严丝合缝
+    boardWrap.style.height = s + 'px';
     readyOverlay.style.width = s + 'px';    // 准备层与棋盘等大
     readyOverlay.style.height = s + 'px';
     canvas.width = Math.round(s * dpr);
@@ -788,6 +935,9 @@
     cell = (innerS - pad * 2) / (N - 1);
     originX = frameW + pad;
     originY = frameW + pad;
+
+    // 棋盘尺寸变了 → 棋子要按新的 px()/py()/cell 重新摆一遍
+    layoutAllStones();
   }
 
   const px = x => originX + x * cell;
@@ -882,37 +1032,60 @@
     ctx.restore();
   }
 
-  function drawStones(now){
-    const base = cell * 0.99;
-    for(let y = 0; y < N; y++){
-      for(let x = 0; x < N; x++){
-        const p = state.board[y*N + x];
-        if(p === EMPTY) continue;
+  /* ================= 棋子（DOM 图层，不走 canvas） =================
+     ⚠️ 这里原来是 `ctx.fillText('🍉'…)`。2026-10-16 用户在 iPhone 上发现
+        棋盘上的棋子**根本不显示**（画框、网格、最后一手的虚线圈都正常）。
+        桌面端同一个文件是画得出来的 → iOS 上 canvas 画 emoji 的老问题。
+        改成 DOM 之后走的是「页面文字」那条渲染路径 —— 页面上其它 emoji
+        在他手机上是好的，所以这条路是**被这台设备验证过**的。
+     只做增删，不每帧重建：棋子数最多 225 个，重建会让所有棋子重播动画。 */
+  const stoneEls = new Map();       // 格子序号 -> <span>
 
-        let scale = 1;
+  function layoutStone(el, i){
+    const x = i % N, y = (i / N) | 0;
+    el.style.left = px(x) + 'px';
+    el.style.top = py(y) + 'px';
+    el.style.fontSize = (cell * 0.99) + 'px';
+  }
+
+  function syncStones(){
+    const alive = new Set();
+    for(let i = 0; i < N * N; i++){
+      const p = state.board[i];
+      if(p === EMPTY) continue;
+      alive.add(i);
+
+      let el = stoneEls.get(i);
+      if(!el){
+        el = document.createElement('span');
+        el.className = 'stone';
+        el.textContent = (p === MELON) ? '🍉' : '🍍';
+        stonesLayer.appendChild(el);
+        stoneEls.set(i, el);
+        // 刚落下的那颗播一下弹出动画
         const anim = state.anim;
+        const x = i % N, y = (i / N) | 0;
         if(anim && anim.x === x && anim.y === y){
-          const t = clamp01((now - anim.start) / 260);
-          scale = 0.25 + 0.75 * easeOutBack(t);
-          if(t >= 1) state.anim = null;
+          el.classList.add('pop');
+          state.anim = null;
         }
-
-        const cx = px(x), cy = py(y);
-        const fs = base * scale;
-
-        ctx.save();
-        ctx.font = fs + 'px ' + EMOJI_FONT;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(150,100,55,.38)';
-        ctx.shadowBlur = cell * 0.16 * scale;
-        ctx.shadowOffsetY = cell * 0.07 * scale;
-        ctx.fillText(p === MELON ? '🍉' : '🍍', cx, cy + fs * 0.02);
-        ctx.restore();
+        layoutStone(el, i);       // 只在**新建**时摆一次位置
       }
+      // ⚠️ 已经在场上的棋子这里**不重排** —— syncStones 是每帧调的，
+      //    每帧给几十上百个元素写 style 会让手机发热掉帧。
+      //    窗口尺寸变了、坐标基准变了，统一走 layoutAllStones()。
     }
+    for(const [i, el] of stoneEls){
+      if(!alive.has(i)){ el.remove(); stoneEls.delete(i); }
+    }
+  }
 
-    // 最后一手标记
+  function layoutAllStones(){
+    for(const [i, el] of stoneEls) layoutStone(el, i);
+  }
+
+  // canvas 现在只负责最后一手那个转圈的虚线标记（棋子已经交给 DOM 图层）
+  function drawLastMark(now){
     const lm = state.lastMove;
     if(lm && !state.winLine){
       const rot = (now / 1400) % (Math.PI * 2);
@@ -994,9 +1167,10 @@
     ctx.clearRect(0, 0, size, size);
     drawBoard();
     drawWinHalo(now);
-    drawStones(now);
+    drawLastMark(now);      // 只画最后一手的圈，棋子是上面的 DOM 图层
     drawWinLine(now);
     drawHover(now);
+    syncStones();           // 每帧同步一次；只在棋子增减时才动 DOM
     requestAnimationFrame(render);
   }
 
@@ -1372,7 +1546,10 @@
   /* ================= 背景装饰 ================= */
   (function buildDeco(){
     const box = document.getElementById('bgDeco');
-    const items = ['🍉','🍍','🍉','🍍','✨','🌸','⭐','💗','🌿','🍋','🫧','🍓'];
+    // ⚠️ 只能用「老」emoji。原来的 🫧（气泡）是 Emoji 14.0 / 2021 年才有的，
+    //    iOS 要 15.4+、安卓要 13+ —— 在老安卓上会渲染成一个豆腐块 □。
+    //    换成 💫（Emoji 1.0，2015），三端任何版本都有。
+    const items = ['🍉','🍍','🍉','🍍','✨','🌸','⭐','💗','🌿','🍋','💫','🍓'];
     const frag = document.createDocumentFragment();
     for(let i = 0; i < 14; i++){
       const s = document.createElement('span');
