@@ -959,7 +959,8 @@
      2026-10-13 加 `.clips`（AI视频页的讲课片段卡片）。 */
   var staggerRows = doc.querySelectorAll(
     '.work, .section__head, .gallery, .pages__item, .promo, .plate, .clips,'
-    + ' .gx-head, .gx-card, .gx-shot--wide');
+    + ' .gx-head, .gx-card, .gx-shot--wide,'
+    + ' .llm-head, .llm-card, .llm-tile, .llm-spec__item, .empty-state');
   if (staggerRows.length) {
     var revealRow = function (row) {
       var lines = row.querySelectorAll('.reveal-line');
@@ -1842,5 +1843,226 @@
       if (e.touches.length < 2) tDist = 0;
       if (!e.touches.length) tLast = null;
     }, { passive: true });
+  })();
+
+  /* ----------------------------------------------------------------------
+     25. 小游戏页首屏那片蓝光：改用 canvas 画
+
+     用户 2026-10-15：「后面的蓝色背景你有办法渲染得好看点吗？」
+
+     原来是一条 `radial-gradient` 铺满一屏。8 位的径向渐变在这么大的面积上
+     一定有**色带**（banding）：暗部相邻两级的差值超过了眼睛的分辨阈值，
+     看上去就是一圈一圈的台阶，截图里尤其明显。
+
+     参考页（deepseek.com/harness）那片光晕**本来就是 canvas 画的**，做法也不复杂：
+     几个不同位置/半径的径向渐变叠起来，再盖一层**噪点**。噪点把台阶打碎，
+     眼睛就看不见带子了 —— 这是治 banding 的常规做法。
+
+     为什么不用更省事的纯 CSS：
+       · 多层 radial-gradient 也能做，但**加不了噪点**（CSS 没有便宜的逐像素噪声），
+         带子治不掉；
+       · SVG feTurbulence 可以当噪声层，但整块是滤镜，这么大的区域跑一次
+         要几毫秒到几十毫秒，而且尺寸一变就得重算。
+     一次 canvas 绘制几毫秒，还不引起重排。
+
+     ⚠️ 只在页面里真有 `.harness-hero__glow` 时才跑 —— 其余五个页面连 canvas
+        都不会创建。
+     ⚠️ CSS 里那条 `radial-gradient` **保留着当兜底**：脚本没跑、被拦、
+        或者浏览器不支持 canvas 时，首屏依然是深蓝的，只是有带子。
+     ⚠️ 平滑的光晕先缩到**一半尺寸**画（最多 900px 宽），再让 CSS 拉伸 ——
+        这是没有细节的渐变，缩一半看不出来，绘制量少到 1/4。
+        **噪点不能跟着缩**，否则会被放大成一团团云雾；它在全分辨率下
+        用一张 64×64 的贴片平铺，所以始终是细的。
+     ---------------------------------------------------------------------- */
+  (function () {
+    var cv = doc.querySelector('.harness-hero__glow');
+    if (!cv || !cv.getContext) return;
+    var host = cv.parentNode;
+    var ctx = cv.getContext('2d');
+    if (!ctx) return;
+
+    /* 64×64 灰噪点贴片，只做一次，之后一直平铺。
+       ⚠️ 用自带的 LCG 而不是 Math.random()：贴片每次刷新都该是同一张。
+          随机的话每张不一样，滚动/重绘时会有一层"沙沙"的闪烁感。 */
+    var seed = 20261015;
+    function rnd() {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    }
+    var tile = doc.createElement('canvas');
+    tile.width = tile.height = 64;
+    var tctx = tile.getContext('2d');
+    var timg = tctx.createImageData(64, 64);
+    for (var i = 0; i < timg.data.length; i += 4) {
+      var v = 128 + Math.round((rnd() - 0.5) * 34);      /* 111~145 的中灰 */
+      timg.data[i] = timg.data[i + 1] = timg.data[i + 2] = v;
+      timg.data[i + 3] = 255;
+    }
+    tctx.putImageData(timg, 0, 0);
+    var grain = ctx.createPattern(tile, 'repeat');
+
+    /* 一片光斑。坐标/半径都按**画布宽度**归一（画布是首屏等比缩小的，
+       所以横竖同一个尺度），改尺寸不用重调。
+
+       ⚠️ `ky` 是纵向压扁系数。`createRadialGradient` 画出来的是**正圆**，
+          但参考页那片光晕是一条「横着铺开、往下掉得很快」的带子 ——
+          圆画不出来。做法是把画布在纵向临时拉长 ky 倍再画圆，
+          松开之后圆就是横躺的椭圆。
+
+       ⚠️ `py` 用的是 `bw` 不是 `bh`。画布是 bh = bw * H / W，
+          和首屏是等比关系，所以横竖必须用同一个基准；
+          用 bh 的话，首屏一变高光斑就跟着往下跑。 */
+    function blob(g, W, H, cx, cy, rx, ry, rot, stops) {
+      var px = cx * W, py = cy * W;
+      var R = (rx > ry ? rx : ry) * W;
+      g.save();
+      g.translate(px, py);
+      g.rotate(rot || 0);
+      g.scale(1, ry / rx);            /* 圆 → 椭圆（先转后压） */
+      var grd = g.createRadialGradient(0, 0, 0, 0, 0, R);
+      for (var k = 0; k < stops.length; k++) grd.addColorStop(stops[k][0], stops[k][1]);
+      g.fillStyle = grd;
+      var half = R * 3;
+      g.fillRect(-half, -half, half * 2, half * 2);
+      g.restore();
+    }
+
+    var lastW = 0;
+    function draw() {
+      var W = host.clientWidth, H = host.clientHeight;
+      if (!W || !H || W === lastW) return;
+      lastW = W;
+
+      var bw = Math.max(320, Math.min(900, Math.round(W / 2)));
+      var bh = Math.max(180, Math.round(bw * H / W));
+      cv.width = bw; cv.height = bh;         /* 改宽高会把 context 状态清掉，下面重设 */
+      var g = ctx;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#0A0A0A';
+      g.fillRect(0, 0, bw, bh);
+
+      /* ⚠️ 这一整段的数字是拿参考页截图的**实测像素**反推出来的，
+         推导过程与对照表在 `_shots/model_glow.py` 的文件头。
+         要改就两边一起改，不然下次照着模型调出来的形状又对不上。 */
+
+      /* ① 底场：横向「左暗右亮」。参考页的左右比大约是 0.7，
+            而且**整条宽度上都在发光** —— 这才是它跟「一盏顶光」最大的区别。 */
+      g.globalCompositeOperation = 'source-over';
+      var hg = g.createLinearGradient(0, 0, bw, 0);
+      hg.addColorStop(0.00, 'rgb(21,39,63)');
+      hg.addColorStop(0.42, 'rgb(33,52,76)');
+      hg.addColorStop(1.00, 'rgb(46,67,95)');
+      g.fillStyle = hg;
+      g.fillRect(0, 0, bw, bh);
+
+      /* ② 结构：三片很淡的椭圆。参考页不是一片死平的蓝 ——
+            左上角（x≈0.01, ny≈0.22）有一小块偏灰的亮斑，
+            右侧有一条斜着往下的亮带。就是这三片。 */
+      g.globalCompositeOperation = 'lighter';
+      blob(g, bw, bh, 0.02, 0.20, 0.15, 0.34, 0.0, [
+        [0.00, 'rgba(56,92,132,0.13)'], [0.55, 'rgba(40,66,96,0.05)'],
+        [1.00, 'rgba(10,10,10,0)']]);
+      blob(g, bw, bh, 0.86, 0.14, 0.34, 0.62, -0.55, [
+        [0.00, 'rgba(44,70,104,0.18)'], [0.55, 'rgba(30,50,80,0.07)'],
+        [1.00, 'rgba(10,10,10,0)']]);
+      blob(g, bw, bh, 1.00, 0.58, 0.26, 0.60, -0.40, [
+        [0.00, 'rgba(34,56,94,0.14)'], [1.00, 'rgba(10,10,10,0)']]);
+
+      /* ③ 纵向遮罩：从 ny≈0.22 才开始暗，到 ny=1.0 收到全黑。
+            ⚠️ 必须收到底 —— 参考页下面还有很长的内容，我们没有，
+               不收到底首屏下沿会出现一条硬边。 */
+      g.globalCompositeOperation = 'source-over';
+      var vg = g.createLinearGradient(0, bh * 0.22, 0, bh);
+      var VS = [[0.000, 0.00], [0.256, 0.13], [0.513, 0.37],
+                [0.769, 0.67], [0.962, 0.94], [1.000, 1.00]];
+      for (var vi = 0; vi < VS.length; vi++) {
+        vg.addColorStop(VS[vi][0], 'rgba(10,10,10,' + VS[vi][1] + ')');
+      }
+      g.fillStyle = vg;
+      g.fillRect(0, 0, bw, bh);
+
+      /* 左右不再额外压暗边 —— 横向渐变本身已经把左边压下来了，
+         再叠一道暗角就又变回"聚光灯"。 */
+
+      /* ⭐ 噪点。'overlay' 下中灰是"不改变"，只有偏差部分起作用，
+         所以它只打碎色阶、不改变整体明暗。 */
+      if (grain) {
+        g.globalCompositeOperation = 'overlay';
+        g.globalAlpha = 0.45;
+        g.fillStyle = grain;
+        g.fillRect(0, 0, bw, bh);
+        g.globalAlpha = 1;
+        g.globalCompositeOperation = 'source-over';
+      }
+    }
+
+    draw();
+    var t0 = 0;
+    window.addEventListener('resize', function () {
+      clearTimeout(t0);
+      t0 = setTimeout(function () { lastW = 0; draw(); }, 160);
+    });
+  })();
+
+  /* ----------------------------------------------------------------------
+     26. 就地玩：把游戏塞进 iframe 浮层
+
+     用户：「把那几个网页都内置到页面里去，点开就能玩」。
+     五个游戏都是自包含的单文件（没有一条外链），放在 `games/*.html`。
+
+     ⚠️ `iframe.src` **只在点开的那一刻才设**，关掉时清空（设成 'about:blank'）——
+        五个文件加起来 2.2MB，一进页面就全下下来的话首屏会被拖垮，
+        而且五个游戏的音效/循环会在后台一起跑。
+     ⚠️ 关掉时必须**把焦点还给刚才那颗按钮**，否则键盘用户会被扔回页面开头。
+     ⚠️ 锁滚动挂在 `<html>` 上（`html.is-playing`），不是 body ——
+        站里不少高度是拿 `100svh` 算的，动 body 会连带影响它们。
+     ⚠️ 只在页面里真有 `.play` 时才跑。
+     ---------------------------------------------------------------------- */
+  (function () {
+    var box = doc.getElementById('play');
+    if (!box) return;
+    var frame = doc.getElementById('play-frame');
+    var titleEl = doc.getElementById('play-title');
+    var openLink = doc.getElementById('play-open');
+    var closeBtn = doc.getElementById('play-close');
+    var last = null;                     /* 打开之前焦点在哪 */
+
+    function open(btn) {
+      var src = btn.getAttribute('data-play');
+      if (!src) return;
+      last = btn;
+      titleEl.textContent = btn.getAttribute('aria-label')
+        ? btn.getAttribute('aria-label').replace(/^在这里打开玩：/, '') : '游戏';
+      openLink.href = src;
+      box.hidden = false;
+      root.classList.add('is-playing');
+      frame.src = src;
+      closeBtn.focus();
+    }
+
+    function close() {
+      if (box.hidden) return;
+      box.hidden = true;
+      root.classList.remove('is-playing');
+      frame.src = 'about:blank';         /* 停掉里面的循环和音效 */
+      if (last && last.focus) last.focus();
+      last = null;
+    }
+
+    /* 事件委托：五个按钮 + 以后再加的，都不用逐个绑。
+       ⚠️ 选择器是 `.work__launch`，不是 `.work__play` ——
+          后者是第 3 节作品视频的播放按钮，别混。 */
+    doc.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.work__launch') : null;
+      if (btn) { e.preventDefault(); open(btn); return; }
+      /* 点浮层的空白处（不是面板里）也关掉 */
+      if (e.target === box) close();
+    });
+    closeBtn.addEventListener('click', close);
+    doc.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || e.keyCode === 27) close();
+    });
   })();
 })();

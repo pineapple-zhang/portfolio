@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🍉 西瓜菠萝五子棋 🍍</title>
+<style>
+  *{ box-sizing: border-box; }
+  html, body{ height:100%; margin:0; }
+  body{
+    font-family: 'Nunito','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Segoe UI',system-ui,sans-serif;
+    background: linear-gradient(160deg,#fff1f6 0%,#ffe6f1 38%,#eaf4ff 100%);
+    color:#6b3b2e;
+    overflow:hidden;
+    user-select:none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select:none;
+  }
+
+  /* ---------- 背景漂浮装饰 ---------- */
+  .bg-deco{ position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+  .bg-deco span{
+    position:absolute; opacity:.16; filter:saturate(1.1);
+    animation: floaty linear infinite;
+  }
+  @keyframes floaty{
+    0%   { transform: translateY(0) rotate(0deg); }
+    50%  { transform: translateY(-26px) rotate(12deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+  }
+
+  /* ---------- 布局 ---------- */
+  .app{
+    position:relative; z-index:1;
+    height:100vh; height:100dvh;
+    display:flex; flex-direction:column;
+    padding: clamp(8px,1.5vh,16px) clamp(10px,1.7vw,24px) clamp(10px,1.8vh,18px);
+    gap: clamp(8px,1.5vh,16px);
+  }
+
+  header{
+    flex:0 0 auto;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; min-width:0;
+  }
+  h1{
+    margin:0; font-size: clamp(17px,2.5vh,27px); font-weight:900;
+    letter-spacing:.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    background: linear-gradient(90deg,#ff7aa2,#ff9f43 55%,#5ec26a);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow: 0 2px 0 rgba(255,255,255,.6);
+  }
+
+  .turn-pill{
+    flex:0 0 auto;
+    display:flex; align-items:center; gap:8px;
+    padding:7px 15px 7px 11px;
+    border-radius:999px;
+    background:#fff;
+    font-weight:900; font-size: clamp(12px,1.7vh,15px);
+    box-shadow: 0 4px 0 rgba(255,196,222,.7), 0 8px 18px rgba(255,150,190,.22);
+    transition: box-shadow .3s, background .3s;
+    white-space:nowrap;
+  }
+  .turn-pill .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:#ff7aa2; box-shadow:0 0 0 0 rgba(255,122,162,.7);
+    animation: ping 1.5s ease-out infinite;
+  }
+  .turn-pill.p2 .dot{ background:#ffb703; box-shadow:0 0 0 0 rgba(255,183,3,.7); }
+  .turn-pill.p2{ box-shadow: 0 4px 0 rgba(255,224,138,.9), 0 8px 18px rgba(255,180,80,.25); }
+  @keyframes ping{
+    0%{ box-shadow:0 0 0 0 rgba(255,122,162,.65); }
+    100%{ box-shadow:0 0 0 12px rgba(255,122,162,0); }
+  }
+
+  /* ---------- 倒计时条 ---------- */
+  .timer-track{
+    flex:0 0 auto; position:relative;
+    height: clamp(21px,3vh,27px);
+    border-radius:999px; overflow:hidden;
+    background: rgba(255,255,255,.75);
+    box-shadow: inset 0 2px 5px rgba(200,150,180,.28), 0 3px 0 rgba(255,205,228,.55);
+  }
+  .timer-fill{
+    position:absolute; left:0; top:0; bottom:0; width:100%;
+    border-radius:999px;
+    background: linear-gradient(90deg,#ffd6e8,#ff9ec4);
+    box-shadow: 0 0 12px rgba(255,150,190,.65);
+  }
+  .timer-fill.p2{
+    background: linear-gradient(90deg,#ffeaa7,#ffc93c);
+    box-shadow: 0 0 12px rgba(255,200,60,.65);
+  }
+  .timer-fill.warn{
+    background: linear-gradient(90deg,#ffb3b3,#ff6b6b);
+    box-shadow: 0 0 16px rgba(255,90,90,.8);
+  }
+  .timer-text{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; font-size: clamp(11px,1.6vh,13px); letter-spacing:.6px;
+    color:#7a4a3a; text-shadow: 0 1px 0 rgba(255,255,255,.9);
+  }
+  .timer-track.warn{ animation: urgent .62s ease-in-out infinite; }
+  @keyframes urgent{
+    0%,100%{ transform: scale(1); }
+    50%{ transform: scale(1.025); }
+  }
+
+  .stage{
+    flex:1 1 auto; min-height:0; min-width:0;
+    display:flex; gap: clamp(10px,1.7vw,26px); align-items:stretch;
+  }
+
+  .board-area{
+    flex:1 1 auto; min-width:0; min-height:0;
+    position:relative;
+    display:grid; place-items:center;
+  }
+
+  /* ---------- 开局准备层 ---------- */
+  .ready{
+    position:absolute; left:50%; top:50%;
+    transform: translate(-50%,-50%);
+    z-index:20;
+    display:grid; place-items:center; padding:16px;
+    border-radius:4.5%;   /* 尺寸由 JS 对齐画布，正好盖住棋盘 */
+    background: rgba(255,244,249,.5);
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+    animation: fadeIn .25s ease both;
+  }
+  .ready.hide{ display:none; }
+  @keyframes fadeIn{ from{ opacity:0 } to{ opacity:1 } }
+
+  .ready-card{
+    width:min(330px, 84%);
+    padding: clamp(16px,3.2vh,28px) clamp(16px,3vw,26px);
+    border-radius:28px; text-align:center;
+    background: linear-gradient(180deg,#ffffff,#fff7fc);
+    border:4px solid #fff;
+    box-shadow: 0 10px 0 rgba(255,205,228,.8), 0 20px 42px rgba(220,120,165,.32);
+    animation: pop .42s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  .ready-emoji{ font-size: clamp(26px,4.4vh,38px); line-height:1.1; letter-spacing:2px; }
+  .ready-emoji .vs{
+    font-size:.55em; font-weight:900; letter-spacing:1px;
+    color:#ff9ec4; vertical-align:middle; padding:0 4px;
+  }
+  .ready-card h2{
+    margin:8px 0 6px; font-weight:900;
+    font-size: clamp(18px,3vh,24px);
+    background: linear-gradient(90deg,#ff7aa2,#ff9f43);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .ready-first{
+    margin:8px 0 clamp(12px,2.2vh,18px);
+    font-weight:900; color:#a97c68;
+    font-size: clamp(12px,1.8vh,14px);
+  }
+
+  /* 先手选择 */
+  .pick{ display:flex; gap: clamp(8px,1.6vw,12px); margin-top: clamp(10px,2vh,16px); }
+  .pick-btn{
+    flex:1 1 0; position:relative; cursor:pointer;
+    font:inherit; color:#a97c68;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding: clamp(9px,1.7vh,14px) 6px;
+    border-radius:22px;
+    border:3px solid transparent;
+    background: rgba(255,255,255,.9);
+    box-shadow: 0 4px 0 rgba(255,208,224,.95), 0 8px 16px rgba(255,160,195,.2);
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s, border-color .18s, background .18s;
+  }
+  .pick-btn:hover{ transform: translateY(-2px); }
+  .pick-btn:active{ transform: translateY(1px); }
+  .pick-e{ font-size: clamp(23px,3.8vh,32px); line-height:1; }
+  .pick-n{ font-weight:900; font-size: clamp(12px,1.8vh,15px); }
+  .pick-btn.active{
+    color:#6b3b2e; background:#fff;
+    border-color:#ffd23f;
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 6px 0 #ffe08a, 0 12px 22px rgba(255,180,80,.32);
+  }
+  .pick-btn.active::after{
+    content:'先手';
+    position:absolute; top:-9px; right:-5px;
+    padding:2px 8px 3px; border-radius:999px;
+    font-size:10px; font-weight:900; letter-spacing:.5px; color:#fff;
+    background: linear-gradient(180deg,#ff9ec4,#ff7aa2);
+    box-shadow: 0 2px 0 #e05f8b;
+  }
+
+  /* 矮屏（横屏手机等）压缩准备卡，避免溢出棋盘 */
+  @media (max-height: 640px){
+    .ready-emoji, .ready-tip{ display:none; }
+    .ready-card h2{ margin:2px 0 0; }
+    .pick{ margin-top:8px; }
+    .pick-btn{ flex-direction:row; gap:7px; padding:7px 10px; border-radius:16px; }
+    .pick-e{ font-size:20px; }
+    .pick-btn.active::after{ top:-8px; right:-4px; }
+  }
+  .ready-tip{
+    margin-top: clamp(10px,1.8vh,14px);
+    font-weight:800; color:#c39a88; line-height:1.6;
+    font-size: clamp(10px,1.5vh,12px);
+  }
+  .btn.big{
+    padding: clamp(12px,2.1vh,17px) clamp(26px,5vw,40px);
+    font-size: clamp(15px,2.3vh,19px);
+  }
+
+  .timer-track.idle{ opacity:.6; }
+  canvas{
+    display:block;
+    touch-action: manipulation;
+    filter: drop-shadow(0 12px 24px rgba(214,140,170,.38));
+    border-radius: 4%;
+  }
+
+  /* ---------- 侧栏 ---------- */
+  .panel{
+    flex: 0 0 clamp(186px,19vw,248px);
+    display:flex; flex-direction:column; gap: clamp(8px,1.4vh,14px);
+    min-height:0;
+  }
+
+  .pcard{
+    display:flex; align-items:center; gap:10px;
+    padding: clamp(8px,1.3vh,13px) 13px;
+    border-radius:20px;
+    background: rgba(255,255,255,.78);
+    border:3px solid transparent;
+    box-shadow: 0 5px 0 rgba(255,198,222,.55), 0 10px 20px rgba(255,160,195,.16);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, border-color .25s, background .25s;
+  }
+  .pcard .emoji{ font-size: clamp(22px,3.2vh,30px); line-height:1; transition: transform .25s; }
+  .pcard .info{ display:flex; flex-direction:column; min-width:0; }
+  .pcard .name{ font-weight:900; font-size: clamp(13px,1.8vh,16px); }
+  .pcard .tag{ font-size: clamp(9px,1.3vh,11px); opacity:.55; font-weight:800; letter-spacing:.5px; }
+  .pcard .score{
+    margin-left:auto; font-weight:900; font-size: clamp(15px,2.2vh,20px);
+    color:#ff7aa2; min-width:22px; text-align:center;
+  }
+  .pcard.p2 .score{ color:#f39c12; }
+
+  .pcard.active{
+    transform: scale(1.05);
+    background:#fff;
+    border-color:#ffd23f;
+    box-shadow: 0 8px 0 #ffe08a, 0 14px 26px rgba(255,180,80,.32);
+  }
+  .pcard.active .emoji{ animation: bob .9s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-5px) } }
+
+  .pcard.winner{
+    border-color:#7ed957;
+    box-shadow: 0 8px 0 #b6ee9a, 0 14px 26px rgba(120,220,110,.35);
+  }
+
+  /* ---------- 先手设置 ---------- */
+  .setting{
+    background: rgba(255,255,255,.72);
+    border-radius:18px; padding: clamp(6px,1vh,10px) 11px;
+    box-shadow: 0 4px 0 rgba(255,205,228,.5), 0 8px 16px rgba(255,160,195,.14);
+  }
+  .setting-top{ display:flex; align-items:center; gap:8px; }
+  .setting-label{
+    font-weight:900; font-size: clamp(10px,1.45vh,12px);
+    color:#a97c68; white-space:nowrap;
+  }
+  .setting-value{
+    margin-left:auto; white-space:nowrap;
+    font-weight:900; font-size: clamp(11px,1.6vh,13px); color:#6b3b2e;
+    background:#fff; border-radius:999px; padding:4px 12px;
+    box-shadow: 0 2px 0 #ffd0e0, 0 4px 10px rgba(255,150,190,.25);
+  }
+  .seg-hint{
+    margin-top:5px; text-align:center; min-height:12px;
+    font-size: clamp(9px,1.25vh,10.5px); font-weight:800; color:#c39a88;
+  }
+
+  .moves{
+    text-align:center; font-weight:900; font-size: clamp(11px,1.6vh,13px);
+    color:#a97c68; letter-spacing:.5px;
+    background: rgba(255,255,255,.6);
+    padding:7px; border-radius:14px;
+  }
+
+  .controls{ display:flex; flex-direction:column; gap: clamp(7px,1.1vh,11px); }
+
+  .btn{
+    font: inherit; font-weight:900; cursor:pointer;
+    border:none; border-radius:999px;
+    padding: clamp(9px,1.5vh,13px) 16px;
+    font-size: clamp(12px,1.75vh,15px);
+    color:#6b3b2e;
+    background:#fff;
+    box-shadow: 0 4px 0 #ffd0e0, 0 8px 16px rgba(255,150,190,.22);
+    transition: transform .12s ease, box-shadow .12s ease, opacity .2s, filter .2s;
+    white-space:nowrap;
+  }
+  .btn:hover:not(:disabled){ transform: translateY(-2px); box-shadow: 0 6px 0 #ffd0e0, 0 12px 22px rgba(255,150,190,.3); }
+  .btn:active:not(:disabled){ transform: translateY(2px); box-shadow: 0 1px 0 #ffd0e0; }
+  .btn:disabled{ opacity:.42; cursor:not-allowed; box-shadow:0 3px 0 rgba(255,208,224,.6); }
+  .btn.primary{
+    color:#fff;
+    background: linear-gradient(180deg,#ff9ec4,#ff7aa2);
+    box-shadow: 0 4px 0 #e05f8b, 0 10px 20px rgba(255,120,165,.4);
+  }
+  .btn.primary:hover:not(:disabled){ box-shadow: 0 6px 0 #e05f8b, 0 14px 26px rgba(255,120,165,.45); }
+  .btn.primary:active:not(:disabled){ box-shadow: 0 1px 0 #e05f8b; }
+  .btn.mint{ background: linear-gradient(180deg,#b8f0a8,#8fe07a); color:#3d6b2f; box-shadow:0 4px 0 #6cc257, 0 10px 20px rgba(130,220,110,.35); }
+  .btn.mint:hover:not(:disabled){ box-shadow:0 6px 0 #6cc257, 0 14px 26px rgba(130,220,110,.4); }
+  .btn.mint:active:not(:disabled){ box-shadow:0 1px 0 #6cc257; }
+
+  .hint{
+    font-size: clamp(10px,1.4vh,12px); text-align:center; line-height:1.6;
+    color:#b08a7a; font-weight:700; opacity:.9;
+  }
+
+  /* ---------- 结算弹窗 ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:50;
+    display:none; place-items:center;
+    background: rgba(255,240,246,.55);
+    backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+    padding:20px;
+  }
+  .overlay.show{ display:grid; }
+
+  .confetti{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .confetti span{
+    position:absolute; top:-70px; will-change: transform;
+    animation-name: fall; animation-timing-function: linear; animation-fill-mode: forwards;
+  }
+  @keyframes fall{
+    0%  { transform: translateY(0) rotate(0deg); opacity:0; }
+    10% { opacity:1; }
+    100%{ transform: translateY(112vh) rotate(540deg); opacity:.9; }
+  }
+
+  .card{
+    position:relative; z-index:1;
+    width:min(400px, 88vw);
+    padding: clamp(22px,4vh,36px) clamp(20px,4vw,34px);
+    border-radius:32px;
+    background: linear-gradient(180deg,#ffffff,#fff6fb);
+    text-align:center;
+    box-shadow: 0 14px 0 rgba(255,205,228,.75), 0 26px 50px rgba(220,120,165,.35);
+    border:4px solid #fff;
+    animation: pop .45s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes pop{
+    0%{ transform: scale(.6) translateY(20px); opacity:0; }
+    100%{ transform: scale(1) translateY(0); opacity:1; }
+  }
+  .card .big-emoji{ font-size: clamp(48px,9vh,72px); line-height:1; animation: bob 1.1s ease-in-out infinite; }
+  .card h2{
+    margin: 10px 0 4px; font-size: clamp(20px,3.4vh,28px); font-weight:900;
+    background: linear-gradient(90deg,#ff7aa2,#ff9f43);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .card p{ margin:0 0 18px; font-size: clamp(12px,1.9vh,14px); color:#a97c68; font-weight:800; }
+  .ov-btns{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .ov-next{
+    margin-top:13px; font-weight:900; color:#b08a7a;
+    font-size: clamp(11px,1.7vh,13px);
+  }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 860px){
+    .stage{ flex-direction: column; }
+    .panel{ flex:0 0 auto; }
+    .players{ display:flex; gap:8px; order:1; }
+    .setting{ order:2; }
+    .controls{ order:3; }
+    .pcard{ flex:1 1 0; padding:8px 10px; border-radius:16px; }
+    .pcard .tag{ display:none; }
+    .controls{ flex-direction:row; flex-wrap:wrap; }
+    .controls .btn{ flex:1 1 calc(50% - 5px); padding:11px 6px; }
+    .moves{ display:none; }
+    .hint{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-deco" id="bgDeco"></div>
+
+<div class="app">
+  <header>
+    <h1>🍉 西瓜菠萝五子棋 🍍</h1>
+    <div class="turn-pill" id="turnPill">
+      <span class="dot"></span>
+      <span id="turnText">轮到 🍉 西瓜</span>
+    </div>
+  </header>
+
+  <div class="timer-track" id="timerTrack">
+    <div class="timer-fill" id="timerFill"></div>
+    <div class="timer-text" id="timerText">⏳ 1:00</div>
+  </div>
+
+  <div class="stage">
+    <div class="board-area" id="boardArea">
+      <canvas id="board"></canvas>
+
+      <div class="ready" id="readyOverlay">
+        <div class="ready-card">
+          <div class="ready-emoji">🍉<span class="vs">VS</span>🍍</div>
+          <h2>谁先手？</h2>
+          <div class="pick" id="readyPick">
+            <button class="pick-btn active" data-first="1">
+              <span class="pick-e">🍉</span><span class="pick-n">西瓜</span>
+            </button>
+            <button class="pick-btn" data-first="2">
+              <span class="pick-e">🍍</span><span class="pick-n">菠萝</span>
+            </button>
+          </div>
+          <div class="ready-first" id="readyFirst">本局先手：🍉 西瓜</div>
+          <button class="btn primary big" id="btnStart">🎮 开始游戏</button>
+          <div class="ready-tip">选好先手再按开始，之后每局默认由赢方先手<br>每回合限时 1 分钟，超时判负 ⏳</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="setting">
+        <div class="setting-top">
+          <span class="setting-label">🎯 本局先手</span>
+          <span class="setting-value" id="firstNow">🍉 西瓜</span>
+        </div>
+        <div class="seg-hint" id="segHint">下一局：赢方先手</div>
+      </div>
+
+      <div class="players">
+        <div class="pcard p1 active" id="pcard1">
+          <span class="emoji">🍉</span>
+          <span class="info">
+            <span class="name">西瓜</span>
+            <span class="tag">先手</span>
+          </span>
+          <span class="score" id="score1">0</span>
+        </div>
+        <div class="pcard p2" id="pcard2">
+          <span class="emoji">🍍</span>
+          <span class="info">
+            <span class="name">菠萝</span>
+            <span class="tag">后手</span>
+          </span>
+          <span class="score" id="score2">0</span>
+        </div>
+      </div>
+
+      <div class="moves" id="movesText">第 0 手 · 西瓜先走</div>
+
+      <div class="controls">
+        <button class="btn" id="btnUndo" disabled>↩️ 悔棋</button>
+        <button class="btn primary" id="btnRestart">🔄 重新开始</button>
+        <button class="btn" id="btnSound">🔊 音效开</button>
+        <button class="btn" id="btnBgm">🎵 音乐开</button>
+      </div>
+
+      <div class="hint">轮流点击棋盘落子，先连成五颗获胜 ✨<br>每回合限时 1 分钟，超时判负 ⏳</div>
+    </aside>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="confetti" id="confetti"></div>
+  <div class="card">
+    <div class="big-emoji" id="ovEmoji">🍉</div>
+    <h2 id="ovTitle">西瓜赢啦！</h2>
+    <p id="ovSub">恭喜恭喜～</p>
+    <div class="ov-btns">
+      <button class="btn mint" id="ovAgain">🎮 再来一局</button>
+      <button class="btn" id="ovUndo">↩️ 悔棋</button>
+    </div>
+    <div class="ov-next" id="ovNext"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ================= 常量与状态 ================= */
+  const N = 15;
+  const EMPTY = 0, MELON = 1, PINE = 2;
+  const PLAYER = {
+    1: { emoji:'🍉', name:'西瓜', win:'西瓜赢啦！', sub:'西瓜甜到心里，五子连珠～' },
+    2: { emoji:'🍍', name:'菠萝', win:'菠萝赢啦！', sub:'菠萝酸甜可口，五子连珠～' }
+  };
+  const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji","EmojiOne Color","Android Emoji",sans-serif';
+
+  const TURN_MS = 60000;   // 每回合 1 分钟
+
+  const state = {
+    board: new Array(N*N).fill(EMPTY),
+    turn: MELON,
+    started: false,        // 是否已按下「开始游戏」
+    firstPlayer: MELON,    // 自定义先手（下一局生效）
+    history: [],
+    lastMove: null,
+    gameOver: false,
+    winLine: null,
+    isDraw: false,
+    timeout: false,        // 本局是否由超时结束
+    lastWinner: null,      // 上一局赢家 → 下一局先手
+    anim: null,
+    score: { 1:0, 2:0 },
+    soundOn: true,
+    bgmOn: true
+  };
+
+  // 倒计时运行时状态
+  let remaining = TURN_MS;   // 本回合剩余毫秒
+  let deadline = 0;          // 运行中的截止时刻
+  let timerRunning = false;
+  let lastShownSec = -1;
+
+  let size = 0, dpr = 1;
+  let originX = 0, originY = 0, cell = 0, frameW = 0, innerS = 0;
+  let hover = null;
+
+  // 先拿到画布，后面的绘制 / 交互都要用
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const boardArea = document.getElementById('boardArea');
+
+  /* ================= 音频 ================= */
+  let audioCtx = null, bgmBus = null;
+
+  // 原始音频上下文（音效 / 背景音乐共用，不受音效开关影响）
+  function audio(){
+    try{
+      if(!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        bgmBus = audioCtx.createGain();
+        bgmBus.gain.value = 0.0001;
+        bgmBus.connect(audioCtx.destination);
+      }
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }catch(e){ return null; }
+  }
+  // 音效专用：音效关掉时直接静默
+  function ac(){ return state.soundOn ? audio() : null; }
+
+  function tone(freq, dur, type, vol, delay){
+    const c = ac(); if(!c) return;
+    const t0 = c.currentTime + (delay||0);
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.03);
+  }
+
+  function sndPlace(){ tone(680, .09, 'triangle', .13, 0); tone(980, .1, 'triangle', .09, .05); }
+  function sndNope(){ tone(180, .12, 'sawtooth', .07, 0); }
+  function sndUndo(){ tone(520, .1, 'sine', .1, 0); tone(360, .12, 'sine', .09, .06); }
+  function sndRestart(){ [520,660,780].forEach((f,i)=>tone(f,.11,'sine',.09,i*.07)); }
+  function sndStart(){ [523,659,784,1047].forEach((f,i)=>tone(f,.16,'triangle',.12,i*.08)); }
+  function sndWin(){ [523,659,784,1047,1319].forEach((f,i)=>tone(f,.22,'sine',.11,i*.11)); }
+  function sndDraw(){ [440,392,330].forEach((f,i)=>tone(f,.2,'sine',.1,i*.13)); }
+  // 倒计时读秒：越接近 0 越急促
+  function sndTick(sec){ tone(560 + (10 - sec) * 62, .055, 'triangle', .055, 0); }
+  // 超时：可爱版“嘟——”
+  function sndTimeout(){
+    [660, 560, 470, 380].forEach((f, i) => tone(f, .26, 'triangle', .1, i * .13));
+    tone(300, .5, 'sine', .07, .52);
+  }
+
+  /* ---------- 背景音乐：4 小节 I–V–vi–IV 琶音循环 ---------- */
+  const BGM_STEP = 0.26;      // 八分音符时长（秒）
+  const BGM_VOL  = 0.17;
+  const BGM_LEAD = [
+    'E5','G5','C6','G5','E5','G5','C6','G5',
+    'D5','G5','B5','G5','D5','G5','B5','G5',
+    'C5','E5','A5','E5','C5','E5','A5','E5',
+    'C5','F5','A5','F5','C5','F5','A5','F5'
+  ];
+  const BGM_BASS = ['C3','G3','A3','F3'];
+  const NOTE = {
+    C3:130.81, E3:164.81, F3:174.61, G3:196.00, A3:220.00,
+    C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00,
+    C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00, B5:987.77,
+    C6:1046.50
+  };
+  const BGM = { playing:false, step:0, nextTime:0, timer:null };
+
+  function bgmNote(freq, t, dur, vol, type){
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(bgmBus);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+
+  function scheduleBgmStep(i, t){
+    const lead = BGM_LEAD[i % BGM_LEAD.length];
+    bgmNote(NOTE[lead], t, BGM_STEP * 0.85, 0.5, 'triangle');
+    if(i % 4 === 2) bgmNote(NOTE[lead] * 2, t, BGM_STEP * 0.45, 0.10, 'sine'); // 高音点缀
+    const bar = Math.floor(i / 8) % 4;
+    if(i % 8 === 0) bgmNote(NOTE[BGM_BASS[bar]], t, BGM_STEP * 2.4, 0.42, 'sine');
+    if(i % 8 === 4) bgmNote(NOTE[BGM_BASS[bar]] * 1.5, t, BGM_STEP * 1.1, 0.24, 'sine');
+  }
+
+  function bgmPump(){
+    const c = audioCtx;
+    if(!c || !BGM.playing) return;
+    const now = c.currentTime;
+    if(BGM.nextTime < now) BGM.nextTime = now + 0.06;
+    while(BGM.nextTime < now + 0.6){
+      scheduleBgmStep(BGM.step, BGM.nextTime);
+      BGM.step = (BGM.step + 1) % BGM_LEAD.length;
+      BGM.nextTime += BGM_STEP;
+    }
+  }
+
+  function startBgm(){
+    if(BGM.playing || !state.bgmOn) return;
+    const c = audio(); if(!c) return;
+    BGM.playing = true;
+    BGM.step = 0;
+    BGM.nextTime = c.currentTime + 0.15;
+    const t = c.currentTime;
+    bgmBus.gain.cancelScheduledValues(t);
+    bgmBus.gain.setValueAtTime(Math.max(0.0001, bgmBus.gain.value), t);
+    bgmBus.gain.linearRampToValueAtTime(BGM_VOL, t + 1.4);   // 淡入
+    BGM.timer = setInterval(bgmPump, 150);
+    bgmPump();
+  }
+
+  function stopBgm(){
+    if(BGM.timer){ clearInterval(BGM.timer); BGM.timer = null; }
+    if(!BGM.playing) return;
+    BGM.playing = false;
+    if(audioCtx && bgmBus){
+      const t = audioCtx.currentTime;
+      bgmBus.gain.cancelScheduledValues(t);
+      bgmBus.gain.setValueAtTime(Math.max(0.0001, bgmBus.gain.value), t);
+      bgmBus.gain.linearRampToValueAtTime(0.0001, t + 0.4);   // 淡出
+    }
+  }
+
+  /* ================= 回合计时器 ================= */
+  const timerTrack = document.getElementById('timerTrack');
+  const timerFill  = document.getElementById('timerFill');
+  const timerText  = document.getElementById('timerText');
+  const readyOverlay = document.getElementById('readyOverlay');
+
+  function syncTimerUI(){
+    const pct = Math.max(0, Math.min(100, remaining / TURN_MS * 100));
+    timerFill.style.width = pct.toFixed(2) + '%';
+
+    const warn = remaining <= 10000 && remaining > 0 && !state.gameOver;
+    timerFill.classList.toggle('p2', state.turn === PINE);
+    timerFill.classList.toggle('warn', warn);
+    timerTrack.classList.toggle('warn', warn);
+    timerTrack.classList.toggle('idle', !state.started);
+
+    const sec = Math.max(0, Math.ceil(remaining / 1000));
+    if(sec !== lastShownSec){
+      lastShownSec = sec;
+      timerText.textContent = (warn ? '⚠️ ' : '⏳ ')
+        + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+    }
+  }
+
+  // 就绪：显示满格，但先不走
+  function armTimer(){
+    remaining = TURN_MS;
+    timerRunning = false;
+    lastShownSec = -1;
+    syncTimerUI();
+  }
+  // 开跑
+  function startTimer(){
+    remaining = TURN_MS;
+    deadline = performance.now() + remaining;
+    timerRunning = true;
+    lastShownSec = -1;
+    syncTimerUI();
+  }
+  function resumeTimer(){
+    if(state.gameOver || timerRunning || !state.started) return;
+    deadline = performance.now() + remaining;
+    timerRunning = true;
+  }
+  function pauseTimer(){
+    if(!timerRunning) return;
+    remaining = Math.max(0, deadline - performance.now());
+    timerRunning = false;
+    syncTimerUI();
+  }
+  // 冻结在当前剩余时间（保留“还剩多少”的视觉信息）
+  function stopTimer(){
+    timerRunning = false;
+    syncTimerUI();
+  }
+
+  function tickTimer(){
+    if(!timerRunning){ syncTimerUI(); return; }
+    const prev = Math.ceil(remaining / 1000);
+    remaining = deadline - performance.now();
+
+    if(remaining <= 0){ remaining = 0; syncTimerUI(); onTimeout(); return; }
+
+    const cur = Math.ceil(remaining / 1000);
+    if(cur !== prev && cur <= 10) sndTick(cur);   // 最后 10 秒读秒
+    syncTimerUI();
+  }
+
+  function onTimeout(){
+    if(state.gameOver || !state.started) return;
+    timerRunning = false;
+    const loser = state.turn;
+    const winner = (loser === MELON) ? PINE : MELON;
+
+    state.gameOver = true;
+    state.timeout = true;
+    state.winLine = null;
+    state.lastWinner = winner;
+    state.score[winner]++;
+    saveScore();
+    sndTimeout();
+    updateHUD();
+    setTimeout(() => showOverlay(winner, true), 520);
+  }
+
+  /* ================= 存档 ================= */
+  function loadScore(){
+    try{
+      const raw = localStorage.getItem('cute-gomoku-score');
+      if(raw){
+        const o = JSON.parse(raw);
+        state.score[1] = o[1]|0;
+        state.score[2] = o[2]|0;
+      }
+      const s = localStorage.getItem('cute-gomoku-sound');
+      if(s === '0') state.soundOn = false;
+      const b = localStorage.getItem('cute-gomoku-bgm');
+      if(b === '0') state.bgmOn = false;
+      const f = localStorage.getItem('cute-gomoku-first');
+      if(f === '1' || f === '2') state.firstPlayer = +f;
+    }catch(e){}
+  }
+  function saveScore(){
+    try{ localStorage.setItem('cute-gomoku-score', JSON.stringify(state.score)); }catch(e){}
+  }
+  function saveSound(){
+    try{ localStorage.setItem('cute-gomoku-sound', state.soundOn ? '1' : '0'); }catch(e){}
+  }
+  function saveBgm(){
+    try{ localStorage.setItem('cute-gomoku-bgm', state.bgmOn ? '1' : '0'); }catch(e){}
+  }
+  function saveFirst(){
+    try{ localStorage.setItem('cute-gomoku-first', String(state.firstPlayer)); }catch(e){}
+  }
+
+  /* ================= 画布尺寸 ================= */
+  function resize(){
+    const r = boardArea.getBoundingClientRect();
+    const s = Math.max(220, Math.floor(Math.min(r.width, r.height)));
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+
+    size = s;
+    canvas.style.width = s + 'px';
+    canvas.style.height = s + 'px';
+    readyOverlay.style.width = s + 'px';    // 准备层与棋盘等大
+    readyOverlay.style.height = s + 'px';
+    canvas.width = Math.round(s * dpr);
+    canvas.height = Math.round(s * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    frameW = size * 0.028;
+    innerS = size - frameW * 2;
+    const pad = innerS * 0.062;
+    cell = (innerS - pad * 2) / (N - 1);
+    originX = frameW + pad;
+    originY = frameW + pad;
+  }
+
+  const px = x => originX + x * cell;
+  const py = y => originY + y * cell;
+
+  /* ================= 绘制工具 ================= */
+  function roundRect(c, x, y, w, h, r){
+    c.beginPath();
+    if(c.roundRect){ c.roundRect(x, y, w, h, r); return; }
+    c.moveTo(x+r, y);
+    c.arcTo(x+w, y,   x+w, y+h, r);
+    c.arcTo(x+w, y+h, x,   y+h, r);
+    c.arcTo(x,   y+h, x,   y,   r);
+    c.arcTo(x,   y,   x+w, y,   r);
+    c.closePath();
+  }
+  const easeOutBack = t => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(t-1,3) + c1 * Math.pow(t-1,2); };
+  const clamp01 = t => t < 0 ? 0 : t > 1 ? 1 : t;
+
+  /* ================= 各层绘制 ================= */
+  function drawBoard(){
+    // 木质外框
+    const wg = ctx.createLinearGradient(0, 0, size, size);
+    wg.addColorStop(0, '#f7cd92');
+    wg.addColorStop(.45, '#eeb273');
+    wg.addColorStop(1, '#d99a55');
+    ctx.save();
+    ctx.shadowColor = 'rgba(160,105,60,.35)';
+    ctx.shadowBlur = size * 0.03;
+    ctx.shadowOffsetY = size * 0.012;
+    roundRect(ctx, 0, 0, size, size, size * 0.045);
+    ctx.fillStyle = wg;
+    ctx.fill();
+    ctx.restore();
+
+    // 内板（奶油底）
+    const ig = ctx.createLinearGradient(frameW, frameW, size - frameW, size - frameW);
+    ig.addColorStop(0, '#fffdf4');
+    ig.addColorStop(.55, '#fdf6e0');
+    ig.addColorStop(1, '#f8ecd0');
+    roundRect(ctx, frameW, frameW, innerS, innerS, size * 0.032);
+    ctx.fillStyle = ig;
+    ctx.fill();
+
+    // 内侧柔光
+    const rg = ctx.createRadialGradient(size*.42, size*.34, size*.05, size*.5, size*.5, size*.72);
+    rg.addColorStop(0, 'rgba(255,255,255,.75)');
+    rg.addColorStop(1, 'rgba(255,214,160,.16)');
+    ctx.fillStyle = rg;
+    ctx.fill();
+
+    // 内描边
+    ctx.lineWidth = Math.max(1.4, size * 0.0035);
+    ctx.strokeStyle = 'rgba(200,150,95,.45)';
+    ctx.stroke();
+
+    // 网格
+    ctx.save();
+    ctx.strokeStyle = 'rgba(186,138,88,.62)';
+    ctx.lineWidth = Math.max(1, size * 0.0017);
+    ctx.lineCap = 'round';
+    for(let i = 0; i < N; i++){
+      ctx.beginPath();
+      ctx.moveTo(px(0), py(i)); ctx.lineTo(px(N-1), py(i));
+      ctx.moveTo(px(i), py(0)); ctx.lineTo(px(i), py(N-1));
+      ctx.stroke();
+    }
+    // 星位
+    const stars = [[3,3],[11,3],[3,11],[11,11],[7,7]];
+    ctx.fillStyle = 'rgba(170,120,72,.72)';
+    for(const [sx, sy] of stars){
+      ctx.beginPath();
+      ctx.arc(px(sx), py(sy), Math.max(2, cell * (sx===7?0.13:0.10)), 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawWinHalo(now){
+    if(!state.winLine) return;
+    const a = 0.30 + 0.22 * Math.sin(now / 260);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#ffe066';
+    ctx.shadowColor = '#ffd23f';
+    ctx.shadowBlur = cell * 0.9;
+    for(const c of state.winLine){
+      ctx.beginPath();
+      ctx.arc(px(c.x), py(c.y), cell * 0.63, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawStones(now){
+    const base = cell * 0.99;
+    for(let y = 0; y < N; y++){
+      for(let x = 0; x < N; x++){
+        const p = state.board[y*N + x];
+        if(p === EMPTY) continue;
+
+        let scale = 1;
+        const anim = state.anim;
+        if(anim && anim.x === x && anim.y === y){
+          const t = clamp01((now - anim.start) / 260);
+          scale = 0.25 + 0.75 * easeOutBack(t);
+          if(t >= 1) state.anim = null;
+        }
+
+        const cx = px(x), cy = py(y);
+        const fs = base * scale;
+
+        ctx.save();
+        ctx.font = fs + 'px ' + EMOJI_FONT;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(150,100,55,.38)';
+        ctx.shadowBlur = cell * 0.16 * scale;
+        ctx.shadowOffsetY = cell * 0.07 * scale;
+        ctx.fillText(p === MELON ? '🍉' : '🍍', cx, cy + fs * 0.02);
+        ctx.restore();
+      }
+    }
+
+    // 最后一手标记
+    const lm = state.lastMove;
+    if(lm && !state.winLine){
+      const rot = (now / 1400) % (Math.PI * 2);
+      ctx.save();
+      ctx.translate(px(lm.x), py(lm.y));
+      ctx.rotate(rot);
+      ctx.strokeStyle = 'rgba(255,122,162,.95)';
+      ctx.lineWidth = Math.max(1.8, cell * 0.055);
+      ctx.setLineDash([cell * 0.22, cell * 0.16]);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, 0, cell * 0.52, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawWinLine(now){
+    if(!state.winLine) return;
+    const pts = state.winLine;
+    const a = pts[0], b = pts[pts.length - 1];
+    const pulse = 0.55 + 0.35 * Math.sin(now / 260);
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = '#ffd23f';
+    ctx.lineWidth = cell * 0.17;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = '#ffab00';
+    ctx.shadowBlur = cell * 0.55;
+    ctx.beginPath();
+    ctx.moveTo(px(a.x), py(a.y));
+    ctx.lineTo(px(b.x), py(b.y));
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawHover(now){
+    if(!hover || state.gameOver || !state.started) return;
+    if(state.board[hover.y*N + hover.x] !== EMPTY) return;
+
+    const cx = px(hover.x), cy = py(hover.y);
+
+    // 十字辅助线
+    ctx.save();
+    ctx.globalAlpha = 0.30;
+    ctx.strokeStyle = '#ff9ec4';
+    ctx.lineWidth = Math.max(1, size * 0.0022);
+    ctx.setLineDash([cell*0.2, cell*0.2]);
+    ctx.beginPath();
+    ctx.moveTo(px(0), cy); ctx.lineTo(px(N-1), cy);
+    ctx.moveTo(cx, py(0)); ctx.lineTo(cx, py(N-1));
+    ctx.stroke();
+    ctx.restore();
+
+    // 高亮圆底
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(255,170,200,.9)';
+    ctx.shadowBlur = cell * 0.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cell * 0.44, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 半透明幽灵棋子
+    const pulse = 0.34 + 0.12 * Math.sin(now / 380);
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    const fs = cell * 0.9;
+    ctx.font = fs + 'px ' + EMOJI_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(state.turn === MELON ? '🍉' : '🍍', cx, cy);
+    ctx.restore();
+  }
+
+  function render(now){
+    ctx.clearRect(0, 0, size, size);
+    drawBoard();
+    drawWinHalo(now);
+    drawStones(now);
+    drawWinLine(now);
+    drawHover(now);
+    requestAnimationFrame(render);
+  }
+
+  /* ================= 游戏逻辑 ================= */
+  const inB = (x, y) => x >= 0 && x < N && y >= 0 && y < N;
+  const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
+
+  function checkWin(x, y, p){
+    for(const [dx, dy] of DIRS){
+      const line = [{x, y}];
+      for(const sgn of [1, -1]){
+        let nx = x + dx*sgn, ny = y + dy*sgn;
+        while(inB(nx, ny) && state.board[ny*N + nx] === p){
+          line.push({x: nx, y: ny});
+          nx += dx*sgn; ny += dy*sgn;
+        }
+      }
+      if(line.length >= 5){
+        line.sort((a, b) => (a.x - b.x) || (a.y - b.y));
+        return line;
+      }
+    }
+    return null;
+  }
+
+  function place(x, y){
+    if(!state.started || state.gameOver) return;
+    const i = y*N + x;
+    if(state.board[i] !== EMPTY){ sndNope(); return; }
+
+    const p = state.turn;
+    state.board[i] = p;
+    state.history.push({ x, y, p });
+    state.lastMove = { x, y };
+    state.anim = { x, y, start: performance.now() };
+    hover = null;
+
+    const win = checkWin(x, y, p);
+
+    if(win){
+      state.gameOver = true;
+      state.winLine = win;
+      state.lastWinner = p;
+      state.score[p]++;
+      saveScore();
+      stopTimer();
+      sndWin();
+      updateHUD();
+      setTimeout(() => showOverlay(p), 680);
+    } else if(state.history.length === N*N){
+      state.gameOver = true;
+      state.isDraw = true;
+      stopTimer();
+      sndDraw();
+      updateHUD();
+      setTimeout(() => showOverlay(0), 420);
+    } else {
+      state.turn = (p === MELON) ? PINE : MELON;
+      sndPlace();
+      startTimer();          // 换人 → 重新计时 1 分钟
+      updateHUD();
+    }
+  }
+
+  function undo(){
+    if(!state.history.length) return;
+
+    // 若上一手是制胜手（含超时判负），回滚比分
+    const winner = state.gameOver
+      ? (state.winLine ? state.history[state.history.length - 1].p : state.lastWinner)
+      : null;
+
+    const m = state.history.pop();
+    state.board[m.y*N + m.x] = EMPTY;
+    state.turn = m.p;
+    state.lastMove = state.history.length ? state.history[state.history.length - 1] : null;
+    state.gameOver = false;
+    state.winLine = null;
+    state.isDraw = false;
+    state.timeout = false;
+    state.anim = null;
+    state.lastWinner = null;   // 悔棋后不沿用“赢家先手”
+
+    if(winner){
+      state.score[winner] = Math.max(0, state.score[winner] - 1);
+      saveScore();
+    }
+
+    hideOverlay();
+    sndUndo();
+    startTimer();
+    updateHUD();
+  }
+
+  // 清空棋盘（不动 started / 弹窗）
+  function resetBoard(){
+    state.board = new Array(N*N).fill(EMPTY);
+    state.history = [];
+    state.lastMove = null;
+    state.turn = state.firstPlayer;
+    state.gameOver = false;
+    state.winLine = null;
+    state.isDraw = false;
+    state.timeout = false;
+    state.anim = null;
+    hover = null;
+  }
+
+  // 接续先手规则：赢方先手，平局换人
+  function inheritFirst(){
+    state.firstPlayer = nextFirst();
+    state.lastWinner = null;
+    saveFirst();
+  }
+
+  // 「重新开始」：回到准备层，让用户重新选先手
+  function restart(){
+    inheritFirst();
+    resetBoard();
+    state.started = false;
+    hideOverlay();
+    readyOverlay.classList.remove('hide');
+    sndRestart();
+    armTimer();
+    updateHUD();
+  }
+
+  // 「再来一局」：默认赢方先手，直接开打，不再询问
+  function nextRound(){
+    if(!state.gameOver) return;      // 只从结算界面进入
+    inheritFirst();
+    resetBoard();
+    hideOverlay();
+    readyOverlay.classList.add('hide');
+    state.started = true;
+    sndStart();
+    startTimer();
+    updateHUD();
+  }
+
+  function beginGame(){
+    if(state.started || state.gameOver) return;
+    state.turn = state.firstPlayer;
+    state.started = true;
+    readyOverlay.classList.add('hide');
+    startTimer();
+    sndStart();
+    updateHUD();
+  }
+
+  /* ================= HUD ================= */
+  const turnPill = document.getElementById('turnPill');
+  const turnText = document.getElementById('turnText');
+  const pcard1 = document.getElementById('pcard1');
+  const pcard2 = document.getElementById('pcard2');
+  const score1 = document.getElementById('score1');
+  const score2 = document.getElementById('score2');
+  const movesText = document.getElementById('movesText');
+  const btnUndo = document.getElementById('btnUndo');
+
+  const segHint = document.getElementById('segHint');
+  const firstNow = document.getElementById('firstNow');
+  const readyPick = document.getElementById('readyPick');
+  const readyFirst = document.getElementById('readyFirst');
+
+  const nameOf = n => PLAYER[n].emoji + ' ' + PLAYER[n].name;
+  // 平局时交换先手，否则由赢方先手
+  const nextFirst = () => state.isDraw
+    ? (state.firstPlayer === MELON ? PINE : MELON)
+    : (state.lastWinner || state.firstPlayer);
+
+  function syncFirstUI(){
+    // 侧栏：本局先手（只读）
+    firstNow.textContent = nameOf(state.firstPlayer);
+    readyFirst.textContent = '本局先手：' + nameOf(state.firstPlayer);
+    // 准备层：先手选择器
+    Array.prototype.forEach.call(readyPick.children, b => {
+      b.classList.toggle('active', +b.dataset.first === state.firstPlayer);
+    });
+    // 下一局提示
+    segHint.textContent = state.gameOver
+      ? '下一局：' + nameOf(nextFirst()) + ' 先手'
+      : '下一局：赢方先手';
+  }
+
+  function updateHUD(){
+    score1.textContent = state.score[1];
+    score2.textContent = state.score[2];
+    btnUndo.disabled = state.history.length === 0;
+
+    const cur = state.turn;
+    turnPill.classList.toggle('p2', cur === PINE);
+    pcard1.classList.toggle('active', !state.gameOver && cur === MELON);
+    pcard2.classList.toggle('active', !state.gameOver && cur === PINE);
+
+    const w = state.gameOver
+      ? (state.winLine ? state.history[state.history.length - 1].p : state.lastWinner)
+      : null;
+
+    if(w){
+      turnText.textContent = PLAYER[w].emoji + ' ' + PLAYER[w].name
+        + (state.timeout ? ' 超时胜！' : ' 获胜！');
+      pcard1.classList.toggle('winner', w === MELON);
+      pcard2.classList.toggle('winner', w === PINE);
+    } else if(state.gameOver && state.isDraw){
+      turnText.textContent = '平局啦～';
+      pcard1.classList.remove('winner');
+      pcard2.classList.remove('winner');
+    } else {
+      turnText.textContent = '轮到 ' + PLAYER[cur].emoji + ' ' + PLAYER[cur].name;
+      pcard1.classList.remove('winner');
+      pcard2.classList.remove('winner');
+    }
+
+    movesText.textContent = '第 ' + state.history.length + ' 手';
+    syncFirstUI();
+    syncTimerUI();
+  }
+
+  /* ================= 结算弹窗 ================= */
+  const overlay = document.getElementById('overlay');
+  const confetti = document.getElementById('confetti');
+  const ovEmoji = document.getElementById('ovEmoji');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovSub = document.getElementById('ovSub');
+  const ovNext = document.getElementById('ovNext');
+
+  function showOverlay(winner, isTimeout){
+    if(winner){
+      const loser = (winner === MELON) ? PINE : MELON;
+      ovEmoji.textContent = isTimeout ? '⏰' : PLAYER[winner].emoji;
+      ovTitle.textContent = PLAYER[winner].win;
+      ovSub.textContent = isTimeout
+        ? PLAYER[loser].name + '想太久超时啦，下次快一点点哦～'
+        : PLAYER[winner].sub;
+      burstConfetti(winner);
+    } else {
+      ovEmoji.textContent = '🤝';
+      ovTitle.textContent = '平局啦！';
+      ovSub.textContent = '棋盘满啦，势均力敌～';
+      confetti.innerHTML = '';
+    }
+    const next = nextFirst();
+    ovNext.textContent = '下一局由 ' + nameOf(next) + ' 先手（点「重新开始」可重选）';
+    overlay.classList.add('show');
+  }
+  function hideOverlay(){
+    overlay.classList.remove('show');
+    confetti.innerHTML = '';
+  }
+  function burstConfetti(winner){
+    const pool = winner === MELON
+      ? ['🍉','🍉','✨','💗','🌸','🍉','⭐']
+      : ['🍍','🍍','✨','💛','🌼','🍍','⭐'];
+    confetti.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    for(let i = 0; i < 40; i++){
+      const s = document.createElement('span');
+      s.textContent = pool[(Math.random() * pool.length) | 0];
+      s.style.left = (Math.random() * 100) + '%';
+      s.style.fontSize = (16 + Math.random() * 24) + 'px';
+      s.style.animationDelay = (Math.random() * 0.9) + 's';
+      s.style.animationDuration = (2.1 + Math.random() * 1.7) + 's';
+      frag.appendChild(s);
+    }
+    confetti.appendChild(frag);
+  }
+
+  /* ================= 交互 ================= */
+  function posFromEvent(e){
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left;
+    const my = e.clientY - r.top;
+    const gx = Math.round((mx - originX) / cell);
+    const gy = Math.round((my - originY) / cell);
+    if(!inB(gx, gy)) return null;
+    const dx = mx - px(gx), dy = my - py(gy);
+    if(Math.sqrt(dx*dx + dy*dy) > cell * 0.62) return null;
+    return { x: gx, y: gy };
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if(e.pointerType !== 'mouse') hover = null;
+    const pos = posFromEvent(e);
+    if(pos) place(pos.x, pos.y);
+    else sndNope();
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if(e.pointerType !== 'mouse') return;
+    const pos = posFromEvent(e);
+    const changed = (!!pos !== !!hover) || (pos && hover && (pos.x !== hover.x || pos.y !== hover.y));
+    if(changed) hover = pos;
+  });
+
+  canvas.addEventListener('pointerleave', () => { hover = null; });
+  window.addEventListener('contextmenu', e => { if(e.target === canvas) e.preventDefault(); });
+
+  btnUndo.addEventListener('click', undo);
+  document.getElementById('btnRestart').addEventListener('click', restart);
+  document.getElementById('ovAgain').addEventListener('click', nextRound);
+  document.getElementById('ovUndo').addEventListener('click', undo);
+
+  // 音效开关（不影响背景音乐）
+  const btnSound = document.getElementById('btnSound');
+  function syncSoundBtn(){ btnSound.textContent = state.soundOn ? '🔊 音效开' : '🔇 音效关'; }
+  btnSound.addEventListener('click', () => {
+    state.soundOn = !state.soundOn;
+    saveSound();
+    syncSoundBtn();
+    if(state.soundOn) sndPlace();
+  });
+
+  // 背景音乐开关（独立）
+  const btnBgm = document.getElementById('btnBgm');
+  function syncBgmBtn(){ btnBgm.textContent = state.bgmOn ? '🎵 音乐开' : '🎵 音乐关'; }
+  btnBgm.addEventListener('click', () => {
+    state.bgmOn = !state.bgmOn;
+    saveBgm();
+    syncBgmBtn();
+    if(state.bgmOn) startBgm(); else stopBgm();
+  });
+
+  // 准备层选择先手（开局前唯一入口）
+  function chooseFirst(n){
+    if(n === state.firstPlayer) return;
+    state.firstPlayer = n;
+    saveFirst();
+    if(state.history.length === 0){
+      state.turn = n;
+      // 准备阶段只换人，不启动倒计时
+      if(state.started) startTimer(); else armTimer();
+    }
+    sndPlace();
+    updateHUD();
+  }
+  readyPick.addEventListener('click', e => {
+    const btn = e.target.closest('.pick-btn');
+    if(btn) chooseFirst(+btn.dataset.first);
+  });
+
+  // 开始游戏
+  document.getElementById('btnStart').addEventListener('click', beginGame);
+
+  // 首次交互解锁音频（浏览器自动播放限制）
+  function unlockAudio(){
+    if(state.bgmOn) startBgm();
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+  }
+  window.addEventListener('pointerdown', unlockAudio);
+  window.addEventListener('keydown', unlockAudio);
+
+  // 切到后台时暂停倒计时和音乐
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden){
+      pauseTimer();
+      stopBgm();
+    } else {
+      if(state.bgmOn) startBgm();
+      resumeTimer();
+    }
+  });
+
+  window.addEventListener('keydown', e => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); }
+    else if(e.key === 'r' || e.key === 'R'){ restart(); }
+    else if(e.key === ' ' || e.key === 'Enter'){ if(!state.started) { e.preventDefault(); beginGame(); } }
+    else if(e.key === 'Escape'){ hideOverlay(); }
+  });
+
+  /* ================= 背景装饰 ================= */
+  (function buildDeco(){
+    const box = document.getElementById('bgDeco');
+    const items = ['🍉','🍍','🍉','🍍','✨','🌸','⭐','💗','🌿','🍋','🫧','🍓'];
+    const frag = document.createDocumentFragment();
+    for(let i = 0; i < 14; i++){
+      const s = document.createElement('span');
+      s.textContent = items[i % items.length];
+      s.style.left = (Math.random() * 96) + '%';
+      s.style.top = (Math.random() * 96) + '%';
+      s.style.fontSize = (22 + Math.random() * 40) + 'px';
+      s.style.animationDuration = (5 + Math.random() * 5).toFixed(1) + 's';
+      s.style.animationDelay = '-' + (Math.random() * 5).toFixed(1) + 's';
+      frag.appendChild(s);
+    }
+    box.appendChild(frag);
+  })();
+
+  /* ================= 启动 ================= */
+  loadScore();
+  state.turn = state.firstPlayer;   // 开局由自定义先手先走
+  syncSoundBtn();
+  syncBgmBtn();
+  armTimer();                       // 准备阶段：倒计时先不走
+  updateHUD();
+  setInterval(tickTimer, 50);
+
+  resize();
+  if(window.ResizeObserver){
+    new ResizeObserver(resize).observe(boardArea);
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>

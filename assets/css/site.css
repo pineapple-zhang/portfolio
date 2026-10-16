@@ -1254,6 +1254,20 @@
   font-size: .8125rem;
 }
 
+/* 每次推送自动写入的版本号。内容由 `个人网页开发\stamp_version.py` 生成 ——
+   它写在 **HTML 里**而不是某个 .js，因为 GitHub Pages 有约 10 分钟缓存：
+   放独立 js 会出现「页面是新的、版本号是缓存里的旧的」，那就失去意义了。
+   ⚠️ 颜色用 --ink-2 而不是页脚默认的 --ink-3：--ink-3(#86868B) 在白底上只有
+      3.62:1，页脚本来就有这一批不达标的遗留；新加的东西不该再踩同一个坑。
+      --ink-2 在浅色(#FFFFFF)上 5.07:1、深色(#161616)上 7.65:1，两套主题都过。
+   ⚠️ nowrap 不能省：不然「v2026.10.16 10:07」会在窄屏上从中间折成两行。
+      tabular-nums 让数字等宽，一眼比对两个版本号时更整齐。 */
+.site-ver {
+  color: var(--ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 760px) {
   .site-footer__grid { grid-template-columns: 1fr; gap: var(--sp-6); }
 }
@@ -3640,7 +3654,55 @@ html.theme-dark.page-game {
    给《平面设计页》的纯黑封面用的）。这一页的首屏是 #0A0A0A + 蓝光晕，
    用 #000 会在顶上压出一条比首屏更黑的带子。改成跟页面底色一致。 */
 html.theme-dark.page-game .site-nav--bar:not(.is-stuck) {
-  background: var(--bg);
+  /* 自上而下从 .34 淡到 .14 —— 一条均匀的半透明带子会在导航下沿留下一道
+     硬边，看着还是"贴了条东西"，不像玻璃。淡出之后边界就化开了。 */
+  /* 用户：「任务栏不用那么透明」。上一版压到 .18/.05，几乎看不出是条栏；
+     提到 .52/.28 —— 仍然透得出后面那片蓝，
+     但已经是一条清楚的"栏"了。 */
+  background: linear-gradient(180deg, rgba(10, 10, 10, .52), rgba(10, 10, 10, .28));
+  /* ⚠️ 必须是 `border-bottom: 0`，**不能只写 `border-bottom-color: transparent`**。
+     这只导航的 background-origin 是 padding-box、background-color 又是透明的 ——
+     渐变只铺到 padding box，那 1px 的边框行拿不到任何背景，
+     于是"透出"后面的深色，在下沿留下一道 1px 的暗缝
+     （实测那一行蓝通道 121，上下都是 140，截图里一眼能看见）。
+     ⚠️ 高度是 `height: 50px` + border-box，去掉边框不会让页面跳。
+     滚动之后 `.is-stuck` 不再命中这条规则，基础规则里那条 1px 分隔线照常回来。 */
+  border-bottom: 0;
+}
+/* ⚠️ 毛玻璃只能写在 min-width 里。`backdrop-filter` 会给元素**建立包含块** ——
+   移动端那个侧滑抽屉是 `position: fixed` 的，一旦包含块变成导航条本身，
+   抽屉就会被压进导航那条 50px 里（第 9 节已经为这个坑加过一次同样的门槛）。 */
+/* ⚠️ 首屏这一档**不开 backdrop-filter**，两个原因都实测过：
+   ① `saturate()` 会把玻璃里那片蓝的 R 通道压掉一截（46 → 58），
+      导航下沿立刻出现一条「上面更蓝、下面发灰」的硬边；
+   ② 就算只留 `blur()`，元素下沿仍然会留下**一条 1px 的暗缝**
+      （blur 在元素边界要往外采样，边缘那一行被掺进了透明黑）——
+      实测 y=49 那行比上下都暗十几级，截图里看得很清楚。
+   首屏那片光晕本来就是平滑的，模糊它本来就什么也看不出来；
+   「磨砂」真正的用武之地是**滚动之后**：那时换成 --nav-veil + 基础规则里
+   的 blur(16px)，内容从玻璃后面过 —— 和站里其它页面完全一致。 */
+html.theme-dark.page-game .site-nav--bar:not(.is-stuck) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 首屏顶上提，钻到导航条底下 —— 不然导航"透明"了后面也只有一片纯黑，
+   磨砂等于没磨。提上去之后那片蓝光才会从玻璃后面透上来。
+   高度从 0 起算，所以要把导航那 50px 补进内边距，文字的落点不变。 */
+.page-game .harness-hero {
+  margin-top: calc(-1 * var(--nav-h-sub));
+  padding-top: calc(clamp(56px, 9vh, 104px) + var(--nav-h-sub));
+}
+
+/* 首屏那片蓝光的 canvas 层。CSS 里那条 radial-gradient 保留当兜底。 */
+.harness-hero__glow {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* ---- 代码窗口区（照参考页：居中标题 → 一个大窗口 → 2×2 卡片）---- */
@@ -3763,4 +3825,735 @@ html.theme-dark.page-game .site-nav--bar:not(.is-stuck) {
   }
   .gx-card__shot img,
   .gx-shot__scroll img { min-width: 580px; }
+}
+
+
+/* ==========================================================================
+   26. 游戏卡片上的「打开玩」+ 全屏游玩浮层（2026-10-15）
+
+   用户：「把那几个网页都内置到页面里去，点开就能玩」。
+   游戏文件本身在 `games/*.html`（五个都是自包含的单文件，没有一条外链）。
+   ========================================================================== */
+
+/* 按钮盖在实机截图的右下角。整块 `.work__media` 已经是 position:relative，
+   所以这里只给按钮定位。
+
+   ⚠️⚠️ 这个类名**原来叫 `.work__play`，撞车了** —— 那是第 3 节
+   「作品视频的播放按钮」在用的名字，那边是 `inset:0` 盖满整格的一层遮罩。
+   两条规则一叠加（那边 inset:0 + 这边 border-radius:999px 和 backdrop-filter），
+   屏幕上就是**一整块糊在截图上的大椭圆**。
+   往这种已经两万行的样式表里加新东西，**先 grep 一遍类名**。 */
+.work__launch {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 20px 11px 16px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(10, 12, 16, .62);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font: inherit;
+  font-size: .9375rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 200ms var(--ease), border-color 200ms var(--ease),
+              transform 200ms var(--ease);
+}
+.work__launch:hover,
+.work__launch:focus-visible {
+  background: rgba(24, 44, 74, .82);
+  border-color: rgba(255, 255, 255, .42);
+  transform: translateY(-1px);
+}
+.work__launch:focus-visible { outline: 2px solid #7FB2FF; outline-offset: 3px; }
+
+/* 播放三角用 CSS 画，省得引图标字体 */
+.work__launch-ico {
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 6px 0 6px 10px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+/* --- 全屏浮层 --- */
+.play {
+  position: fixed;
+  inset: 0;
+  z-index: 90;                  /* 压在粘顶导航（z-index 更低）之上 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(10px, 2.4vh, 28px);
+  background: rgba(4, 6, 9, .86);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.play[hidden] { display: none; }
+
+.play__panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1400px, 100%);
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0A0A0A;
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, .9);
+}
+
+.play__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 10px 12px 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, .10);
+  background: #101216;
+  flex: 0 0 auto;
+}
+.play__title {
+  font-size: .9375rem;
+  color: #F5F5F7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.play__acts { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.play__link {
+  font-size: .8125rem;
+  color: #A9C6F0;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.play__link:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.play__close {
+  width: 36px; height: 36px;
+  border: 0; border-radius: 9px;
+  background: rgba(255, 255, 255, .08);
+  color: #F5F5F7;
+  cursor: pointer;
+  position: relative;
+}
+.play__close::before,
+.play__close::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 15px; height: 1.6px;
+  background: currentColor;
+  border-radius: 2px;
+}
+.play__close::before { transform: translate(-50%, -50%) rotate(45deg); }
+.play__close::after  { transform: translate(-50%, -50%) rotate(-45deg); }
+.play__close:hover { background: rgba(255, 255, 255, .16); }
+
+.play__frame {
+  flex: 1 1 auto;
+  width: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+}
+.play__hint {
+  flex: 0 0 auto;
+  padding: 8px 20px;
+  font-size: .75rem;
+  color: rgba(255, 255, 255, .45);
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  background: #101216;
+}
+
+/* 浮层打开时锁住背景滚动（挂在 <html> 上，见 site.js 第 26 节） */
+html.is-playing { overflow: hidden; }
+
+@media (max-width: 700px) {
+  .play { padding: 0; }
+  .play__panel { border-radius: 0; border: 0; }
+  .work__launch { right: 12px; bottom: 12px; padding: 9px 15px 9px 13px; font-size: .875rem; }
+}
+
+
+/* ==========================================================================
+   27. 文学馆 · 空状态（2026-10-15）
+
+   用户：「所有框架都删除就留下一句话」。整页只剩这一行字 ——
+   所以它不能只是"一行左对齐的小字"，那看着像页面坏了。
+   做法：**居中 + 撑满一屏的高度 + 加大字号和字距**，
+   让它读起来是"刻意留白"，不是"内容没加载出来"。
+   ========================================================================== */
+.empty-state {
+  min-height: calc(100svh - var(--nav-h-sub) - 320px);
+  display: grid;
+  place-items: center;
+  padding-block: clamp(72px, 16vh, 200px);
+  text-align: center;
+}
+.empty-state__line {
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  font-weight: 400;
+  line-height: 1.9;
+  letter-spacing: .06em;
+  color: var(--ink-2);
+  /* ⚠️ 用 text-wrap: balance 让中文别在奇怪的位置断行（支持的浏览器才生效，
+     不支持时就是普通换行，不影响可读性）。 */
+  text-wrap: balance;
+  max-width: 26em;
+}
+
+
+/* ==========================================================================
+   28. 大模型部署页（2026-10-15）
+
+   用户：「页面设计整体参考 doubao.com/download/desktop」。
+   四个值是从它 1600×2400 的整页截图逐点取出来的：
+
+       首屏底色 #02070F   浅色区底 #FFFFFF   卡片底 #F5F7FA   正文色 #0C0D10
+
+   版式：**深色首屏（大标题 + 副文 + 胶囊按钮 + 一块产品界面）→
+   浅色区（居中标题 + 大圆角卡片，左文字 / 右界面）**。
+
+   ⚠️ 导航**不跟着变深** —— 这一页沿用全站的浅色导航，
+      跟 AI视频页（深色视频首屏 + 浅色导航）同一个处理。
+      所以这里没有 `theme-dark`，只在首屏自己身上铺深色。
+   ========================================================================== */
+
+.llm-hero {
+  position: relative;
+  isolation: isolate;
+  color: #FFFFFF;
+  background-color: #02070F;
+  background-image: radial-gradient(124% 72% at 50% 6%,
+      #0B1828 0%, #061020 38%, #02070F 76%);
+  /* ⭐ 高度**钉死**成「一屏减去导航」。
+     用户两次提这件事：先是「上下拉长一点」，拉长之后又发现
+     「底下还有一小节白色」—— 因为纯靠 padding 撑的话，高度跟着内容走，
+     换一个视口比例就会露出下面的浅色区，永远差那么几十像素。
+     站里的 `.cover-hero` / `.page-hero` 都是同一套算法，这里跟它们对齐。
+     ⚠️ 内容用 grid 居中：光给 min-height 不给居中，内容会贴在顶上的
+        padding 下面，下面留一大块空 —— 反而更难看。 */
+  min-height: calc(100svh - var(--nav-h-sub));
+  display: grid;
+  place-items: center;
+  padding-block: clamp(72px, 11vh, 168px);
+  text-align: center;
+  overflow: hidden;
+}
+
+/* 那块窗口背后的一团蓝光。豆包首屏也是靠这一层把"产品界面"从底色里托出来的 ——
+   没有它，一个深色窗口压在近黑底上会直接糊成一片。 */
+.llm-hero::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(1200px, 116%);
+  aspect-ratio: 16 / 9;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 50% at 50% 50%,
+      rgba(58, 134, 255, .30), rgba(58, 134, 255, .09) 46%, transparent 72%);
+  filter: blur(34px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.llm-hero__inner {
+  width: 100%;
+  max-width: 1020px;
+  margin-inline: auto;
+  padding-inline: var(--sp-5);
+}
+.llm-hero__badge {
+  font-size: .8125rem;
+  letter-spacing: .14em;
+  color: rgba(255, 255, 255, .48);
+}
+.llm-hero__title {
+  margin: clamp(16px, 2.4vh, 26px) 0 0;
+  font-size: clamp(2.125rem, 4.6vw, 3.75rem);
+  font-weight: 600;
+  line-height: 1.24;
+  letter-spacing: .01em;
+}
+/* 标题是两行，各包一个 span，靠 `display: block` 钉住断行。
+   ⚠️ 必须写成**直接子元素** `>`：早先标题里还嵌过一个内层 span（做过一版
+      渐变字），用后代选择器会连它一起设成 block，字会掉到单独一行去。
+      现在内层 span 已经去掉了，但 `>` 这个写法保持不动更稳。 */
+.llm-hero__title > span { display: block; }
+/* 标题里那五个字（「量化大模型」）**改成跟标题其余部分一样的白色**了
+   （2026-10-15 用户定的）。
+   ---------------------------------------------------------------------------
+   中间试过两版蓝色，都作废了，但结论留着，免得以后又想加：
+     · 参考图「超拉风」那份是**单色** #164E92 —— 那是**浅蓝底**上的字，
+       搬来本页的近黑底(#02070F)只有 2.44:1，大字 AA 要 3.0，会糊。
+     · 再仔细量才发现它其实是**竖直渐变**（上深下浅，x 方向完全一致），
+       色相 H≈213°，越往下越亮、饱和度略降，两端对比度比 1.85×。
+       照这个强度在本页配了一版 #1C55A8→#61A0F1，实测字顶 3.33:1 / 字底 6.06:1。
+   最后用户看完说改回白色 —— 所以这里不再有任何蓝色规则，
+   `--llm-blue*` 三个变量和 `.llm-blue` 那段 `background-clip:text` 都已删除。
+   ========================================================================== */
+.llm-hero__sub {
+  max-width: 760px;
+  margin: clamp(18px, 2.6vh, 28px) auto 0;
+  font-size: clamp(.9375rem, 1.1vw, 1.0625rem);
+  line-height: 1.9;
+  color: rgba(255, 255, 255, .52);
+}
+/* 每句一行。`display: block` 只钉住「句号处」这个断点，
+   句子内部照样按容器宽度折行 —— 所以窄屏不会溢出。 */
+.llm-hero__sub span { display: block; }
+.llm-hero__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4) var(--sp-5);
+  margin-top: clamp(24px, 3.4vh, 36px);
+}
+.llm-hero__win { margin-top: clamp(34px, 5vh, 58px); text-align: left; }
+/* ⚠️ 首屏那条命令**要换行**。默认的 `white-space: pre` + `overflow-x: auto`
+   会把 300 多个字符的一行截断，首屏里没人会去横向拖 ——
+   观众第一眼看到的就成了「一行的前半截」，而这条命令正是这一页的主角。 */
+.llm-hero__win .llm-code {
+  white-space: pre-wrap;
+  /* ⚠️ 用 overflow-wrap 而不是 `word-break: break-all` ——
+     break-all 会在**任何位置**断，实测把 131072 断成了「13107 / 2」、
+     ui-config.json 断成「ui-config.j / son」，看着像打错了。
+     overflow-wrap 只在整段放不下时才动手，优先在空格处折行。 */
+  overflow-wrap: anywhere;
+  overflow-x: visible;
+}
+
+/* 主按钮：豆包的蓝色胶囊 */
+.llm-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 13px 30px;
+  border-radius: 999px;
+  background: #2C6BF2;
+  color: #fff;
+  font-size: 1rem;
+  text-decoration: none;
+  box-shadow: 0 10px 26px -10px rgba(44, 107, 242, .8);
+  transition: background-color 200ms var(--ease), transform 200ms var(--ease);
+}
+.llm-btn:hover { background: #3C79FF; transform: translateY(-1px); }
+.llm-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.llm-hero__link {
+  font-size: .9375rem;
+  color: rgba(255, 255, 255, .72);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, .24);
+  padding-bottom: 2px;
+}
+.llm-hero__link:hover { color: #fff; border-bottom-color: rgba(255, 255, 255, .6); }
+
+/* --- 窗口（代码/目录/命令行，两个皮肤）--------------------------------- */
+.llm-win {
+  border-radius: 14px;
+  overflow: hidden;
+  font-family: "Cascadia Mono", "Consolas", "Microsoft YaHei", monospace;
+}
+.llm-win--dark {
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: #0C1119;
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, .95);
+}
+.llm-win--light {
+  border: 1px solid #E6E9EF;
+  background: #FFFFFF;
+  box-shadow: 0 18px 40px -28px rgba(16, 24, 40, .28);
+}
+.llm-win--wide { border-radius: 16px; }
+
+.llm-win__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px;
+}
+.llm-win--dark .llm-win__bar {
+  background: #131A24; border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.llm-win--light .llm-win__bar {
+  background: #F7F8FA; border-bottom: 1px solid #E6E9EF;
+}
+.llm-win__dots { display: flex; gap: 6px; }
+.llm-win__dots i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+.llm-win--dark .llm-win__dots i { background: #2E3744; }
+.llm-win--light .llm-win__dots i { background: #D4D9E2; }
+.llm-win__name { font-size: 12.5px; }
+.llm-win--dark .llm-win__name { color: #9AA7B8; }
+.llm-win--light .llm-win__name { color: #5B6472; }
+.llm-win__tag {
+  margin-left: auto;
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.llm-win--dark .llm-win__tag {
+  color: #8695A8; border: 1px solid rgba(255, 255, 255, .14);
+}
+.llm-win--light .llm-win__tag { color: #7A828F; border: 1px solid #E2E6ED; }
+
+.llm-code {
+  margin: 0;
+  padding: 16px 18px 18px;
+  font-size: 12.5px;
+  line-height: 1.85;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+.llm-win--dark .llm-code { color: #C9D6E4; }
+.llm-win--light .llm-code { color: #2B3340; }
+.llm-code--list { font-size: 12px; }
+
+/* 代码着色：两个皮肤各一套，别混用（浅底上给 #A5D6FF 这种是看不见的） */
+.llm-win--dark .t-c { color: #6C7C90; font-style: italic; }
+.llm-win--dark .t-d { color: #7ED0A0; }
+.llm-win--dark .t-a { color: #FFC46B; }
+.llm-win--dark .t-s { color: #8CC2FF; }
+.llm-win--dark .t-k { color: #FF8E7A; }
+.llm-win--dark .t-n { color: #8CC2FF; }
+.llm-win--light .t-c { color: #8A93A2; font-style: italic; }
+.llm-win--light .t-d { color: #14713B; }
+.llm-win--light .t-a { color: #A2540A; font-weight: 600; }
+.llm-win--light .t-s { color: #1B62C4; }
+.llm-win--light .t-k { color: #B33A2B; }
+.llm-win--light .t-n { color: #1B62C4; }
+
+/* 「换个模型只要改这几处」的高亮 —— 标出脚本里**模型名和端口**出现的位置。
+   ⚠️ 只加「加粗 + 底色」，**不新增一种文字颜色**：代码块里已经有五种颜色了
+      （关键字/字符串/参数/注释/暗色），再插一种根本分不出来，底色才一眼跳得出来。
+   ⚠️⚠️ **不能加左右 padding** —— 这是 `<pre>` 里的行内元素，行内盒的 padding
+      会把同一行**后面所有字符顶开**，注释是按空格对齐的，一顶就整列错位。
+      只加背景（不改盒模型宽度）不受影响。 */
+.llm-win--light .t-pick {
+  font-weight: 700;
+  color: #0B3E82;
+  background: #DCEAFB;
+  border-radius: 3px;
+}
+.llm-win--dark .t-pick {
+  font-weight: 700;
+  color: #EAF3FF;
+  background: rgba(90, 155, 240, .26);
+  border-radius: 3px;
+}
+/* 「大红」——标出真正需要当心的那一行：`--mcp-servers-config "mcp-config.json"`。
+   那个文件里躺着明文的 API Key（2026-10-15 用户要求标出来，并确认页面里没有密钥）。
+   ⚠️ 这里**允许**放大字号（`.t-pick` 不许），因为这个 span 是那一行的**最后一个 token**，
+      后面没有内容会被顶开；只要 `line-height: 1` 把行内盒压在行高以内，
+      连行高都不会变。放在行中间就会把后半行推歪，别这么用。 */
+.llm-win--light .t-danger {
+  font-weight: 700;
+  font-size: 1.18em;
+  line-height: 1;                 /* 行内盒别超过 1.85 的行高，否则整段往下长 */
+  color: #C11B1B;
+  background: #FDE3E1;
+  border-radius: 3px;
+}
+.llm-win--dark .t-danger {
+  font-weight: 700;
+  font-size: 1.18em;
+  line-height: 1;
+  color: #FF9A8F;
+  background: rgba(255, 90, 74, .18);
+  border-radius: 3px;
+}
+/* 说明文字里那个「大红」示例色块（在段落里，可以带 padding）。 */
+.t-danger-demo {
+  font-weight: 700;
+  color: #C11B1B;
+  background: #FDE3E1;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* `mcp-config.json` 那份脱敏结构（密钥位置用星号占位）。 */
+.llm-keyfile {
+  margin-top: var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+.llm-keyfile__title {
+  margin: 0;
+  padding: 14px 18px 12px;
+  font-size: .875rem;
+  line-height: 1.7;
+  color: #4A5262;
+  border-bottom: 1px solid var(--line);
+}
+.llm-keyfile > pre.llm-code { padding: 14px 18px 16px; }
+/* 占位用的星号。
+   ⚠️ 用户要的是「灰色」，但**不能真给浅灰** —— #9AA3AF 在白底上只有 2.55:1，看着像坏了；
+      #6B7280 是 4.83:1，理论上够，但这里的字只有 12.5px、笔画又细，
+      抗锯齿之后量出来会掉到 4.5 以下（这个项目在 13px 灰字上踩过好几次）。
+      取 #5F6773 = 5.72:1，留出余量；色相没变，仍然是一眼就认得出的"占位灰"。 */
+.t-mask {
+  color: #5F6773;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+/* 说明文字里那个示例色块。它不在代码块里，所以不挂在皮肤作用域下，
+   这一份是可以带 padding 的（普通段落，顶不开任何东西）。
+   色值对：底色 #DCEAFB 上的 #0B3E82 = 8.5:1。 */
+.t-pick-demo {
+  font-weight: 700;
+  color: #0B3E82;
+  background: #DCEAFB;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+.llm-cap {
+  margin-top: 12px;
+  font-size: .8125rem;
+  line-height: 1.7;
+  /* ⚠️ 也不能用 --ink-3(#86868B)：在卡片底上只有 3.38:1。--ink-2 有 4.63:1。 */
+  color: var(--ink-2);
+  text-align: center;
+}
+.llm-cap--left { text-align: left; }
+.llm-cap code,
+.llm-card code,
+.llm-table code,
+.llm-tile code,
+.llm-fix code {
+  font-family: "Cascadia Mono", "Consolas", "Microsoft YaHei", monospace;
+  font-size: .875em;
+  background: rgba(16, 24, 40, .06);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.llm-win .llm-cap code { background: none; }
+
+/* --- 硬件清单 --------------------------------------------------------- */
+.llm-spec { padding-block: clamp(48px, 8vh, 84px) 0; }
+.llm-spec__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-5);
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-6);
+}
+.llm-spec__item dt {
+  font-size: .8125rem;
+  letter-spacing: .08em;
+  /* ⚠️ 用 --ink-2(#6E6E73) 实测 4.46:1 —— 差 0.04 不达标。
+     13px 的字笔画细，抗锯齿之后**永远到不了纯色**，所以按色值算够用的
+     在屏幕上量出来会少一点。再深一档到 #63636A → 5.1:1 才稳。 */
+  color: #63636A;
+}
+.llm-spec__item dd {
+  margin-top: var(--sp-3);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.llm-spec__item dd b { font-weight: 600; }
+.llm-spec__item dd span { font-size: .875rem; color: var(--ink-2); }
+
+/* --- 区块标题 --------------------------------------------------------- */
+.llm-sec { padding-block: clamp(64px, 11vh, 128px); }
+.llm-sec--tint {
+  background: #F7F8FA;
+  border-radius: clamp(24px, 3vw, 44px);
+  padding-inline: clamp(0px, 2vw, 28px);
+}
+.llm-head {
+  max-width: 720px;
+  margin: 0 auto clamp(36px, 5.6vh, 64px);
+  text-align: center;
+}
+.llm-kicker {
+  font-size: .8125rem;
+  letter-spacing: .14em;
+  /* ⚠️ 不能用 --title-blue(#2471E1)：在 #F5F7FA 的卡片底上实测只有 4.32:1，
+     13px 的小字过不了 AA。深一档到 #1D5EC4 → 5.65:1。 */
+  color: #1D5EC4;
+}
+.llm-title {
+  margin-top: var(--sp-3);
+  font-size: clamp(1.625rem, 3vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.3;
+  color: #0C0D10;
+}
+.llm-sub {
+  margin-top: var(--sp-4);
+  font-size: clamp(.9375rem, 1.05vw, 1.0625rem);
+  line-height: 1.9;
+  color: var(--ink-2);
+}
+
+/* --- 大圆角卡片：文字在左，界面在右 ----------------------------------- */
+.llm-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(28px, 4vw, 64px);
+  padding: clamp(28px, 4vw, 56px);
+  margin-top: clamp(20px, 3vh, 32px);
+  border-radius: clamp(20px, 2.4vw, 28px);
+  background: #F5F7FA;
+}
+.llm-card--solo { grid-template-columns: minmax(0, 1fr); }
+.llm-card__text h3 {
+  font-size: clamp(1.25rem, 1.8vw, 1.625rem);
+  font-weight: 600;
+  line-height: 1.4;
+  color: #0C0D10;
+}
+.llm-card__text p {
+  margin-top: var(--sp-4);
+  font-size: 1rem;
+  line-height: 1.85;
+  color: #4A5262;
+}
+.llm-card__text p b { color: #0C0D10; font-weight: 600; }
+.llm-card__no {
+  margin: 0 0 var(--sp-3) !important;
+  font-size: .8125rem !important;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: #1D5EC4 !important;
+}
+.llm-card__hint {
+  font-size: .875rem !important;
+  color: var(--ink-2) !important;
+  padding-left: var(--sp-4);
+  border-left: 2px solid var(--line-strong);
+}
+.llm-card__text--full { max-width: 760px; }
+/* 「整张卡只有一段文字、没有配图」时用这个修饰类 —— 文字**整块居中**。
+   ⚠️ 不加的话，上面那句 max-width:760px 会让文字**贴在卡片左边**：
+      1440 下卡片内宽 1144px，文字只占 760，右边白空近 400px，看着就是"偏左"
+      （2026-10-15 用户圈出来指出）。
+   ⚠️ 提示块（.llm-card__hint）那条**左竖线是给左对齐设计的** ——
+      文字居中之后竖线左边再没有内容依附，会变成一根孤零零的竖条，
+      所以这里把它换成一条上边线。 */
+.llm-card--center .llm-card__text--full {
+  max-width: 760px;
+  margin-inline: auto;
+  text-align: center;
+}
+.llm-card--center .llm-card__hint {
+  padding-left: 0;
+  padding-top: var(--sp-4);
+  border-left: 0;
+  border-top: 1px solid var(--line-strong);
+}
+.llm-card__visual { min-width: 0; }
+.llm-card--solo .llm-card__visual { margin-top: clamp(20px, 3vh, 32px); }
+.llm-card--solo .llm-card__text--full + .llm-win { margin-top: clamp(20px, 3vh, 28px); }
+
+/* --- 表格 ------------------------------------------------------------- */
+.llm-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #FFFFFF;
+  border: 1px solid #E6E9EF;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: .875rem;
+}
+.llm-table caption {
+  caption-side: top;
+  text-align: left;
+  font-size: .8125rem;
+  letter-spacing: .06em;
+  color: var(--ink-2);
+  padding-bottom: var(--sp-3);
+}
+.llm-table th,
+.llm-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #EDF0F4;
+  color: #2B3340;
+  vertical-align: top;
+}
+.llm-table th {
+  background: #F7F8FA;
+  font-weight: 600;
+  font-size: .8125rem;
+  color: #5B6472;
+  white-space: nowrap;
+}
+.llm-table tr:last-child td { border-bottom: 0; }
+.llm-table--wide { font-size: .875rem; }
+.llm-table--wide td:first-child { white-space: nowrap; }
+
+/* --- 四宫格能力卡 ----------------------------------------------------- */
+.llm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2vw, 24px);
+}
+.llm-tile {
+  padding: clamp(22px, 2.6vw, 32px);
+  border-radius: 18px;
+  background: #FFFFFF;
+  border: 1px solid #E9ECF2;
+}
+.llm-tile h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #0C0D10;
+}
+.llm-tile p {
+  margin-top: var(--sp-3);
+  font-size: .9375rem;
+  line-height: 1.8;
+  color: #4A5262;
+}
+
+/* --- 「踩过的坑」清单 -------------------------------------------------- */
+.llm-fix { margin: 0; padding: 0; list-style: none; }
+.llm-fix li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--sp-6);
+  padding: 16px 0;
+  border-bottom: 1px solid #E6E9EF;
+}
+.llm-fix li:last-child { border-bottom: 0; }
+.llm-fix__sym { font-size: .9375rem; line-height: 1.75; color: #0C0D10; }
+.llm-fix__sym::before {
+  content: "✕ ";
+  color: #C0392B;
+  font-weight: 700;
+}
+.llm-fix__why {
+  font-size: .9375rem;
+  line-height: 1.75;
+  color: #4A5262;
+}
+.llm-fix__why::before {
+  content: "✓ ";
+  color: #1E8E4E;
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .llm-card { grid-template-columns: minmax(0, 1fr); }
+  .llm-spec__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .llm-grid { grid-template-columns: minmax(0, 1fr); }
+  .llm-fix li { grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+  .llm-code { font-size: 11.5px; }
+  /* ⚠️ 表格在窄屏不要硬挤 —— 横向滚动，别把列压成一字一行 */
+  .llm-table--wide { display: block; overflow-x: auto; white-space: nowrap; }
 }

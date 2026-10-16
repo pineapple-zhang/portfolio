@@ -54,6 +54,9 @@ setTimeout(function () {
   <!-- 暗底首屏：参考 deepseek.com/harness 的版式（2026-10-15 用户指定）。
        视频放在圆角矩形里，不通版铺满；配色与尺寸的来路见 site.css 第 23 节。 -->
   <header class="harness-hero">
+    <!-- 那片蓝光由 site.js 第 25 节用 canvas 画出来（CSS 里那条
+         radial-gradient 保留着当兜底：脚本没跑时首屏依然是深蓝的）。 -->
+    <canvas class="harness-hero__glow" aria-hidden="true"></canvas>
     <div class="harness-hero__inner">
       <p class="harness-hero__badge">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -170,107 +173,18 @@ setTimeout(function () {
     </div>
   </section>
 
-  <section class="wrap wrap--wide" aria-label="作品列表">
-    <div class="works">
-
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">游戏截图 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>2025 — 开发中</span>
-            <span>独立完成</span>
-          </div>
-          <h2 class="work__title">项目概览</h2>
-          <p class="work__desc">
-            一款以修仙为主题的文字类微信小游戏。玩家通过修炼积累修为、
-            外出游历获取资源、经营自己的洞府，并在战斗中推进境界。
-            七个主要页面覆盖了从日常挂机到主动操作的完整循环。
-          </p>
-          <div class="work__tags">
-            <span class="tag">微信小程序</span>
-            <span class="tag">游戏设计</span>
-            <span class="tag">独立开发</span>
-          </div>
-        </div>
-      </article>
-
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">视觉稿 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>视觉系统</span>
-            <span>国风水墨</span>
-          </div>
-          <h2 class="work__title">国风水墨视觉系统</h2>
-          <p class="work__desc">
-            整体走浅色宣纸的国风水墨方向——不是把水墨当贴图，
-            而是让它决定界面的底层规则：留白怎么留、层次靠墨色浓淡区分、
-            装饰元素一律让位给信息本身。整套视觉从设计变量开始搭，
-            保证后续新增页面不用重新做一遍风格决策。
-          </p>
-          <div class="work__tags">
-            <span class="tag">视觉系统</span>
-            <span class="tag">设计变量</span>
-            <span class="tag">国风</span>
-          </div>
-        </div>
-      </article>
-
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">页面流程 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>玩法</span>
-            <span>七个页面</span>
-          </div>
-          <h2 class="work__title">页面结构与玩法循环</h2>
-          <p class="work__desc">
-            修炼、游历、洞府、战斗四个主页面构成核心循环，
-            背包、商店、个人中心承担资源与成长的管理。
-            设计的重点在于：让玩家在任何一个页面都能一眼看懂
-            下一步该干什么，不用来回翻找。
-          </p>
-          <div class="work__tags">
-            <span class="tag">玩法设计</span>
-            <span class="tag">信息架构</span>
-            <span class="tag">交互流程</span>
-          </div>
-        </div>
-      </article>
-
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">开发记录 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>开发</span>
-            <span>小程序原生</span>
-          </div>
-          <h2 class="work__title">技术实现</h2>
-          <p class="work__desc">
-            用微信小程序原生框架开发，页面结构与样式分开维护。
-            做下来体会最深的一点是：样式的可维护性要靠结构解决，
-            所以先把整套设计变量抽出来，页面里只引用变量，
-            后续统一换风格时改一个地方就够了。
-          </p>
-          <div class="work__tags">
-            <span class="tag">小程序开发</span>
-            <span class="tag">样式架构</span>
-          </div>
-        </div>
-      </article>
-
-    </div>
-  </section>
-
-  <!-- 五个网页小游戏（2026-10-15 加）。
-       图都是从 `_shots/cap_games.py` 的实机录制里抽的帧，不是渲染图。 -->
+  <!-- 五个网页小游戏（2026-10-15）。
+       图都是从 `_shots/cap_games.py` 的实机录制里抽的帧，不是渲染图。
+       这一页原先有两段（一段旧的微信小程序内容 + 页尾一段游戏汇总），
+       用户 2026-10-15 定稿：**合成一段** —— 旧那段的位置与版式留着、
+       内容换成这五个游戏，页尾那段汇总删掉。 -->
   <section class="section wrap wrap--wide" aria-label="五个网页小游戏">
     <div class="section__head">
       <p class="eyebrow section__eyebrow reveal-line">小游戏</p>
       <h2 class="section-title reveal-line">五个能直接打开玩的小游戏</h2>
       <p class="section__intro reveal-line">
         都不是引擎工程 —— 每个游戏就是一个 HTML 文件，逻辑、画面、音效全在里面，
-        双击就能玩（3D 那两个用 three.js）。下面五张图都是实机跑出来的。
+        双击就能玩（3D 那两个用 three.js）。下面五张图都是实机跑出来的 —— <strong>点「打开玩」就地在页面里开一局</strong>。
       </p>
     </div>
 
@@ -280,6 +194,11 @@ setTimeout(function () {
         <figure class="work__media work__media--wide reveal-line">
           <img src="assets/img/game/bomberman.jpg" alt="炸弹人双人对战：可破坏方块的地图、四名角色与倒计时 HUD"
                width="1280" height="720" loading="lazy" decoding="async">
+        
+          <button class="work__launch" type="button" data-play="games/bomberman.html"
+                  aria-label="在这里打开玩：炸弹人双人对战">
+            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
+          </button>
         </figure>
         <div>
           <div class="work__meta reveal-line">
@@ -313,6 +232,11 @@ setTimeout(function () {
         <figure class="work__media work__media--wide reveal-line">
           <img src="assets/img/game/rabbit.jpg" alt="玉兔下凡：夜间城市背景里的横版战斗，角色与敌人血量条"
                width="1280" height="720" loading="lazy" decoding="async">
+        
+          <button class="work__launch" type="button" data-play="games/rabbit.html"
+                  aria-label="在这里打开玩：玉兔下凡">
+            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
+          </button>
         </figure>
       </article>
 
@@ -320,6 +244,11 @@ setTimeout(function () {
         <figure class="work__media work__media--wide reveal-line">
           <img src="assets/img/game/store.jpg" alt="雨夜便利店街角：湿路面反光、霓虹招牌与雨丝的三渲二街景"
                width="1280" height="720" loading="lazy" decoding="async">
+        
+          <button class="work__launch" type="button" data-play="games/store.html"
+                  aria-label="在这里打开玩：雨夜便利店街角">
+            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
+          </button>
         </figure>
         <div>
           <div class="work__meta reveal-line">
@@ -353,6 +282,11 @@ setTimeout(function () {
         <figure class="work__media work__media--wide reveal-line">
           <img src="assets/img/game/temple.jpg" alt="祈年殿：三重檐鎏金宝顶的三维复原，蓝天下带台基栏杆"
                width="1280" height="720" loading="lazy" decoding="async">
+        
+          <button class="work__launch" type="button" data-play="games/temple.html"
+                  aria-label="在这里打开玩：祈年殿">
+            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
+          </button>
         </figure>
       </article>
 
@@ -360,6 +294,11 @@ setTimeout(function () {
         <figure class="work__media work__media--wide reveal-line">
           <img src="assets/img/game/gomoku.jpg" alt="五子棋：木纹棋盘上双方已经下出的棋子"
                width="1280" height="720" loading="lazy" decoding="async">
+        
+          <button class="work__launch" type="button" data-play="games/gomoku.html"
+                  aria-label="在这里打开玩：五子棋">
+            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
+          </button>
         </figure>
         <div>
           <div class="work__meta reveal-line">
@@ -378,6 +317,26 @@ setTimeout(function () {
 
     </div>
   </section>
+
+  <!-- 游玩浮层（2026-10-15）。iframe 的 src **只在点开的那一刻才设**，
+       关掉时清空 —— 五个游戏加起来 2.2MB，不能让人一进页面就全下下来。
+       逻辑在 site.js 第 26 节。 -->
+  <div class="play" id="play" hidden>
+    <div class="play__panel" role="dialog" aria-modal="true" aria-labelledby="play-title">
+      <div class="play__bar">
+        <p class="play__title" id="play-title">游戏</p>
+        <div class="play__acts">
+          <a class="play__link" id="play-open" href="#" target="_blank"
+             rel="noopener">在新窗口打开 ↗</a>
+          <button class="play__close" id="play-close" type="button"
+                  aria-label="关闭（Esc）"></button>
+        </div>
+      </div>
+      <iframe class="play__frame" id="play-frame" title="游戏画面"
+              allow="autoplay; fullscreen; gamepad" loading="lazy"></iframe>
+      <p class="play__hint">点一下画面再操作 · 按 Esc 关闭</p>
+    </div>
+  </div>
 
 </main>
 
@@ -409,7 +368,7 @@ setTimeout(function () {
     </div>
 
     <div class="site-footer__bottom">
-      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利</span>
+      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利<span class="site-ver"> · v2.0</span></span>
       <span>本网站全部由个人开发</span>
       <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
     </div>

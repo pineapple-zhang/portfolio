@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>大模型部署 · 个人网页开发</title>
-<meta name="description" content="张杰波的大模型实践：本地量化部署、多模态推理、语音输入输出链路与自动化工具链。">
-<meta name="theme-color" content="#F5F5F7">
+<meta name="description" content="在本机用 llama.cpp 跑量化大模型的完整记录：怎么挑 GGUF 模型、启动脚本每个参数在做什么、看图看视频、以及踩过的坑。">
+<meta name="theme-color" content="#0B1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
 <!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
      首屏入场的初始态（opacity:0）只写在 `.js` 选择器下面 ——
@@ -50,110 +50,547 @@ setTimeout(function () {
 
 <main id="main">
 
-  <header class="page-head wrap">
-    <nav class="breadcrumb" aria-label="面包屑">
-      <a href="index.html">首页</a>
-      <span aria-hidden="true">/</span>
-      <span>大模型部署</span>
-    </nav>
-    <h1 class="page-head__title">大模型部署</h1>
-    <p class="page-head__lead">
-      在本机把模型跑起来，让能力真正落在自己的设备上。
-    </p>
+  <!-- 深色首屏（2026-10-15）。
+       用户点名参考豆包下载页（doubao.com/download/desktop）的版式：
+       深色首屏放「大标题 + 一行副文 + 一个胶囊按钮 + 一块产品界面」，
+       下面接浅色的大圆角卡片区。配色也是照它取的
+       （深靛蓝 → 近黑 + 蓝色主按钮）。
+       首屏那块「产品界面」这儿换成了**真的启动命令** —— 这一页要讲的就是它。 -->
+  <header class="llm-hero">
+    <div class="llm-hero__inner">
+      <p class="llm-hero__badge">本地大模型部署指南</p>
+      <h1 class="llm-hero__title">
+        <!-- 「量化大模型」原本做过一版蓝色渐变（参考图是「超拉风」），
+             2026-10-15 用户看过之后决定**改回白色**，跟标题其余部分一致。
+             相关 CSS（--llm-blue / .llm-blue）已一并删掉，别再加回来。 -->
+        <span>在本机跑一个量化大模型</span>
+        <span>6 GB 显存，也够用</span>
+      </h1>
+      <!-- 两个句子各占一行：用户 2026-10-15 指出「不」被挤到了上一行末尾
+           （……跑起来。不 / 联网、……）。用两个 block 的 span 把断行钉在句号处，
+           每句内部该折还照折 —— 窄屏不会因此溢出。 -->
+      <p class="llm-hero__sub">
+        <span>用 llama.cpp 的 Windows CUDA 版，把量化后的 Qwen 多模态模型跑起来。</span>
+        <span>不联网、不租显卡，双击一个 .bat 就能在浏览器里用。</span>
+      </p>
+      <div class="llm-hero__acts">
+        <a class="llm-btn" href="#scripts">看启动脚本</a>
+        <a class="llm-hero__link" href="#pick">看怎么选模型 →</a>
+      </div>
+
+      <div class="llm-win llm-win--dark llm-hero__win">
+        <div class="llm-win__bar">
+          <span class="llm-win__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="llm-win__name">启动_Qwen3.5-4B.bat</span>
+          <span class="llm-win__tag">Windows / CUDA 12.4</span>
+        </div>
+        <pre class="llm-code"><code>"%~dp0llama-server.exe" -m "models\Qwen3.5-4B-Q4_K_M.gguf" -mm "models\mmproj-Qwen3.5-4B-BF16.gguf" -a "Qwen3.5-4B" --fit on -c 131072 -fa on -ctk q8_0 -ctv q8_0 -np 1 --reasoning off --host 127.0.0.1 --port 8081 --image-min-tokens 1024 --ui-config-file "ui-config.json" --jinja --ui-mcp-proxy --mcp-servers-config "mcp-config.json"</code></pre>
+      </div>
+    </div>
   </header>
 
-  <section class="wrap wrap--wide" aria-label="作品列表">
-    <div class="works">
+  <!-- 硬件与版本：一句话交代清楚"跑在什么东西上"，
+       后面的所有取舍（上下文能开多大、为什么 9B 慢）都从这儿来。 -->
+  <section class="llm-spec wrap" aria-label="运行环境">
+    <dl class="llm-spec__list">
+      <div class="llm-spec__item reveal-line">
+        <dt>我的显卡</dt>
+        <dd>RTX 3060 Laptop <b>6 GB</b></dd>
+      </div>
+      <div class="llm-spec__item reveal-line">
+        <dt>推理引擎</dt>
+        <dd>llama.cpp <b>b11222</b><br><span>0.4.0-dev · CUDA 12.4</span></dd>
+      </div>
+      <div class="llm-spec__item reveal-line">
+        <dt>可选模型</dt>
+        <dd><b>3 个</b><br><span>GGUF 量化，共约 11.1 GB</span></dd>
+      </div>
+      <div class="llm-spec__item reveal-line">
+        <dt>启动方式</dt>
+        <dd><b>双击 .bat</b><br><span>浏览器里用，127.0.0.1</span></dd>
+      </div>
+    </dl>
+  </section>
 
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>持续</span>
-            <span>自行搭建</span>
+  <!-- 三步 -->
+  <section class="llm-sec wrap wrap--wide" id="steps" aria-label="三步跑起来">
+    <div class="llm-head">
+      <p class="llm-kicker reveal-line">三步</p>
+      <h2 class="llm-title reveal-line">从零到能对话，只要三步</h2>
+      <p class="llm-sub reveal-line">
+        引擎、模型、启动脚本 —— 这三样凑齐就能用。下面每一步都给出实际的文件名和参数，
+        照着放、照着改就行。
+      </p>
+    </div>
+
+    <article class="llm-card reveal-line">
+      <div class="llm-card__text">
+        <p class="llm-card__no">第 1 步</p>
+        <h3>装引擎：llama.cpp 的 Windows CUDA 版</h3>
+        <p>
+          官方发的 Windows 压缩包，解压到任意目录就能用，不用装 Python、不用编译。
+          整个目录里只有一个文件是"重"的 —— <code>ggml-cuda.dll</code>，
+          <b>569 MB</b>，CUDA 的算子全在里面；其余都是几 MB 的小 dll 和 exe。
+        </p>
+        <p class="llm-card__hint">
+          只要 CPU 也能跑，换不带 CUDA 的那个包就行，代价是慢一个数量级。
+        </p>
+      </div>
+      <div class="llm-card__visual">
+        <div class="llm-win llm-win--light">
+          <div class="llm-win__bar">
+            <span class="llm-win__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="llm-win__name">本地部署（多模态llama.cpp）\</span>
           </div>
-          <h2 class="work__title">本地量化模型部署</h2>
-          <p class="work__desc">
-            在自己的机器上跑量化后的语言模型和多模态模型。
-            显存不够就往下压量化等级，速度不够就换推理后端——
-            整个过程要解决的是很具体的问题：模型多大、量化到几比特、
-            用哪个后端、线程开多少，以及怎样在不联网的前提下把图片也读懂。
-          </p>
-          <div class="work__tags">
-            <span class="tag">本地推理</span>
-            <span class="tag">量化</span>
-            <span class="tag">多模态</span>
-          </div>
+          <pre class="llm-code llm-code--list"><code><span class="t-d">llama-server.exe</span>            9 KB
+<span class="t-d">llama-cli.exe</span>               9 KB
+<span class="t-d">llama-mtmd-cli.exe</span>          多模态命令行
+<span class="t-d">llama-common.dll</span>            7.5 MB
+<span class="t-a">ggml-cuda.dll</span>             <span class="t-n">569 MB</span>   ← CUDA 算子
+<span class="t-d">ggml-cpu-*.dll</span>             15 个，按 CPU 型号分
+<span class="t-d">ffmpeg\</span>                    ffmpeg.exe + ffprobe.exe
+<span class="t-d">models\</span>                    模型放这里</code></pre>
         </div>
-      </article>
+        <p class="llm-cap">目录一览（节选）</p>
+      </div>
+    </article>
 
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>工具</span>
-            <span>已落地</span>
+    <article class="llm-card reveal-line">
+      <div class="llm-card__text">
+        <p class="llm-card__no">第 2 步</p>
+        <h3>挑模型：认准 GGUF 和量化等级</h3>
+        <p>
+          llama.cpp 只吃 <b>GGUF</b> 格式。文件名里的 <code>Q4_K_M</code> 是量化等级 ——
+          <b>Q4 是 4 比特</b>，比原始 16 比特小约四倍，质量损失在日常对话里基本看不出来，
+          是显存紧张时性价比最高的一档。
+        </p>
+        <p>
+          多模态（能看图）的模型要<b>两个文件</b>：模型本体 + 一个
+          <code>mmproj</code> 投影层。<code>-m</code> 指前者，<code>-mm</code> 指后者，缺一个都读不了图。
+        </p>
+        <p class="llm-card__hint">
+          我的机器实际在用的有三个，共约 11.1 GB（含各自的 mmproj）。
+        </p>
+      </div>
+      <div class="llm-card__visual">
+        <table class="llm-table">
+          <caption>models\ 目录</caption>
+          <thead>
+            <tr><th>文件</th><th>大小</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Qwen3.5-9B-Q4_K_M.gguf</td><td>5.29 GB</td></tr>
+            <tr><td>mmproj-Qwen3.5-9B-BF16.gguf</td><td>879 MB</td></tr>
+            <tr><td>Qwen3.5-4B-Q4_K_M.gguf</td><td>2.52 GB</td></tr>
+            <tr><td>mmproj-Qwen3.5-4B-BF16.gguf</td><td>644 MB</td></tr>
+            <tr><td>Qwen3.5-2B-Q4_K_M.gguf</td><td>1.19 GB</td></tr>
+            <tr><td>mmproj-Qwen3.5-2B-BF16.gguf</td><td>640 MB</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="llm-card reveal-line">
+      <div class="llm-card__text">
+        <p class="llm-card__no">第 3 步</p>
+        <h3>写启动脚本：一行命令 + 几个参数</h3>
+        <p>
+          没有配置文件、没有服务注册。一个 <code>.bat</code> 里就是
+          <b>一行 <code>llama-server.exe</code></b> 加一串参数，双击就跑。
+        </p>
+        <p>
+          出现 <code>server is listening</code> 就说明起来了（冷启动实测 <b>8~20 秒</b>，
+          2B 最快 8 秒、9B 最慢 20 秒），
+          浏览器打开脚本里那个端口就能用。想换模型就改文件名，想换端口就改 <code>--port</code>。
+        </p>
+        <p class="llm-card__hint">
+          这一页下面有完整脚本，和每个参数的逐条解释。
+        </p>
+      </div>
+      <div class="llm-card__visual">
+        <div class="llm-win llm-win--light">
+          <div class="llm-win__bar">
+            <span class="llm-win__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="llm-win__name">启动_Qwen3.5-2B.bat</span>
           </div>
-          <h2 class="work__title">语音输入链路</h2>
-          <p class="work__desc">
-            按一下开始说，松开就把话变成文字并自动填进当前输入框。
-            链路是「麦克风采集 → 静音检测 → 语音识别 → 写入剪贴板或直接上屏」。
-            调得比较久的是静音检测——不做的话，安静的时候模型会自己
-            编出一整段并不存在的句子。
-          </p>
-          <div class="work__tags">
-            <span class="tag">语音识别</span>
-            <span class="tag">静音检测</span>
-            <span class="tag">桌面工具</span>
-          </div>
+          <pre class="llm-code"><code><span class="t-k">@echo off</span>
+<span class="t-k">title</span> Qwen3.5-2B (port 8083)
+<span class="t-k">cd</span> /d "%~dp0"
+
+"%~dp0<span class="t-d">llama-server.exe</span>" ^
+  -m  "models\Qwen3.5-2B-Q4_K_M.gguf" ^
+  -mm "models\mmproj-Qwen3.5-2B-BF16.gguf" ^
+  <span class="t-a">--fit on</span> ^
+  -c 131072 -fa on ^
+  -ctk q8_0 -ctv q8_0 ^
+  --reasoning off ^
+  --host 127.0.0.1 --port 8083</code></pre>
         </div>
-      </article>
+        <p class="llm-cap">为了看得清拆成了多行，<code>^</code> 是 cmd 的续行符</p>
+      </div>
+    </article>
+  </section>
 
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>工具</span>
-            <span>已落地</span>
-          </div>
-          <h2 class="work__title">语音播报链路</h2>
-          <p class="work__desc">
-            把文字合成为语音并稳定播放出来。看着简单，真正麻烦的是设备层：
-            音频设备的编号会随着插拔耳机、重启系统而变，所以要按设备名去匹配
-            而不是记编号；播放前还要先探测设备是否真的可用，
-            并且按设备自己的采样率重采样，否则直接报错。
-          </p>
-          <div class="work__tags">
-            <span class="tag">语音合成</span>
-            <span class="tag">音频设备</span>
-            <span class="tag">稳定性</span>
-          </div>
-        </div>
-      </article>
+  <!-- 按配置选模型（2026-10-15 用户要求加的一小块）。
+       ⚠️ 表里的显存数**全是当天用 nvidia-smi 真跑出来的**，不是估的：
+         起服务 → 轮询 /health 到 200 → 读显存 → 立刻杀掉，见
+         _shots/_probe_vram.py。原先页面上写的 ~4.2 / ~3.2 / ~1.8 GB 是
+         2026-09-28 那份使用说明里的旧数（那会儿 4B 的上下文还是 64 K），
+         已经改成实测值。 -->
+  <section class="llm-sec wrap wrap--wide" id="pick" aria-label="怎么按配置选模型">
+    <div class="llm-head">
+      <p class="llm-kicker reveal-line">怎么选模型要看电脑的配置</p>
+      <h2 class="llm-title reveal-line">怎么按配置选模型</h2>
+      <p class="llm-sub reveal-line">
+        挑模型是一道减法：<b>显存 − 模型文件 − KV 缓存 − 计算缓冲</b>。
+        减完剩多少，决定的不是"装不装得下"，而是<b>上下文能开多长、有多少层能留在显卡上</b>。
+      </p>
+    </div>
 
-      <article class="work reveal">
-        <div class="work__media"><span class="thumb__hint">作品图 · 待替换</span></div>
-        <div>
-          <div class="work__meta">
-            <span>持续</span>
-            <span>工作流</span>
-          </div>
-          <h2 class="work__title">自动化工具链</h2>
-          <p class="work__desc">
-            把重复劳动交给脚本：批量处理素材、抽帧比对、文档生成、
-            文件整理。核心思路是把 AI 能力接进日常流程里，
-            而不是每次都重新打开一个对话框从头问一遍。
-          </p>
-          <div class="work__tags">
-            <span class="tag">流程自动化</span>
-            <span class="tag">脚本工具</span>
-          </div>
-        </div>
-      </article>
+    <div class="llm-card llm-card--solo llm-card--center reveal-line">
+      <div class="llm-card__text llm-card__text--full">
+        <h3>先记住一条换算</h3>
+        <p>
+          Q4 量化下，模型文件差不多是 <b>参数量（B）× 0.6 GB</b>：2B ≈ 1.2、4B ≈ 2.5、9B ≈ 5.3 ——
+          对着文件名看一眼就知道该往哪一档挑。
+        </p>
+        <p>
+          但<b>文件大小说明不了显存占用</b>。真正吃显存的是 <b>KV 缓存</b>和计算缓冲，
+          它们只跟<b>上下文长度</b>有关，跟模型大小关系不大 ——
+          最小的那个 2B，文件只有 1.83 GB，跑起来照样要吃掉 3.3 GB。
+        </p>
+        <p class="llm-card__hint">
+          本机实测（6 GB 卡、空闲按 1.47 GB 起算）：
+          <b>9B@16 K 要 4.06 GB、4B@128 K 要 4.04 GB、2B@128 K 要 3.37 GB</b>。
+          三个都落在 3.4~4.1 GB —— 9B 看着跟 4B 差不多占，其实有<b>约 2 GB 被
+          <code>--fit on</code> 挪到内存里跑</b>了。
+        </p>
+      </div>
+    </div>
 
+    <div class="llm-card llm-card--solo reveal-line">
+      <table class="llm-table llm-table--wide">
+        <caption>换成别的显卡怎么挑</caption>
+        <thead>
+          <tr><th>你的显存</th><th>该挑的参数量</th><th>上下文</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>4 GB</td><td>2B 级</td><td>64 ~ 128 K</td><td>再往上就得靠 <code>--fit on</code> 往内存挪，速度掉一截</td></tr>
+          <tr><td>6 GB</td><td>4B 级</td><td>128 K</td><td>本机的档位：质量够用，上下文还能开满</td></tr>
+          <tr><td>8 ~ 12 GB</td><td>9B 级</td><td>32 ~ 64 K</td><td>到这一档，9B 才第一次能整个待在显卡上</td></tr>
+          <tr><td>16 GB</td><td>14B 级</td><td>32 K</td><td>14B 的 Q4 文件约 9 GB，得给 KV 缓存留位置</td></tr>
+          <tr><td>24 GB 以上</td><td>32B 级</td><td>32 ~ 64 K</td><td>32B 的 Q4 文件已经 20 GB 上下</td></tr>
+        </tbody>
+      </table>
+      <p class="llm-cap">
+        第一行到第三行我都用我的电脑实测过，第四、五行是按同一条换算估的 ——
+        受到资金影响我没在这些卡上跑过，喜欢的朋友可以自行实测。
+      </p>
     </div>
   </section>
 
+  <!-- 启动脚本全文 -->
+  <section class="llm-sec llm-sec--tint wrap wrap--wide" id="scripts" aria-label="启动脚本">
+    <div class="llm-head">
+      <p class="llm-kicker reveal-line">启动脚本</p>
+      <h2 class="llm-title reveal-line">多个模型，脚本只改模型和端口</h2>
+      <p class="llm-sub reveal-line">
+        同一套参数，换文件名和端口就是另一个模型。<b>一次只开一个</b> —— 6 GB 显存装不下两个。
+      </p>
+    </div>
+
+    <div class="llm-card llm-card--solo reveal-line">
+      <table class="llm-table llm-table--wide">
+        <caption>三个启动脚本（显存占用是本机 6 GB 卡上的实测值）</caption>
+        <thead>
+          <tr><th>脚本</th><th>模型</th><th>端口</th><th>上下文</th><th>显存占用</th><th>特点</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>启动_Qwen3.5-9B.bat</code></td><td>Qwen3.5-9B</td><td>8080</td><td>16 K</td><td>4.06 GB</td><td>装不下，约 2 GB 在内存里跑，明显慢</td></tr>
+          <tr><td><code>启动_Qwen3.5-4B.bat</code></td><td>Qwen3.5-4B</td><td>8081</td><td>128 K</td><td>4.04 GB</td><td>均衡，日常推荐</td></tr>
+          <tr><td><code>启动_Qwen3.5-2B.bat</code></td><td>Qwen3.5-2B</td><td>8083</td><td>128 K</td><td>3.37 GB</td><td>最省显存的一档，上下文仍能开满</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="llm-card llm-card--solo reveal-line">
+      <div class="llm-card__text llm-card__text--full">
+        <h3><code>启动脚本</code> 全文</h3>
+        <p>
+          下面就是 <code>启动脚本</code> 的<b>全部内容</b>，
+          参数一个都没少。跟原文件只差三处、都不影响运行：
+        </p>
+        <p>
+          ① 命令原本是<b>一整行</b>，这里拆成多行、用 <code>^</code> 续行（cmd 里合法）；
+          ② <code>::</code> 开头的注释是<b>页面上加的，原文件里没有</b>；
+          ③ 缩进空格有微调。删掉注释、把续行接回去，就是原样。
+        </p>
+        <!-- 2026-10-15 用户要求：说明「这个脚本用什么软件写」。
+             编码那条是实测的 —— 本机这几个 .bat 全是 **ANSI(GBK)、无 BOM、CRLF**，
+             脚本里有中文 echo，存成 UTF-8 在 cmd 里会变乱码。 -->
+        <p>
+          <b>用什么写：</b>记事本（Windows 自带的 <code>Notepad</code>）就够，
+          不用装任何东西。存的时候记牢两条：
+        </p>
+        <p>
+          ① 「保存类型」选<b>所有文件</b>，文件名写全 <code>xxx.bat</code> ——
+          不这样会被存成 <code>xxx.bat.txt</code>；
+          ② 「编码」选 <b>ANSI</b>，<b>不要选 UTF-8</b>。
+          脚本里有中文（那几行 <code>echo</code>），存成 UTF-8 的 .bat 在 cmd 里会显示成乱码。
+        </p>
+        <p class="llm-card__hint">
+          本机这几个脚本本身就是 ANSI 编码、无 BOM、CRLF 换行 —— 照着存不会错。
+          用 VS Code / Notepad++ 改也行，但要在状态栏把编码切回
+          <code>GB2312</code> 或 <code>ANSI</code>，别让编辑器自作主张存成 UTF-8。
+        </p>
+      </div>
+      <div class="llm-win llm-win--light llm-win--wide">
+        <div class="llm-win__bar">
+          <span class="llm-win__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="llm-win__name">启动_Qwen3.5-4B.bat</span>
+          <span class="llm-win__tag">BAT · GBK</span>
+        </div>
+        <pre class="llm-code"><code><span class="t-k">@echo off</span>
+<span class="t-c">:: 窗口标题 + 切到脚本自己所在的目录（用 %~dp0，双击和拖到图标上都对）</span>
+<span class="t-k">title</span> <span class="t-pick">Qwen3.5-4B</span> (port <span class="t-pick">8081</span>)
+<span class="t-k">cd</span> /d "%~dp0"
+
+<span class="t-k">echo</span> ========================================
+<span class="t-k">echo</span>   <span class="t-pick">Qwen3.5-4B</span>
+<span class="t-k">echo</span>   端口 <span class="t-pick">8081</span>  -  http://127.0.0.1:<span class="t-pick">8081</span>
+<span class="t-k">echo</span> ========================================
+<span class="t-k">echo</span>   首次加载需要时间，看到 "server is listening" 即就绪
+<span class="t-k">echo</span>   关掉本窗口或按 Ctrl+C 可停止服务
+<span class="t-k">echo</span> ========================================
+<span class="t-k">echo.</span>
+
+<span class="t-c">:: ↓↓↓ 就是这一行在干活 ↓↓↓</span>
+"%~dp0<span class="t-d">llama-server.exe</span>" ^
+  -m  "models\<span class="t-pick">Qwen3.5-4B-Q4_K_M.gguf</span>" ^         <span class="t-c">:: 模型本体</span>
+  -mm "models\<span class="t-pick">mmproj-Qwen3.5-4B-BF16.gguf</span>" ^    <span class="t-c">:: 多模态投影层（看图用）</span>
+  -a  "<span class="t-pick">Qwen3.5-4B</span>" ^                            <span class="t-c">:: 在网页里显示的名字</span>
+  <span class="t-a">--fit on</span> ^                                    <span class="t-c">:: 自动决定每层放显存还是内存</span>
+  <span class="t-a">-c 131072</span> ^                                   <span class="t-c">:: 上下文 128K</span>
+  <span class="t-a">-fa on</span> ^                                      <span class="t-c">:: Flash Attention</span>
+  <span class="t-a">-ctk q8_0 -ctv q8_0</span> ^                         <span class="t-c">:: KV 缓存量化到 8 位，显存减半</span>
+  -np 1 ^                                       <span class="t-c">:: 只开一个并发槽（一个人用够了）</span>
+  --reasoning off ^                             <span class="t-c">:: 关掉思考链输出，直接给答案</span>
+  --host 127.0.0.1 --port <span class="t-pick">8081</span> ^                <span class="t-c">:: 只允许本机访问</span>
+  --image-min-tokens 1024 ^                     <span class="t-c">:: 图片最少切 1024 个 token</span>
+  --ui-config-file "ui-config.json" ^
+  --jinja ^                                     <span class="t-c">:: 用模型自带的对话模板</span>
+  --ui-mcp-proxy <span class="t-danger">--mcp-servers-config "mcp-config.json"</span>
+
+<span class="t-k">echo.</span>
+<span class="t-k">echo</span> --- 服务已退出 ---
+<span class="t-k">pause</span></code></pre>
+      </div>
+      <p class="llm-cap llm-cap--left">
+        <span class="t-pick-demo">高亮</span>标出的就是<b>模型和端口</b>出现的地方 ——
+        换个模型只要动这几处，其余参数不用碰。
+        ⚠️ 那行<span class="t-danger-demo">大红</span>的 <code>mcp-config.json</code>
+        里存着搜索服务的 API Key（<b>明文</b>），
+        <b>别把这个文件夹打包发给别人</b>。
+      </p>
+
+      <!-- 那个文件里长什么样（2026-10-15 用户要求：密钥的位置用灰色星号代替）。
+           ⚠️ 这里写的**是脱敏后的结构**，星号是占位符，不是真 Key 的长度。
+              别照着页面上这一份直接抄进项目 —— 星号那一格要换成自己的 Key。 -->
+      <div class="llm-keyfile">
+        <p class="llm-keyfile__title">
+          <code>mcp-config.json</code> 就长这样，密钥填在
+          <code>env.BOCHA_API_KEY</code> 那一格：
+        </p>
+        <pre class="llm-code"><code>{
+  "mcpServers": {
+    "bocha-search": {
+      "command": "D:\08 本地大模型\本地部署（多模态llama.cpp）\mcp-env\Scripts\bocha-search-mcp.exe",
+      "args": [],
+      "env": {
+        "BOCHA_API_KEY": "<span class="t-mask">************</span>"
+      }
+    }
+  }
+}</code></pre>
+        <p class="llm-cap llm-cap--left">
+          上面那串灰色星号就是<b>你自己的博查 API Key 要填的位置</b> ——
+          填进去之后文件里存的仍是明文，所以别外传。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 参数逐条 -->
+  <section class="llm-sec wrap wrap--wide" id="params" aria-label="参数说明">
+    <div class="llm-head">
+      <p class="llm-kicker reveal-line">参数</p>
+      <h2 class="llm-title reveal-line">这几个参数在做什么</h2>
+      <p class="llm-sub reveal-line">
+        这套参数不是抄来的默认值，是照着 6 GB 显存一点点试出来的。下面每一条都对应过一个问题。
+      </p>
+    </div>
+
+    <div class="llm-card llm-card--solo reveal-line">
+      <table class="llm-table llm-table--wide">
+        <caption>llama-server 启动参数</caption>
+        <thead>
+          <tr><th>参数</th><th>作用</th><th>为什么这么设</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--fit on</code></td>
+            <td>自动分配：由引擎自己算每层放显存还是内存</td>
+            <td>以前写死 <code>-ngl 99</code>（全部塞显存）会直接 OOM。交给它自己算，不再溢出。</td>
+          </tr>
+          <tr>
+            <td><code>-c 131072</code></td>
+            <td>上下文长度（token 数），131072 = 128 K</td>
+            <td>不是越大越好。写 128 K 但显存装不下，层会被挤到 CPU，反而更慢。9B 只给 16 K 就是这个道理。</td>
+          </tr>
+          <tr>
+            <td><code>-ctk q8_0<br>-ctv q8_0</code></td>
+            <td>把 KV 缓存量化到 8 位</td>
+            <td>长上下文时 KV 缓存是显存大头。<b>量化后直接减半</b>，质量几乎无感。</td>
+          </tr>
+          <tr>
+            <td><code>-fa on</code></td>
+            <td>Flash Attention</td>
+            <td>同显存下能开更长上下文，也更快。</td>
+          </tr>
+          <tr>
+            <td><code>-np 1</code></td>
+            <td>并发槽位数</td>
+            <td>一个人用，开一个就够；开多了每个槽都要占 KV 缓存。</td>
+          </tr>
+          <tr>
+            <td><code>--host 127.0.0.1</code></td>
+            <td>只监听本机</td>
+            <td>默认写 <code>0.0.0.0</code> 的话，同一个局域网里任何人都能连上，而且<b>没有鉴权</b>。</td>
+          </tr>
+          <tr>
+            <td><code>-mm</code></td>
+            <td>多模态投影层文件</td>
+            <td>少了它模型就读不了图 —— 只会把图片当乱码。</td>
+          </tr>
+          <tr>
+            <td><code>--image-min-tokens 1024</code></td>
+            <td>一张图最少切成多少个 token</td>
+            <td>视觉模型的官方建议值。太小会看不清图里的字，太大白占上下文。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 能做什么 -->
+  <section class="llm-sec llm-sec--tint wrap wrap--wide" aria-label="能做什么">
+    <div class="llm-head">
+      <p class="llm-kicker reveal-line">能力</p>
+      <h2 class="llm-title reveal-line">本地跑起来之后能做什么</h2>
+      <p class="llm-sub reveal-line">
+        文字、图片、视频、联网 —— 四件事，全部在这台笔记本上完成，数据不出本机。
+      </p>
+    </div>
+
+    <div class="llm-grid">
+      <article class="llm-tile reveal-line">
+        <h3>文字对话</h3>
+        <p>基础能力。上下文给够了就能整篇文档丢进去问。</p>
+      </article>
+      <article class="llm-tile reveal-line">
+        <h3>看图</h3>
+        <p>识别画面内容，也能读图里的文字。实测把发票、截图丢进去都认得出来。</p>
+      </article>
+      <article class="llm-tile reveal-line">
+        <h3>看视频</h3>
+        <p>
+          llama.cpp 靠 ffmpeg 把视频抽成帧再喂给模型，所以引擎目录下要放
+          <code>ffmpeg.exe</code> 和 <code>ffprobe.exe</code>。
+          抽帧密度由 <code>--video-fps</code> 控制，默认每秒 4 帧。
+        </p>
+      </article>
+      <article class="llm-tile reveal-line">
+        <h3>联网搜索</h3>
+        <p>
+          接一个搜索服务的 MCP，模型就能查最新信息。
+          模型自己的知识有截止日期，不联网问它最近的事它只会编。
+        </p>
+      </article>
+    </div>
+
+    <div class="llm-card llm-card--solo reveal-line" id="stop">
+      <div class="llm-card__text llm-card__text--full">
+        <h3>用完记得把显存还回去</h3>
+        <p>
+          双击停止脚本，或者在黑色窗口里按 <code>Ctrl+C</code>。
+          脚本会打印<b>停止前后的显存占用</b> —— 看一眼就知道有没有释放干净。
+        </p>
+      </div>
+      <div class="llm-win llm-win--light llm-win--wide">
+        <div class="llm-win__bar">
+          <span class="llm-win__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="llm-win__name">停止服务_释放显存.bat</span>
+          <span class="llm-win__tag">BAT</span>
+        </div>
+        <pre class="llm-code"><code><span class="t-k">@echo off</span>
+<span class="t-k">title</span> 停止所有本地模型服务
+<span class="t-k">echo</span> ========================================
+<span class="t-k">echo</span>   停止 llama-server 并释放显存
+<span class="t-k">echo</span> ========================================
+<span class="t-k">echo.</span>
+<span class="t-k">echo</span> [停止前] 显存占用:
+<span class="t-d">nvidia-smi</span> --query-gpu=memory.used,memory.total --format=csv,noheader
+<span class="t-k">echo.</span>
+<span class="t-d">taskkill</span> /F /IM llama-server.exe <span class="t-n">2&gt;nul</span>
+<span class="t-d">timeout</span> /t 2 /nobreak <span class="t-n">&gt;nul</span>
+<span class="t-k">echo.</span>
+<span class="t-k">echo</span> [停止后] 显存占用:
+<span class="t-d">nvidia-smi</span> --query-gpu=memory.used,memory.total --format=csv,noheader
+<span class="t-k">echo.</span>
+<span class="t-k">pause</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 踩过的坑 -->
+  <section class="llm-sec wrap wrap--wide" aria-label="踩过的坑">
+    <div class="llm-head">
+      <p class="llm-kicker reveal-line">记录</p>
+      <h2 class="llm-title reveal-line">踩过的坑</h2>
+      <p class="llm-sub reveal-line">
+        这些都是真撞过的 —— 左边是当时的现象，右边是现在怎么处理的。
+      </p>
+    </div>
+
+    <div class="llm-card llm-card--solo reveal-line">
+      <ul class="llm-fix">
+        <li>
+          <p class="llm-fix__sym">写死 <code>-ngl 99</code>，一把 OOM</p>
+          <p class="llm-fix__why">改用 <code>--fit on</code>，让引擎自己算每层放哪。</p>
+        </li>
+        <li>
+          <p class="llm-fix__sym">上下文写 128 K，跑起来却慢得离谱</p>
+          <p class="llm-fix__why">按显存给合理值：9B 只给 16 K。开太大反而把层挤到 CPU。</p>
+        </li>
+        <li>
+          <p class="llm-fix__sym">长上下文一开，显存立刻见底</p>
+          <p class="llm-fix__why">加 <code>-ctk q8_0 -ctv q8_0</code> 把 KV 缓存量化，显存减半。</p>
+        </li>
+        <li>
+          <p class="llm-fix__sym">服务默认监听 <code>0.0.0.0</code>，局域网里谁都能连</p>
+          <p class="llm-fix__why">改成 <code>127.0.0.1</code>，只有本机能访问。</p>
+        </li>
+        <li>
+          <p class="llm-fix__sym">中文界面的 <code>.bat</code> 打开是一堆乱码</p>
+          <p class="llm-fix__why">脚本要存成 <b>GBK + CRLF</b>，而且不能靠 <code>chcp</code> 救 —— 一开始就存对。</p>
+        </li>
+        <li>
+          <p class="llm-fix__sym">拖视频进去模型说读不到</p>
+          <p class="llm-fix__why">因为缺 <code>ffmpeg.exe</code>。补齐之后还要用 <code>--video-ffmpeg-dir</code> 告诉它去哪找。</p>
+        </li>
+      </ul>
+    </div>
+  </section>
 
 </main>
 
@@ -185,7 +622,7 @@ setTimeout(function () {
     </div>
 
     <div class="site-footer__bottom">
-      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利</span>
+      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利<span class="site-ver"> · v2.0</span></span>
       <span>本网站全部由个人开发</span>
       <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
     </div>
