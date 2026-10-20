@@ -59,7 +59,9 @@
     });
 
     /* 窗口变宽回到桌面布局时，必须复位，否则 body 会一直锁着滚动 */
-    var mq = window.matchMedia('(min-width: 861px)');
+    /* ⚠️ 断点跟 CSS 的导航那一档对齐（CSS 是 max-width:767 = 手机）——
+       两边对不上会出现「手机上抽屉还锁着滚动」这种卡死状态。 */
+    var mq = window.matchMedia('(min-width: 768px)');
     var onChange = function (e) { if (e.matches) setMenu(false); };
     if (mq.addEventListener) mq.addEventListener('change', onChange);
     else if (mq.addListener) mq.addListener(onChange);
@@ -99,6 +101,27 @@
 
         var entry = { box: box, video: video, btn: btn };
         vids.push(entry);
+
+        /* 触屏设备：浏览器自带的控制条**平时不要挂**。
+           卡片在手机上只有 342px 宽，那条黑条一压，16:9 的画面就少一截，
+           而且它是可点区域，容易误触（2026-10-20 复查）。
+           改成「响了才出现」：play 时挂上、pause 时摘掉 ——
+           播放中照样能拖进度、全屏；暂停后控制条消失，大播放按钮回到原位。
+           只按 (hover:none)+(pointer:coarse) 判断，桌面哪怕窗口很窄也不动。 */
+        var touchOnly = window.matchMedia &&
+            window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+        if (touchOnly) {
+          video.removeAttribute('controls');
+          video.addEventListener('play', function () { video.setAttribute('controls', ''); });
+          /* ⚠️ 暂停时除了摘掉控制条，还要把大播放按钮放回来 ——
+             用户可能是拖原生进度条时点的暂停，那条路走不到下面的按钮回调，
+             不补这一句的话画面会停在「没按钮也没控制条」的死状态。 */
+          video.addEventListener('pause', function () {
+            video.removeAttribute('controls');
+            box.classList.remove('is-playing');
+            if (btn) btn.setAttribute('aria-label', btn.getAttribute('aria-label').replace('暂停', '播放'));
+          });
+        }
 
         /* 只绑在那层大按钮上，不绑整个容器 ——
            播放中要能把点击让给视频自带的功能条 */

@@ -257,7 +257,11 @@
 .nav-toggle[aria-expanded="true"] .nav-toggle__bar::before { transform: translateY(6px) rotate(45deg); }
 .nav-toggle[aria-expanded="true"] .nav-toggle__bar::after  { transform: translateY(-6px) rotate(-45deg); }
 
-@media (max-width: 860px) {
+/* ⚠️ 导航的断点是 768，**比正文那批（860）早一档**：
+   iPad 竖屏（768/820）虽然正文还是单栏，但顶部这五条链接放得下，
+   而且「有没有汉堡」是平板看起来像不像电脑版的第一眼差别。
+   实测 768 宽下 nav 不换行、不溢出（六个页面都量过）。 */
+@media (max-width: 767px) {
   .site-nav--hero {
     /* 位置和高度已在基础规则里定好（fixed / top 0 / --nav-h），这里不用再调。
        原来靠 padding-block 撑高度、靠 absolute 定位，现在都不需要了。 */
@@ -878,22 +882,33 @@
 /* 光圈画在卡片内侧 —— 画到外面会飘到灰底上，和卡贴的边界脱节 */
 .pillar__hit:focus-visible { outline-offset: -3px; }
 
-/* 窄屏把四列压成两列：左侧自上而下是 序号 / 标题正文 / 元信息，
-   箭头单独占右列并纵向居中。这里必须显式指定行列 ——
-   只改 columns 而留 auto 排列，会和上面 meta 的 grid-column 打架，
-   把箭头挤到左下角去。 */
+/* 窄屏：单列自上而下 标题正文 / 元信息 / 配图，箭头改成右上角的绝对定位。
+   ⚠️ 原来是「1fr + auto」两列、箭头纵向居中 —— 实测 390 宽下正文只剩 250px，
+      每行少两个字；而且箭头悬在段落中段，看着像掉队的符号（2026-10-20 复查）。
+      改成单列 + 绝对定位后，正文拿到整行（342 − 48 内边距 ≈ 294px），
+      箭头与标题同一水平线，指向性也更明确。
+   ⚠️ 行列仍要显式写：只改 columns 而留 auto 排列，会和 meta 的 grid-column 打架。 */
 @media (max-width: 900px) {
   .pillar {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--sp-2) var(--sp-5);
+    /* 卡片内边距抽成变量：下面 ≤430 那一档要再收一次，
+       而箭头是绝对定位到内边距上的，两边必须同一个值 */
+    --pillar-pad: var(--sp-5);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-2);
     align-items: start;
   }
   /* 卡贴的内边距跟着窄屏收 —— .wrap 本身在 <768px 只有 24px 边距 */
-  .pillars > .pillar { padding: var(--sp-5); }
+  .pillars > .pillar { padding: var(--pillar-pad); }
   /* 去掉序号列后行数少一行，行列都要跟着上移一格 */
-  .pillar__body  { grid-column: 1; grid-row: 1; }
+  .pillar__body  { grid-column: 1; grid-row: 1; padding-right: 30px; }
   .pillar__meta  { grid-column: 1; grid-row: 2; text-align: left; }
-  .pillar__arrow { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  .pillar__arrow {
+    position: absolute;
+    top: calc(var(--pillar-pad) + 2px);
+    right: var(--pillar-pad);
+    grid-column: auto; grid-row: auto;
+    align-self: start;
+  }
   .pillar__desc  { max-width: none; }
   /* 配图跨两列落到最下面，占满整行宽度。
      ⚠️ 不要在这里 display:none —— 那等于手机上又退回五行纯文字，
@@ -1666,6 +1681,15 @@
   font-size: .9375rem;
   color: var(--ink-2);
   white-space: nowrap;
+}
+
+/* 手机上这行提示要换说法：触摸屏没有鼠标。
+   两段文案都写进 HTML，靠媒体查询二选一 —— 不改 JS、不读 UA，
+   触屏笔电（hover:hover + pointer:fine）仍然显示「鼠标左拉查看」。 */
+.band-sec__more-touch { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .band-sec__more-pc { display: none; }
+  .band-sec__more-touch { display: inline; }
 }
 
 .band {
@@ -4755,7 +4779,9 @@ html.is-playing { overflow: hidden; }
 /* 粘顶条：横屏拿手机时刘海在左或右，左右各 44px 会被吃掉，而条子左右内边距只有 24px。
    ⚠️ 这条**只在手机生效** —— 桌面端 .site-nav--bar .site-nav__inner 那条
       `padding-inline: clamp(20px, 3.2vw, 64px)` 特异性比它高，会照常胜出。 */
-@media (max-width: 860px) {
+/* ⚠️ 这里跟导航的断点（767）保持一致，不是正文那批的 860：
+   768–860 已经没有抽屉了，再给列表加抽屉的内边距会把横排的导航挤歪。 */
+@media (max-width: 767px) {
   .site-nav__inner {
     padding-inline: calc(var(--sp-5) + env(safe-area-inset-left))
                     calc(var(--sp-5) + env(safe-area-inset-right));
@@ -4865,4 +4891,108 @@ html { touch-action: manipulation; }
   .llm-fix code { font-size: max(12px, .875em); }
   /* 平面设计页封面首屏下那行英文：clamp 的下限 .625rem 就是 10px */
   .cover-hero__tag { font-size: 12px; }
+
+  /* ======================================================================
+     ③ 横向滚动区块给一条看得见的细滚动条
+     ====================================================================== */
+  /* 代码块、参数表、源码截图的「画面比容器宽」——手指能划，但**看不出还能划**：
+     右边缘就是硬生生切断的（截图和真机都一样）。桌面有鼠标滚轮、光标也会变，
+     手机什么都没有。这里只加一条 4px 的细滚动条，不占高度也不改排版，
+     内容是深色还是浅色都能看清（用中性灰，不跟主题走）。
+     ⚠️ 不要改成渐变遮罩：遮罩在「已经滑到底」时会把最后一列的末尾压暗，
+        反而像是被裁掉了。 */
+  .llm-code,
+  .llm-table,
+  .gx-shot__scroll,
+  .gx-card__shot {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(127, 127, 127, .5) transparent;
+  }
+  .llm-code::-webkit-scrollbar,
+  .llm-table::-webkit-scrollbar,
+  .gx-shot__scroll::-webkit-scrollbar,
+  .gx-card__shot::-webkit-scrollbar {
+    height: 4px;
+    background: transparent;
+  }
+  .llm-code::-webkit-scrollbar-thumb,
+  .llm-table::-webkit-scrollbar-thumb,
+  .gx-shot__scroll::-webkit-scrollbar-thumb,
+  .gx-card__shot::-webkit-scrollbar-thumb {
+    background: rgba(127, 127, 127, .5);
+    border-radius: 2px;
+  }
+}
+
+/* ==========================================================================
+   30. 触屏：小动效的幅度 + 不留悬浮态（2026-10-20）
+
+   用户：「每个卡贴和每个小动效的大小手机端也要优化一下」。
+   手机上两件事最扎眼：
+     ① **:hover 会粘住**。触屏没有指针移开这回事，点一下卡片，
+        图片放大 / 按钮变色 / 箭头右移会一直留着，直到点别处。
+        桌面靠 `@media (hover: hover)` 把整块包起来才是正解；
+        这里已有的几处（.pillars 的悬浮上浮）早就这么写了，剩下的没跟上，
+        所以统一在这一节里把它们在无悬浮设备上**复位**。
+     ② **入场位移按桌面尺寸给的**。16–22px 在 1440 宽下只是轻轻一浮，
+        在 390 宽的卡片里就显得"跳"，尤其一屏里同时浮起三张的时候。
+   ========================================================================== */
+
+/* --- ① 无悬浮设备：复位所有会粘住的 :hover 效果 --- */
+@media (hover: none) {
+  /* 图片放大 */
+  .band__item:hover img,
+  .band__item:hover video,
+  .gallery__link:hover .gallery__thumb img,
+  .pages__link:hover .pages__thumb img,
+  .pillar:hover .pillar__media img { transform: none; }
+  /* 箭头右移 + 变色 */
+  .pillar:hover .pillar__arrow { transform: none; color: var(--ink-3); }
+  /* 「打开玩」胶囊：抬 1px + 底色变深 */
+  .work__launch:hover {
+    transform: none;
+    background: rgba(10, 12, 16, .62);
+    border-color: rgba(255, 255, 255, .22);
+  }
+  /* 大模型页主按钮：抬 1px + 变亮 */
+  .llm-btn:hover { transform: none; background: #2C6BF2; }
+  /* 首屏滚动提示里的蓝球：放大 + 泛光 */
+  .hero__cue-pill:hover .hero__cue-dot { transform: none; box-shadow: none; }
+  .hero__cue-pill:hover .hero__cue-arrow { transform: none; }
+  /* 导航链接的透明度变化 */
+  .site-nav__link:hover,
+  .site-nav__home:hover { opacity: 1; }
+  /* ⚠️ 当前页那条下划线是 [aria-current="page"] 画的，别一起压掉 ——
+     所以这里排除掉当前项，否则点一下当前页的链接，它的下划线会消失。 */
+  .site-nav__link:hover:not([aria-current="page"])::after,
+  .site-nav__home:hover::after { transform: scaleX(0); }
+  /* 颜色类：用 inherit 回到父元素原色，不写死色值 —— 以后改 tokens 不用回来改这里 */
+  .site-footer__list a:hover,
+  .breadcrumb a:hover { color: inherit; }
+}
+
+/* --- ② 窄屏：入场位移和时长各收一档，节奏更跟手 --- */
+@media (max-width: 860px) {
+  .js .reveal-line {
+    transform: translateY(10px);
+    transition-duration: 560ms;
+  }
+  /* 这一条必须排在上面那条之后：两者权重相同，靠顺序压过 translateY(10px) */
+  .js .work__media.reveal-line {
+    transform: translateY(12px) scale(.992);
+  }
+  .js .band__item {
+    transform: translateY(8px);
+    transition-duration: 520ms;
+  }
+}
+
+/* --- ③ 小屏（≤430，iPhone 竖屏这一档）：卡贴内边距统一收一档 --- */
+@media (max-width: 430px) {
+  /* 五个方向：24 → 22。正文跟着多出 4px，卡片整体矮一点 */
+  .pillar { --pillar-pad: 22px; }
+  /* 大模型页的卡贴本来是 clamp(28,4vw,56)，390 下取到 28 —— 比别的卡都胖 */
+  .llm-card { padding: 22px; }
+  /* 小游戏页的源码卡 24 → 22，和上面两块对齐 */
+  .gx-card { padding: 22px; }
 }
