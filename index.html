@@ -46,6 +46,17 @@ setTimeout(function () {
      ====================================================================== -->
 <header class="hero">
 
+  <!-- 首屏动态背景：三团极淡的色光缓慢游走，颜色取自标题后半段那条渐变。
+       ⭐ 不用 filter: blur —— 靠 radial-gradient 自带柔边。带 blur 的图层
+          一动就要重新栅格化（这些色块有 78vmax 大），而只动 transform
+          的话合成器直接搬运位图。
+       ⚠️ 首屏底色仍是 #F5F5F7，这一层只叠很低的透明度，不动底色。 -->
+  <div class="hero__bg" aria-hidden="true">
+    <span class="hero__orbit hero__orbit--a"><span class="hero__blob hero__blob--a"></span></span>
+    <span class="hero__orbit hero__orbit--b"><span class="hero__blob hero__blob--b"></span></span>
+    <span class="hero__orbit hero__orbit--c"><span class="hero__blob hero__blob--c"></span></span>
+  </div>
+
   <nav class="site-nav site-nav--hero" aria-label="主导航">
     <div class="site-nav__inner">
 
@@ -66,9 +77,9 @@ setTimeout(function () {
   </nav>
 
   <div class="hero__stage">
-    <p class="eyebrow hero__eyebrow">张杰波 · 平面设计师</p>
+    <p class="eyebrow hero__eyebrow">一个平面设计师</p>
     <h1 class="hero__title">天生我材<span class="title-gradient">必有用</span></h1>
-    <p class="hero__sub">一个人，从一张画面做到能跑起来的成品</p>
+    <p class="hero__sub">这里是用代码构建的一个小世界</p>
   </div>
 
   <!-- 滚动提示：白色小卡贴 + 右侧蓝色圆圈（圈里是白色向下箭头）。
@@ -123,40 +134,47 @@ setTimeout(function () {
       <p class="band-sec__more">鼠标左拉查看<span aria-hidden="true"> →</span></p>
     </div>
 
-    <!-- 每张卡片都指向自己那个方向的子页面：平面作品 → design、AI 视频 → ai-video、
-         小游戏 → game。加新卡片只要照抄一个 <li> 追加在最后 ——
-         顺序由 JS 每次刷新随机打乱，不用手动排。
+    <!-- 每张卡片都指向自己那一页：页面截图 → 对应的子页，游戏截图 → 小游戏开发页。
+         加新卡片只要照抄一个 <li> 追加在最后 —— 顺序由 JS 每次刷新随机打乱，不用手动排。
 
-         ⚠️ 视频卡片用的是**真的视频**，静音自动循环。挑的是时长较短的两支
-            （8 / 18 秒）。播放由 JS 按「是否真的露出来」控制，不是无脑全播。 -->
+         ⚠️ 2026-10-19 用户：「这块的图片我想要是我们网页内截出来的」。
+            原来放的是作品集 PSD 导出的平面稿 + 两支 AI 视频，现在**全部换成本站页面自己的截图**：
+              · 4 张页面首屏 —— `_shots/_shot_pages_for_band.py` 在 1600×900 下截，缩到 1280×720
+              · 5 张游戏实机 —— 本来就是从 `games/*.html` 截的（`assets/img/game/`）
+         ⚠️ 页面改版后这 4 张要重截，否则带子里显示的还是旧版页面。 -->
     <div class="band" data-hscroll role="region" aria-label="精选作品，可左右拖动浏览">
       <ul class="band__track">
 
-        <!-- ===== 平面作品集（4）→ 平面设计页 ===== -->
-        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/01-cover.jpg"
-          alt="《平面作品集 2026》封面" width="1100" height="619" loading="lazy" decoding="async"></a></li>
-        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/03-guofeng.jpg"
-          alt="国风系列商业街招商海报" width="1100" height="621" loading="lazy" decoding="async"></a></li>
-        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/12-annual.jpg"
-          alt="企业年会视觉方案" width="1100" height="621" loading="lazy" decoding="async"></a></li>
-        <li class="band__item"><a href="design.html"><img src="assets/img/portfolio/19-rabbit.jpg"
-          alt="原创 IP《玉兔下凡》AI 短剧视觉" width="1100" height="621" loading="lazy" decoding="async"></a></li>
+        <!-- ===== 站内页面截图（4）→ 各自那一页 ===== -->
+        <li class="band__item"><a href="design.html"><img src="assets/img/band/page-design.jpg"
+          alt="「平面设计」页首屏：LITTE WORLD 平面作品集 2026" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="ai-video.html"><img src="assets/img/band/page-ai-video.jpg"
+          alt="「AI视频」页首屏：云海之上的「我让画面动起来」" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="game.html"><img src="assets/img/band/page-game.jpg"
+          alt="「小游戏开发」页首屏：这几个游戏，现在打开就能玩" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="llm.html"><img src="assets/img/band/page-llm.jpg"
+          alt="「大模型部署」页首屏：在本机跑一个量化大模型" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
 
-        <!-- ===== AI 视频（2）→ AI视频页 ===== -->
-        <li class="band__item"><a href="ai-video.html" aria-label="AI 视频《神像》，8 秒">
-          <video muted loop playsinline preload="metadata" width="1280" height="720"
-                 poster="assets/video/03-deity-poster.jpg">
-            <source src="assets/video/03-deity.mp4" type="video/mp4">
-          </video></a></li>
-        <li class="band__item"><a href="ai-video.html" aria-label="AI 视频《巨型猩猩》，18 秒">
-          <video muted loop playsinline preload="metadata" width="1280" height="720"
-                 poster="assets/video/02-giant-ape-poster.jpg">
-            <source src="assets/video/02-giant-ape.mp4" type="video/mp4">
-          </video></a></li>
-
-        <!-- ===== 小游戏（1）→ 小游戏开发页 ===== -->
-        <li class="band__item"><a href="game.html"><img src="assets/img/portfolio/game-shop.jpg"
-          alt="《雨夜便利店街角》3D 场景" width="1100" height="619" loading="lazy" decoding="async"></a></li>
+        <!-- ===== 五个小游戏的实机截图（5）→ 小游戏开发页 ===== -->
+        <li class="band__item"><a href="game.html"><img src="assets/img/game/bomberman.jpg"
+          alt="《炸弹人双人对战》实机画面" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="game.html"><img src="assets/img/game/rabbit.jpg"
+          alt="《玉兔下凡》实机画面" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="game.html"><img src="assets/img/game/store.jpg"
+          alt="《雨夜便利店街角》实机画面" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="game.html"><img src="assets/img/game/temple.jpg"
+          alt="《祈年殿》实机画面" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
+        <li class="band__item"><a href="game.html"><img src="assets/img/game/gomoku.jpg"
+          alt="《五子棋》实机画面" width="1280" height="720"
+          loading="lazy" decoding="async"></a></li>
 
       </ul>
     </div>
@@ -175,10 +193,7 @@ setTimeout(function () {
                 外层 div 会用 1.75 的行高撑出一个「struts」，标题底下凭空多出十几像素；
                 套一层 span，struts 由 h2 自己的 1.2 决定，几乎看不出差。 -->
         <h2 class="section-title"><span class="scroll-fill">把想法做成东西</span></h2>
-        <p class="section__intro">
-          平面设计是看家的手艺，另外四个方向是我这几年自己趟出来的。
-          它们看起来不一样，做的其实是同一件事——把一个模糊的念头，变成能拿出手的成品。
-        </p>
+        <p class="section__intro">平面设计是看家的手艺，另外四个方向是我这几年自己趟出来的。它们看起来不一样，做的其实是同一件事，我只是把一个模糊的念头，变成能拿出手的成品。</p>
       </div>
 
       <ul class="pillars">
@@ -193,8 +208,8 @@ setTimeout(function () {
           <p class="pillar__meta">主职 · 持续</p>
           <span class="pillar__arrow" aria-hidden="true">→</span>
           <div class="pillar__media">
-            <img src="assets/img/portfolio/pillar-design.jpg"
-                 alt="沃特罗伦开业品宣「生生不息」物料" width="720" height="405"
+            <img src="assets/img/pillar/pillar-design.jpg"
+                 alt="平面设计页作品区：小墩萌宝运动会系列海报" width="720" height="405"
                  loading="lazy" decoding="async">
           </div>
           <a class="pillar__hit" href="design.html" aria-label="查看平面设计"></a>
@@ -208,11 +223,11 @@ setTimeout(function () {
               擅长长镜头的时间分段控制、首尾帧接力，以及中文文字渲染的降风险方案。
             </p>
           </div>
-          <p class="pillar__meta">研究 · 2025 起</p>
+          <p class="pillar__meta">研究·持续</p>
           <span class="pillar__arrow" aria-hidden="true">→</span>
           <div class="pillar__media">
-            <img src="assets/video/05-rabbit-warrior-poster.jpg"
-                 alt="AI 视频《兔子武士》" width="1280" height="720"
+            <img src="assets/img/pillar/pillar-ai-video.jpg"
+                 alt="AI视频页「成品展示」：剑落水月的视频条目" width="720" height="405"
                  loading="lazy" decoding="async">
           </div>
           <a class="pillar__hit" href="ai-video.html" aria-label="查看 AI视频"></a>
@@ -221,16 +236,13 @@ setTimeout(function () {
         <li class="pillar reveal">
           <div class="pillar__body">
             <h3 class="pillar__name">小游戏开发</h3>
-            <p class="pillar__desc">
-              微信小程序《修仙小游戏-修仙》的设计与开发。
-              从视觉系统到七个页面的交互，一个人从头做到尾。
-            </p>
+            <p class="pillar__desc">从 0 到 1 的开发。我只有一个想法，用我的美感配合AI就开发出来了，尽管不够完美，但一个人完成从设计到代码落地。</p>
           </div>
-          <p class="pillar__meta">项目 · 2025</p>
+          <p class="pillar__meta">研究·持续</p>
           <span class="pillar__arrow" aria-hidden="true">→</span>
           <div class="pillar__media">
-            <img src="assets/img/portfolio/game-bomber.jpg"
-                 alt="《炸弹人双人对战》实际游戏画面" width="1100" height="619"
+            <img src="assets/img/pillar/pillar-game.jpg"
+                 alt="小游戏开发页：五个能直接打开玩的小游戏" width="720" height="405"
                  loading="lazy" decoding="async">
           </div>
           <a class="pillar__hit" href="game.html" aria-label="查看小游戏开发"></a>
@@ -239,16 +251,13 @@ setTimeout(function () {
         <li class="pillar reveal">
           <div class="pillar__body">
             <h3 class="pillar__name">文学馆</h3>
-            <p class="pillar__desc">
-              把传统视觉语法拆开再装回现代媒介里——水墨的层次、书法的骨架、
-              篆刻的构成，落到界面和画面上还能站得住。
-            </p>
+            <p class="pillar__desc">平时积攒的学习资料和笔记都放在这了，如果是文献我会编著好并写明出处的。也会经常写点我自己的总结、见解和碎碎念。</p>
           </div>
           <p class="pillar__meta">兴趣 · 持续</p>
           <span class="pillar__arrow" aria-hidden="true">→</span>
           <div class="pillar__media">
-            <img src="assets/img/portfolio/pillar-culture.jpg"
-                 alt="保利秋拍 × 中秋「美好家居生活」海报" width="720" height="405"
+            <img src="assets/img/pillar/pillar-culture.jpg"
+                 alt="文学馆页：所有文本还在整理当中" width="720" height="405"
                  loading="lazy" decoding="async">
           </div>
           <a class="pillar__hit" href="culture.html" aria-label="查看文学馆"></a>
@@ -257,16 +266,13 @@ setTimeout(function () {
         <li class="pillar reveal">
           <div class="pillar__body">
             <h3 class="pillar__name">大模型部署</h3>
-            <p class="pillar__desc">
-              在本地把模型跑起来：量化部署、多模态推理、语音输入输出链路。
-              关心的是能不能落在自己的机器上，而不是只会调 API。
-            </p>
+            <p class="pillar__desc">我把模型在本地跑起来，我自己动手搞 llama.cpp 搭配量化模型，我跑通过多模态推理和Agent。如果你有足够的钱，你可以做一个不是只做个只会调 API 的“伸手党”。</p>
           </div>
           <p class="pillar__meta">实践 · 持续</p>
           <span class="pillar__arrow" aria-hidden="true">→</span>
           <div class="pillar__media">
-            <img src="assets/img/portfolio/pillar-llm.svg"
-                 alt="大模型部署示意图" width="1600" height="900"
+            <img src="assets/img/pillar/pillar-llm.jpg"
+                 alt="大模型部署页：从零到能对话，只要三步" width="720" height="405"
                  loading="lazy" decoding="async">
           </div>
           <a class="pillar__hit" href="llm.html" aria-label="查看大模型部署"></a>
@@ -285,18 +291,11 @@ setTimeout(function () {
         <p class="eyebrow section__eyebrow">关于</p>
       </div>
       <div class="prose reveal">
-        <p>
-          我是张杰波，平面设计师。日常工作围绕运营商行业的品牌与营销物料展开，
-          从主视觉到落地执行的整套链路都做。
-        </p>
-        <p>
-          业余时间精力主要花在两件事上：一是琢磨 AI 工具到底能替人做到哪一步，
-          为此写过成套的提示词方法论，也在本地部署过模型、搭过语音链路；
-          二是把中国传统视觉里的东西，试着用现代的方式讲出来。
-        </p>
-        <p>
-          目前的状态是：手上能落地，脑子里还在往外扩。
-        </p>
+        <p>我是一个平面设计师。</p>
+        <p>工作日常就是给运营商做品牌和营销，从前期的视觉创意到后期的落地执行。</p>
+        <p>我想知道 AI 究竟能替人做到哪一步，因此开始研究各种 AI，自己搞过本地模型部署、玩过 AI 视频，主力一直用 Cherry Studio，于是越来越上头，根本停不下来。</p>
+        <p>现在呢，我一直在尝试用自己的方式把自己曾经敢想不敢做的事做出来。</p>
+        <p>也许这片网页就是我孩童的倒影，也是我发自内心的一次兴趣活动。</p>
       </div>
     </div>
   </section>
@@ -305,25 +304,28 @@ setTimeout(function () {
 
 <!-- ======================================================================
      页脚
-     联系方式是占位符，务必换成你真实的邮箱和社交账号。
+     联系方式只有邮箱（2026-10-19 用户定：去掉微信/小红书，
+     并加了一句合作意向的说明）。
      ====================================================================== -->
 <footer class="site-footer">
   <div class="wrap">
     <div class="site-footer__grid">
       <div>
-        <p class="site-footer__title">张杰波</p>
-        <p>平面设计师 · 视觉设计 / AI 影像 / 交互开发</p>
+        <p class="site-footer__title">合作说明</p>
+        <div class="site-footer__about">
+          <p>本平台仅作个人案例展示。</p>
+          <p>如有品牌营销视觉、AI模型部署、小程序开发等商业合作意向，欢迎通过邮箱进行联络洽谈。</p>
+        </div>
       </div>
       <div>
         <p class="site-footer__title">联系方式</p>
         <ul class="site-footer__list">
           <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
-          <li><a href="#">微信：待填写</a></li>
-          <li><a href="#">小红书：待填写</a></li>
         </ul>
+        <p class="site-footer__note">欢迎对相关领域感兴趣的朋友通过邮箱进行交流探讨，期待您的来信。</p>
       </div>
       <div>
-        <p class="site-footer__title">五个方向</p>
+        <p class="site-footer__title">研究/成果</p>
         <ul class="site-footer__list">
           <li><a href="design.html">平面设计</a></li>
           <li><a href="ai-video.html">AI视频</a></li>
@@ -335,7 +337,7 @@ setTimeout(function () {
     </div>
 
     <div class="site-footer__bottom">
-      <span>© <span id="year">2026</span> 张杰波 · 保留所有权利<span class="site-ver"> · v2.1</span></span>
+      <span>©<span id="year">2026</span> 本站作者保留所有权利 · 当前网站版本：<span class="site-ver">V2.2</span></span>
       <span>本网站全部由个人开发</span>
       <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
     </div>

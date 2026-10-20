@@ -352,6 +352,85 @@
   /* background: radial-gradient(130% 85% at 50% -5%, rgba(255,255,255,.55), transparent 62%); */
 }
 
+/* ---- 首屏动态背景 ----------------------------------------------------
+   三团色光绕大圈慢慢游走。颜色取自标题后半段那条渐变（蓝 → 紫 → 橙），
+   整页才像一套的。
+
+   ⭐ **不要给它们加 filter: blur**。这几个色块有 78vmax 大，带 blur 的图层
+      一旦 transform（尤其是带 scale）就要重新栅格化，很贵；
+      radial-gradient 自己就是柔边，只动 transform 的话合成器白送 60fps。
+   ⚠️ 首屏底色仍是 #F5F5F7 —— 这一层只是叠上的极淡色光，不改底色。
+   ⚠️ 透明度别往上加：再浓一点标题的对比度就开始掉了。 */
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* 底部渐隐：色光必须在首屏下沿之前就化回 #F5F5F7。
+     不加的话，.hero 的 overflow:hidden 会把色光**齐刷刷切一刀** ——
+     用户截图圈出来的就是那条横线。 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
+}
+/* 三团色光**绕着首屏中心缓缓转动**（不是各自平移）。
+   做法：外层 .hero__orbit 是一个 0×0 的支点，钉在首屏中心，
+   让它匀速 rotate；三团光挂在它下面、各自偏离中心 ~40vmax ——
+   支点一转，光就沿圆轨道走。
+
+   ⭐ 只 rotate 不 scale：带模糊/渐变的图层一旦 scale 就要重新栅格化。
+      这三团自己就是圆形径向渐变，跟着转也看不出来（转 = 原地不动）。 */
+.hero__orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  will-change: transform;
+  /* 摆过去再摆回来：不是转满 360°，而是 0 → 180° → 0，来回慢慢晃 */
+  animation: hero-orbit 48s ease-in-out infinite alternate;
+}
+/* 三个转速不同（差速），但**都从 0 度起转** ——
+   这样打开页面第一眼就是定稿那版构图（蓝在左上、紫在右上、暖橙压底），
+   之后才慢慢各自转开。给负延迟的话首屏会一上来就"错位"。 */
+.hero__orbit--b { animation-duration: 56s; }
+.hero__orbit--c { animation-duration: 52s; }
+@keyframes hero-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(180deg); }
+}
+
+.hero__blob {
+  position: absolute;
+  width: 66vmax;
+  height: 66vmax;
+  border-radius: 50%;
+}
+/* 三团各自的圆心（相对首屏中心）：左上 / 右 / 下，半径都在 ~40vmax，
+   所以它们始终绕着一个三角形慢慢转。 */
+.hero__blob--a {
+  left: -68vmax;
+  top: -57vmax;
+  background: radial-gradient(closest-side,
+      rgba(59, 107, 255, .16), rgba(59, 107, 255, .055) 55%, transparent 72%);
+}
+.hero__blob--b {
+  left: 6vmax;
+  top: -41vmax;
+  background: radial-gradient(closest-side,
+      rgba(139, 92, 246, .14), rgba(139, 92, 246, .05) 55%, transparent 72%);
+}
+.hero__blob--c {
+  left: -28vmax;
+  top: 5.5vmax;
+  background: radial-gradient(closest-side,
+      rgba(249, 115, 22, .13), rgba(249, 115, 22, .045) 55%, transparent 72%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero__orbit { animation: none; }
+}
+
+
 .hero__stage {
   position: absolute;
   left: 0;
@@ -687,7 +766,12 @@
      正好落在卡片内边距上，不再有一段空白顶着。
      配图列用 minmax(200px, 300px)：容器最窄（.wrap 在 901px 视口）时
      仍有 200px 图 + 约 380px 正文，两边都不挤。 */
-  grid-template-columns: minmax(0, 1fr) 7rem auto minmax(200px, 300px);
+  /* ⚠️ 正文列用 minmax(380px, 1fr) 而不是 minmax(0, 1fr)：
+     901–999px 这段，配图列会先吃满 300px，正文只剩 285–364px，
+     「大模型部署」那条说明就被挤成 4~5 行，卡片比旁边的高一截（用户 2026-10-19 报「没对齐」）。
+     380px 是实测的临界值（379 还是 4 行，380 才是 3 行）。
+     给它一个下限之后，空间不够时由配图列让位（最窄 200px）。 */
+  grid-template-columns: minmax(380px, 1fr) 7rem auto minmax(170px, 300px);
   /* ⚠️ 原来是 baseline。加上配图后行高由图片撑到 200 多像素，
      baseline 会让序号/元信息/箭头全部贴到顶上去，整行看着散。
      改成 center，让文字块和配图垂直居中对齐。 */
@@ -1229,9 +1313,20 @@
 
 .site-footer__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
-  gap: var(--sp-7) var(--sp-6);
+  /* 三栏：合作说明 / 联系方式 / 研究·成果（站内导航）。
+     ⚠️ 2026-10-20 用户「这三块的排版可以均衡一点吗，太拥挤了」：
+        原来是 `1.4fr 1fr 1fr` + 32px 栏距（392 / 280 / 280），第一栏特别宽、
+        后两栏挤在一起。现在改成**等宽三栏**，栏距 32 → 64px。
+        内容列只有 1016px，所以是 296 / 296 / 296 + 两个 64px 的缝。
+     ⚠️ 别改回两栏：实测两栏会把联系方式从 x≈638 推到 x≈820，等于整排重排。 */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-7) var(--sp-8);
   padding-bottom: var(--sp-7);
+}
+
+/* 窄屏（≤1000）三栏也变窄了，64px 的缝会显得比栏还宽 —— 收一档到 32。 */
+@media (max-width: 1000px) {
+  .site-footer__grid { gap: var(--sp-6); }
 }
 
 .site-footer__title {
@@ -1239,6 +1334,20 @@
   font-weight: var(--fw-med);
   color: var(--ink);
   margin-bottom: var(--sp-3);
+}
+
+/* 页脚第一栏「合作说明」：几段之间留一口气（全局 p 的 margin 是 0）。 */
+.site-footer__about p + p { margin-top: var(--sp-2); }
+
+/* 联系方式下面那句「欢迎对相关领域感兴趣的朋友…」。
+   和上面的邮箱之间要留一段空白（var(--sp-4) = 16px），别贴在一起。
+   ⚠️ 用 --ink-2 不用 --ink-3：页脚整体是 --ink-3（3.62:1），
+      这段是新加的正文级文字，按项目约定要够 AA 对比度。 */
+.site-footer__note {
+  margin-top: var(--sp-4);
+  font-size: .8125rem;
+  line-height: 1.75;
+  color: var(--ink-2);
 }
 
 .site-footer__list { display: grid; gap: var(--sp-2); }
@@ -3529,8 +3638,10 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
    按用户给的参考页（deepseek.com/harness）做：近黑底 + 上方中央一片蓝色光晕，
    大标题居中，**视频放在一个圆角矩形里**（不是通版铺满）。
 
-   ⚠️ 参考页那片光晕是 **canvas 画的**，抄不到 CSS；这儿的渐变是按截图取色配的：
-      顶部中央 #375A84 / #284D7C → #122239 → 边缘 #0A0A0A。
+   ⚠️ 参考页那片光晕是 **canvas 画的**，CSS 抄不到。下面这三层渐变只是**兜底**：
+      脚本没跑、被拦、或浏览器不支持 canvas 时才看得到它。
+      颜色按参考页截图取，形状是「左上偏中一个亮核 + 右上一条淡带」。
+      正式效果由 site.js 第 25 节按拟合参数画（`_shots/fit_glow.py`）。
    ⚠️ 只挂 `.harness-hero`，**不影响 AI视频页**那个通版视频首屏（`.page-hero`）。
    ========================================================================== */
 .harness-hero {
@@ -3538,9 +3649,14 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
   isolation: isolate;
   color: #fff;
   background-color: #0A0A0A;
-  background-image: radial-gradient(118% 76% at 50% -6%,
-      #375A84 0%, #284D7C 18%, #1B3557 36%, #122239 58%,
-      #0D1622 76%, #0A0A0A 94%);
+  background-image:
+    radial-gradient(70% 46% at 26% 0%,
+      rgba(77, 99, 126, .95) 0%, rgba(63, 90, 124, .75) 22%,
+      rgba(44, 74, 110, .42) 46%, rgba(16, 30, 46, 0) 78%),
+    radial-gradient(60% 40% at 88% 4%,
+      rgba(74, 91, 112, .55) 0%, rgba(40, 63, 92, .28) 40%,
+      rgba(10, 20, 32, 0) 78%),
+    linear-gradient(180deg, #24385A 0%, #16263C 55%, #0A0A0A 100%);
   padding-block: clamp(56px, 9vh, 104px) clamp(56px, 8vh, 96px);
   text-align: center;
   overflow: hidden;
@@ -3694,15 +3810,23 @@ html.theme-dark.page-game .site-nav--bar:not(.is-stuck) {
   padding-top: calc(clamp(56px, 9vh, 104px) + var(--nav-h-sub));
 }
 
-/* 首屏那片蓝光的 canvas 层。CSS 里那条 radial-gradient 保留当兜底。 */
+/* 首屏那片蓝光的 canvas 层。CSS 里那条 radial-gradient 保留当兜底。
+   ⚠️ 2026-10-20 用户「上面有一层布纹一样的东西，去掉，做成流畅的光影」：
+      布纹来自半分辨率画布上的噪点贴片（已删）。删掉之后为了不出现色带，
+      这里加一道 **12px 的高斯模糊** —— 参考页自己也是 blur(20px)。
+      inset 用 -24px，是为了让模糊在四周有足够的料，边缘不发虚；
+      多出来的部分被 .harness-hero 的 overflow:hidden 裁掉。 */
 .harness-hero__glow {
   position: absolute;
-  inset: 0;
+  inset: -24px;
+  /* ⚠️ canvas 是**替换元素**：只写 inset 的话 width 会退回位图宽度（720px），
+     整块光只能盖住首屏左上角四分之一。必须显式给 calc 尺寸。 */
+  width: calc(100% + 48px);
+  height: calc(100% + 48px);
   display: block;
-  width: 100%;
-  height: 100%;
   z-index: -1;
   pointer-events: none;
+  filter: blur(12px);
 }
 
 /* ---- 代码窗口区（照参考页：居中标题 → 一个大窗口 → 2×2 卡片）---- */
@@ -3743,7 +3867,10 @@ html.theme-dark.page-game .site-nav--bar:not(.is-stuck) {
 .gx-shot--wide { margin-bottom: 32px; }
 .gx-shot img { display: block; width: 100%; height: auto; border-radius: 14px; }
 .gx-shot figcaption {
-  max-width: 760px;
+  /* ⚠️ 760px 时「描边不是描上去的…」那句一行要 777px，正好差 17px，
+     末尾的「变。」会掉到第二行（用户 2026-10-19 报「不要让文字掉下来」）。
+     放宽到 840px，留出字体渲染差异的余量。 */
+  max-width: 840px;
   margin: var(--sp-5) auto 0;
   font-size: .875rem;
   line-height: 1.75;
@@ -4046,19 +4173,55 @@ html.is-playing { overflow: hidden; }
   overflow: hidden;
 }
 
+/* 大模型页首屏的点阵层（site.js 第 25b 节画点，CSS 管动画）。
+   照 deepseek.com/harness 最底部那屏：点阵 + 居中径向遮罩 + 缓慢旋转。
+
+   ⚠️ 旋转和进场都在 CSS 上 —— 放在 JS 里每帧重画整块画布，
+      软件渲染下只有 20fps；这种纯变换交给合成器是白送的。 */
+/* 粒径、凝聚、自转全在 canvas 里逐帧算（site.js 第 25b 节），
+   这一层只负责「放在文字后面、裁掉出界的东西」 */
+.llm-hero__flow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 画布是个正方形，边长 = 容器宽的 48%；球画在里面（半径 0.34×边长），
+   留出的那一圈是给「散开」那一下用的。 */
+/* 画布**铺满整个首屏**：粒子从四边飞进来，四个角才都有点。
+   球多大由 site.js 的 R 决定（画布短边的 22% / 手机上 26%），这一层只管铺满。 */
+.llm-hero__flow-spin {
+  position: absolute;
+  inset: 0;
+}
+
+.llm-hero__flow-cv {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 「减少动态效果」由 site.js 第 25b 节处理：只画一帧已经凝聚好的球，不启动 rAF */
+
 /* 那块窗口背后的一团蓝光。豆包首屏也是靠这一层把"产品界面"从底色里托出来的 ——
    没有它，一个深色窗口压在近黑底上会直接糊成一片。 */
+/* 整屏**只有这一束**蓝光。
+   原来是两层（.llm-hero::before 占上半屏、另一层 .llm-hero__glow 压在 54% 处），
+   看起来像上下两束灯 —— 用户：「背景是不是有两束蓝光，改成一束光，整体一点」。
+   合并成一层，并且**按中心对齐**（translate -50%,-50%），光心落在首屏正中偏上。 */
 .llm-hero::before {
   content: "";
   position: absolute;
   left: 50%;
-  top: 44%;
-  width: min(1200px, 116%);
-  aspect-ratio: 16 / 9;
-  transform: translateX(-50%);
+  top: 47%;
+  width: min(1280px, 120%);
+  aspect-ratio: 16 / 10;
+  transform: translate(-50%, -50%);
   background: radial-gradient(50% 50% at 50% 50%,
-      rgba(58, 134, 255, .30), rgba(58, 134, 255, .09) 46%, transparent 72%);
-  filter: blur(34px);
+      rgba(58, 134, 255, .26), rgba(58, 134, 255, .08) 46%, transparent 74%);
+  filter: blur(38px);
   pointer-events: none;
   z-index: -1;
 }
@@ -4140,7 +4303,7 @@ html.is-playing { overflow: hidden; }
   color: #fff;
   font-size: 1rem;
   text-decoration: none;
-  box-shadow: 0 10px 26px -10px rgba(44, 107, 242, .8);
+  box-shadow: 0 10px 26px -14px rgba(44, 107, 242, .55);   /* 别让按钮自己变成第二束光 */
   transition: background-color 200ms var(--ease), transform 200ms var(--ease);
 }
 .llm-btn:hover { background: #3C79FF; transform: translateY(-1px); }

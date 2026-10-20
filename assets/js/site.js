@@ -1167,18 +1167,51 @@
 
     var bandVideos = bandTrack.querySelectorAll('video');
 
-    var BAND_SPEED = 45;      /* 每秒滑多少像素。想快想慢改这里 */
+    /* 每秒滑多少像素。想快想慢改这一个数。
+       参考值（1440 宽视口，一张卡片约 650px，整条可滑 2930px）：
+             45  → 14.4 秒/张，整条 65 秒   ← 最初，慢到看不出在动
+            120  →  5.4 秒/张，整条 24 秒
+            180  →  3.6 秒/张，整条 16 秒   ← 用户嫌太快
+            150  →  4.3 秒/张，整条 20 秒   ← 现在
+       ⚠️ 实测（_diag_band_speed.py）写的值基本能按比例落下来：150 实测 156.8 px/s。
+          （最初 45 却实测到 60 —— 那一档每帧只走 0.75px，误差占比大。）
+    /* ⚠️ 2026-10-16：这一步重写注释时用索引切片替换，**把声明本身一起切掉了** ——
+       只留了注释、没留 `var BAND_SPEED`。node --check 只查语法，少一个 var 是运行时
+       ReferenceError，它查不出来；表现就是整个自动滑一声不响地全停（bandStep
+       每帧抛异常、rAF 链断掉，而闭包里 bandRun 还停在 true）。
+       做这种「整段替换」时，替换串的末尾必须把原来的语句原样带上。 */
+    var BAND_SPEED = 150;     /* 每秒滑多少像素 */
     var BAND_RESUME = 1800;   /* 用户手动操作后停多久恢复自动（毫秒） */
+    var BAND_DWELL = 2000;    /* 光标在带子上停留多久才算「在看这一张」→ 停住（3 秒太慢，改 2 秒） */
     var BAND_STAGGER = 90;    /* 相邻两张卡片之间差多少毫秒开始浮现 */
     var BAND_REVEAL = 620;    /* 单张卡片浮现用多久 —— 必须和 CSS 里的过渡时长一致 */
 
     var bandAuto = !prefersReduced;
-    var bandHeld = false;     /* 用户刚操作过，先别自动滑 */
+    var bandHeld = false;     /* 用户刚操作过（拖过 / 横滚过），先别自动滑 */
     var bandDragging = false;
+    /* 「停在上面看」与「路过」是两回事 —— 见下面 bandEnter / bandLeave。
+       bandDwelling：光标已经在带子上停留够久了，停住别滑
+       bandDwellTimer：还没到点的那段计时 */
+    var bandDwelling = false;
+    var bandDwellTimer = null;
     /* 还没确认进视野之前当作「不在视野」—— 否则页面刚加载时会先推进一帧
        才被 IntersectionObserver 纠正。没有 IO 的浏览器直接当可见。 */
     var bandInView = !('IntersectionObserver' in window);
-    var bandDone = false;     /* 已经滑到最左，不再自动走 */
+    /* ⚠️⚠️ `bandFinished` = 「这次自动滑到此为止」的**一次性闩**。
+       用户 2026-10-16 的最终要求：「滚动动画执行一次就行，如果用户用鼠标拉回去
+       就不需要再滚动了」。
+       置 true 的时机只有两个：
+         · 自动滑自己走到最右（一次跑完）
+         · 用户自己横着动了这条带子（拖 / 横滚 / 横划）—— 他接手了，就别再自作主张
+       置上之后 bandStart 直接 return、bandStep 也立刻收循环，**本次加载内不再自动滑**，
+       刷新页面才重来。
+
+       ⚠️ 历史：这里一度**没有**闩，理由写在当时 `bandEndDrag` 的注释里
+          （「拖回左边之后，自动滑接着从当前位置走」）—— 那句注释和用户真正想要的
+          是相反的，已删。中间那版也确实是「拖回左边会接着滑」，用户看了之后
+          明确要求改回一次性，所以这里不是简单地改回去，而是把闩的语义收窄成
+          「跑完 **或** 用户接手」，不再像最早那样「只要碰到 max 就永久终止」。 */
+    var bandFinished = false;
     var bandRun = false;      /* rAF 循环是否在跑 */
     var bandTouched = false;  /* 自动滑已经在动、或用户已经手动动过 */
     var bandIdle = null;
@@ -1188,8 +1221,52 @@
       bandTouched = true;
       bandHeld = true;
       if (bandIdle) clearTimeout(bandIdle);
-      bandIdle = setTimeout(function () { bandHeld = false; }, BAND_RESUME);
+      bandIdle = setTimeout(function () {
+        bandHeld = false;
+        /* 挂起结束时重新评估一次要不要接着滑。
+           ⚠️ 必须有这一句：循环在「滑到最右」时会自己停掉（bandRun=false），
+              而用户拖回左边 / 用触控板横滚回来走的都是这条路，
+              没人再调 bandStart 的话它就永远停在那儿了。 */
+        bandStart();
+      }, BAND_RESUME);
     };
+
+    /* 用户自己横着动了这条带子 —— 自动滑到此为止（一次性）。
+       拖 / 横向滚轮 / 横向划都走这里。⚠️ 不放在 bandHold 里：
+       bandHold 也会被 pointerdown（按下但没拖）触发，那样「点一下」就把动画废了。 */
+    var bandTakeOver = function () {
+      bandFinished = true;
+      bandTouched = true;
+      bandHold();
+    };
+
+    /* --- 「停在上面看」才停，路过不停（2026-10-16 用户要求）-------------------
+       他原话：「鼠标悬停到卡片上3秒左右就让滚动动画停止，鼠标移开马上恢复滚动，
+                但是鼠标经过不能让滚动动画停止」。
+       ⚠️ 所以不能直接用 mouseenter 停 —— 那样鼠标从屏幕这头扫到那头、
+          中间掠过带子一下就会把它停住（这正是他上一次抱怨的「鼠标扫过就停」）。
+          做法：进入时**只起计时器**，停留够 BAND_DWELL 才真的停；
+          中途移开就把计时器清掉，等于没发生过。
+       ⚠️ 挂在 .band 上而不是每张卡片上：带子一直横移，卡片会从光标底下走过去，
+          按卡片算的话光标每跨过一条卡片边界就要重新计时，语义反而乱
+          （而且 180px/s 下一张卡 3.6 秒就过去了，几乎永远到不了 3 秒）。
+          挂在容器上 = 「光标在带子上待够 3 秒」，稳定且好解释。
+       ⚠️ 恢复是**马上**的：bandDwelling 只是挡住移动，rAF 循环一直没停，
+          所以置回 false 的下一帧就接着滑，不用等 BAND_RESUME。
+          这一点和 bandHeld（手动操作后等 1.8 秒）刻意分开。 */
+    var bandEnter = function () {
+      if (bandDwellTimer || bandDwelling) return;
+      bandDwellTimer = setTimeout(function () {
+        bandDwellTimer = null;
+        bandDwelling = true;      /* 到点了：停住 */
+      }, BAND_DWELL);
+    };
+    var bandLeave = function () {
+      if (bandDwellTimer) { clearTimeout(bandDwellTimer); bandDwellTimer = null; }
+      if (bandDwelling) bandDwelling = false;   /* 移开立刻放行 */
+    };
+    bandEl.addEventListener('mouseenter', bandEnter);
+    bandEl.addEventListener('mouseleave', bandLeave);
 
     /* 还能滚多远。容器比内容宽时为 0，那就没有必要自动滑 */
     var bandMax = function () {
@@ -1197,28 +1274,30 @@
     };
 
     var bandStep = function (ts) {
-      /* 到头了、滚出屏幕了、或者标签页被切走 —— 就把这个循环停掉，
-         别让它在看不见的地方空转耗电。 */
-      if (bandDone || !bandInView || doc.hidden) { bandRun = false; return; }
+      /* 已经跑完 / 用户接手了 / 滚出屏幕了 / 标签页被切走 ——
+         就把这个循环停掉，别让它在看不见的地方空转耗电。 */
+      if (bandFinished || !bandInView || doc.hidden) { bandRun = false; return; }
 
       /* 切到别的标签页再切回来会有个巨大的时间差，夹住，否则会瞬移一大段 */
       var dt = bandLast ? Math.min(ts - bandLast, 64) : 16;
       bandLast = ts;
 
-      if (!bandHeld && !bandDragging) {
+      if (!bandHeld && !bandDragging && !bandDwelling) {
         /* 起点在最左（左边留出版心空白），一路向右推进到最右
            （末图停在版心右边界，右边留白）。
            ⚠️ 是**加**不是减 —— 写成减会在起点就立刻归零、什么都不动。 */
         var max = bandMax();
         var next = bandEl.scrollLeft + BAND_SPEED * dt / 1000;
         if (next >= max) {
-          bandEl.scrollLeft = max;   /* 停在最右 */
+          /* 一次跑完：停在最右，并落下一次性闩（本次加载不再自动滑）。 */
+          bandEl.scrollLeft = max;
           bandTouched = true;
-          bandDone = true;
-        } else {
-          bandEl.scrollLeft = next;
-          bandTouched = true;
+          bandFinished = true;
+          bandRun = false;
+          return;
         }
+        bandEl.scrollLeft = next;
+        bandTouched = true;
       }
       window.requestAnimationFrame(bandStep);
     };
@@ -1240,7 +1319,7 @@
     };
 
     var bandStart = function () {
-      if (bandRun || bandDone || !bandAuto || !bandInView) return;
+      if (bandRun || bandFinished || !bandAuto || !bandInView) return;
       bandRun = true;
 
       /* 先让卡片一张张浮起来，**浮完再开始滑** ——
@@ -1287,8 +1366,10 @@
       bandEl.classList.remove('is-dragging');
       try { bandEl.releasePointerCapture(bandDragId); } catch (err) {}
       bandDragId = null;
-      bandHold();
-      bandStart();     /* 拖回左边之后，自动滑接着从当前位置走 */
+      /* 真的拖动过（不是点一下）→ 用户接手，自动滑到此为止。
+         ⚠️ 原来这里写的是「拖回左边之后，自动滑接着从当前位置走」——
+            那是错的，用户 2026-10-16 明确要求「拉回去就不需要再滚动了」。 */
+      if (bandMoved) bandTakeOver(); else bandHold();
     };
     bandEl.addEventListener('pointerup', bandEndDrag);
     bandEl.addEventListener('pointercancel', bandEndDrag);
@@ -1304,10 +1385,35 @@
     /* 拖动时别触发浏览器原生的「拖拽图片」幽灵图 */
     bandEl.addEventListener('dragstart', function (e) { e.preventDefault(); });
 
-    /* 滚轮 / 手指：用户在操作，先让自动滑停一会儿再恢复 */
-    bandEl.addEventListener('wheel', bandHold, { passive: true });
-    bandEl.addEventListener('touchstart', bandHold, { passive: true });
-    bandEl.addEventListener('touchmove', bandHold, { passive: true });
+    /* 滚轮 / 手指：**只有在横着操作这条带子时**才让自动滑停一会儿。
+       ⚠️⚠️ 这里原来是无条件 bandHold —— 纵向滚轮也算。而带子占满整个视口宽度，
+          用户看这一屏时光标天然就在它上面，于是「滚页面」的每一个滚轮刻度
+          都把自动滑暂停 BAND_RESUME（1.8 秒）。实测（_diag_band_hover.py）：
+          光标停在带子上滚页面，5 秒只前进 1px；光标一移开立刻恢复 299px/5s。
+          用户 2026-10-16 报的「拉到这一页不滚动 / 鼠标放上去还颤抖」就是这个 ——
+          一停一走的循环看着就是抖。手机上更严重：竖滑翻页是常态，
+          等于这条带子永远起不来。
+       纵向滚轮滚的是整页，跟这条带子没关系，不该停它；
+       横向滚轮才是「用户在自己滑这条带子」。 */
+    bandEl.addEventListener('wheel', function (e) {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) bandTakeOver();
+    }, { passive: true });
+
+    /* 手指同理 —— 只有横向手势才算在滑带子。
+       原来 touchstart 也无条件 hold，竖滑翻页一碰就暂停。
+       起点记在 touchstart 上，方向在 touchmove 里判。 */
+    var bandTouchX = 0, bandTouchY = 0;
+    bandEl.addEventListener('touchstart', function (e) {
+      if (e.touches && e.touches[0]) {
+        bandTouchX = e.touches[0].clientX;
+        bandTouchY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+    bandEl.addEventListener('touchmove', function (e) {
+      if (!e.touches || !e.touches[0]) return;
+      if (Math.abs(e.touches[0].clientX - bandTouchX) >
+          Math.abs(e.touches[0].clientY - bandTouchY)) bandTakeOver();
+    }, { passive: true });
 
     /* --- 视频只在真的露出来时才播 -----------------------------------------
        全部一起解码 CPU 吃不消，也没必要。 */
@@ -1858,12 +1964,27 @@
      几个不同位置/半径的径向渐变叠起来，再盖一层**噪点**。噪点把台阶打碎，
      眼睛就看不见带子了 —— 这是治 banding 的常规做法。
 
+     ⭐ 2026-10-19 用户「这一页的背景我还是感觉不对，我想抄这个网页」→ 重做：
+        · 把参考页的背景单独截出来（藏掉所有文字），做最小二乘拟合，
+          得到「底色 rgb(12,18,25) + 8 个旋转高斯」，RMSE 1.45/255；
+        · 上一版的形状是错的：它以为「左暗右亮」，其实亮核在左上偏中
+          （nx≈0.29, ny≈0.06），右边只是一条更淡的斜带；
+        · 噪点从 0.45 压到 0.10 —— 参考页外层 blur(20px) 早把颗粒抹平了，
+          我们那版比它粗五六倍，看着是一层沙。
+
      为什么不用更省事的纯 CSS：
        · 多层 radial-gradient 也能做，但**加不了噪点**（CSS 没有便宜的逐像素噪声），
          带子治不掉；
        · SVG feTurbulence 可以当噪声层，但整块是滤镜，这么大的区域跑一次
          要几毫秒到几十毫秒，而且尺寸一变就得重算。
-     一次 canvas 绘制几毫秒，还不引起重排。
+
+     ⭐ 2026-10-20 用户「背景的蓝色可以改成流动的蓝色光效吗？也要这样渐变过渡到黑色」
+        → 从「画一次」改成「静态底图 + 每帧合成」：
+          · 拟合出来的色场（底色 + 8 个高斯）不随时间变，**烘一次**到离屏画布；
+          · 每帧只做：drawImage 底图 → 叠 3 团缓慢游走的淡蓝光（'lighter'）
+            → 收边渐变 → 噪点。整帧 6 次绘制，30fps；
+          · 首屏离开视口 / 标签页隐藏就停；`prefers-reduced-motion` 只画一帧。
+        ⚠️ 光要在**收边之前**画，否则会跑到下半段的黑色里去。
 
      ⚠️ 只在页面里真有 `.harness-hero__glow` 时才跑 —— 其余五个页面连 canvas
         都不会创建。
@@ -1871,8 +1992,9 @@
         或者浏览器不支持 canvas 时，首屏依然是深蓝的，只是有带子。
      ⚠️ 平滑的光晕先缩到**一半尺寸**画（最多 900px 宽），再让 CSS 拉伸 ——
         这是没有细节的渐变，缩一半看不出来，绘制量少到 1/4。
-        **噪点不能跟着缩**，否则会被放大成一团团云雾；它在全分辨率下
-        用一张 64×64 的贴片平铺，所以始终是细的。
+        ⚠️ 噪点也在同一张半分辨率画布上，会被拉成 2px 一颗 —— 所以它的
+           幅度必须很小（0.10）。调到能看见颗粒就说明已经把参考页的
+           blur 效果做没了。
      ---------------------------------------------------------------------- */
   (function () {
     var cv = doc.querySelector('.harness-hero__glow');
@@ -1881,25 +2003,8 @@
     var ctx = cv.getContext('2d');
     if (!ctx) return;
 
-    /* 64×64 灰噪点贴片，只做一次，之后一直平铺。
-       ⚠️ 用自带的 LCG 而不是 Math.random()：贴片每次刷新都该是同一张。
-          随机的话每张不一样，滚动/重绘时会有一层"沙沙"的闪烁感。 */
-    var seed = 20261015;
-    function rnd() {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed / 0x7fffffff;
-    }
-    var tile = doc.createElement('canvas');
-    tile.width = tile.height = 64;
-    var tctx = tile.getContext('2d');
-    var timg = tctx.createImageData(64, 64);
-    for (var i = 0; i < timg.data.length; i += 4) {
-      var v = 128 + Math.round((rnd() - 0.5) * 34);      /* 111~145 的中灰 */
-      timg.data[i] = timg.data[i + 1] = timg.data[i + 2] = v;
-      timg.data[i + 3] = 255;
-    }
-    tctx.putImageData(timg, 0, 0);
-    var grain = ctx.createPattern(tile, 'repeat');
+    /* 2026-10-20 起这里不再生成噪点贴片（用户要求去掉那层"布纹"）。
+       防色带交给 CSS 的轻微模糊：`.harness-hero__glow { filter: blur(12px) }`。 */
 
     /* 一片光斑。坐标/半径都按**画布宽度**归一（画布是首屏等比缩小的，
        所以横竖同一个尺度），改尺寸不用重调。
@@ -1912,97 +2017,457 @@
        ⚠️ `py` 用的是 `bw` 不是 `bh`。画布是 bh = bw * H / W，
           和首屏是等比关系，所以横竖必须用同一个基准；
           用 bh 的话，首屏一变高光斑就跟着往下跑。 */
-    function blob(g, W, H, cx, cy, rx, ry, rot, stops) {
-      var px = cx * W, py = cy * W;
-      var R = (rx > ry ? rx : ry) * W;
+    /* 一片高斯光斑：颜色按 exp(-4.5t²) 衰减（t = r / 3σ）。
+       canvas 只认色标不认函数，所以把高斯离散成 11 个色标 ——
+       σ 处（t=1/3）还剩 0.67，到 3σ 只剩 0.011，肉眼看就是归零。
+       (cx, cy, sx, sy, th) 直接来自 `_shots/fit_glow.py` 的最小二乘拟合。 */
+    var GAUSS = [1, .956, .835, .667, .487, .325, .198, .110, .056, .026, .011];
+
+    function blob(g, W, cx, cy, sx, sy, th, ar, ag, ab) {
+      var R = sx * 3 * W;             /* 3σ 当渐变半径 */
       g.save();
-      g.translate(px, py);
-      g.rotate(rot || 0);
-      g.scale(1, ry / rx);            /* 圆 → 椭圆（先转后压） */
+      g.translate(cx * W, cy * W);
+      g.rotate(th || 0);
+      g.scale(1, sy / sx);            /* 正圆 → 椭圆（先转后压） */
       var grd = g.createRadialGradient(0, 0, 0, 0, 0, R);
-      for (var k = 0; k < stops.length; k++) grd.addColorStop(stops[k][0], stops[k][1]);
+      var cr = Math.round(ar * 255), cg = Math.round(ag * 255), cb = Math.round(ab * 255);
+      for (var k = 0; k < GAUSS.length; k++) {
+        grd.addColorStop(k / (GAUSS.length - 1),
+          'rgba(' + cr + ',' + cg + ',' + cb + ',' + GAUSS[k] + ')');
+      }
       g.fillStyle = grd;
-      var half = R * 3;
+      var half = R * 1.25;
       g.fillRect(-half, -half, half * 2, half * 2);
       g.restore();
     }
 
-    var lastW = 0;
-    function draw() {
+    /* ---- 光斑贴图：3 团流动的光每帧都重建渐变太贵（实测整帧 ~30ms，只能跑 30fps）
+       把每团光**按固定颜色**烘成一张 384px 的贴图，每帧只做 drawImage + globalAlpha。
+       形状完全等价：blob() 里渐变半径是 R、填充范围是 ±R*1.25，
+       所以贴图的半边长 192 对应 R*1.25，渐变半径对应 192*0.8。 */
+    var SP = 384;
+    function lightSprite(r, g, b) {
+      var c = doc.createElement('canvas');
+      c.width = SP; c.height = SP;
+      var gg = c.getContext('2d');
+      var grd = gg.createRadialGradient(SP / 2, SP / 2, 0, SP / 2, SP / 2, SP * 0.4);
+      for (var k = 0; k < GAUSS.length; k++) {
+        grd.addColorStop(k / (GAUSS.length - 1),
+          'rgba(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ',' + GAUSS[k] + ')');
+      }
+      gg.fillStyle = grd;
+      gg.fillRect(0, 0, SP, SP);
+      return c;
+    }
+
+    /* ---- 静态色场：只画一次，烘到离屏画布 -------------------------------
+       拟合出来的「底色 + 8 个高斯」本身不会动，每帧重画纯属浪费；
+       烘成底图之后，每帧只要 drawImage 一次。 */
+    var lastW = 0, sprites = null;
+    var bw = 0, bh = 0, fadeTop = 0, fadeGrad = null;
+    var base = doc.createElement('canvas');
+    var bctx = base.getContext('2d');
+
+    function bake() {
       var W = host.clientWidth, H = host.clientHeight;
-      if (!W || !H || W === lastW) return;
+      if (!W || !H || W === lastW) return false;
       lastW = W;
 
-      var bw = Math.max(320, Math.min(900, Math.round(W / 2)));
-      var bh = Math.max(180, Math.round(bw * H / W));
+      bw = Math.max(320, Math.min(900, Math.round(W / 2)));
+      bh = Math.max(180, Math.round(bw * H / W));
       cv.width = bw; cv.height = bh;         /* 改宽高会把 context 状态清掉，下面重设 */
+      base.width = bw; base.height = bh;
+
+      var g = bctx;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = 'rgb(12,18,25)';         /* 拟合出来的底色 */
+      g.fillRect(0, 0, bw, bh);
+
+      /* [cx, cy, sx, sy, theta, ΔR, ΔG, ΔB] —— 坐标以画布宽度为单位。
+         ⚠️ 这组数字是**最小二乘拟合**出来的，不是手调的：
+            把参考页背景单独截出来（藏掉文字），降采样成 90×56 网格，
+            用「底色 + 8 个可旋转、各向异性的高斯」逼近，RMSE 1.45/255。
+            推导脚本 `_shots/fit_glow.py`，参数同步写在 `glow_params.json`。
+            要改就三处一起改（这里 / fit_glow.py / CSS 兜底渐变）。 */
+      g.globalCompositeOperation = 'lighter';
+      var BLOBS = [
+        [0.1575, 0.1334, 0.0985, 0.0535,  0.236, .1656, .1313, .0842],
+        [0.8058, 0.1682, 0.3363, 0.2689,  0.956, .1286, .0706, .0000],
+        [0.1405, 0.2364, 0.0478, 0.1511, -0.884, .0355, .0705, .1139],
+        [0.2938, 0.0617, 0.1256, 0.0446,  0.192, .2340, .1727, .0905],
+        [-0.0299, 0.4809, 0.0576, 0.0877, -0.316, .1674, .1744, .1782],
+        [0.3268, 0.2941, 0.1138, 0.1738, -0.600, .0350, .0686, .1108],
+        [0.8028, 0.3844, 0.2501, 0.1397,  0.316, .0384, .0889, .1548],
+        [0.6389, 0.0476, 0.5044, 0.1773,  0.047, .0199, .1826, .3867]
+      ];
+      for (var bi = 0; bi < BLOBS.length; bi++) {
+        var B_ = BLOBS[bi];
+        blob(g, bw, B_[0], B_[1], B_[2], B_[3], B_[4], B_[5], B_[6], B_[7]);
+      }
+
+      /* 收边渐变预生成（每帧直接复用）。
+         ⚠️ 匀速落到首屏底边，别用 smoothstep —— 它两端斜率为 0，
+            末端会提前变成一片死黑的平板。 */
+      fadeTop = Math.min(bh, Math.max(bw * 0.40, bh * 0.42));
+      /* ⚠️ 渐变终点收在 bh*0.978 而不是 bh：画布比首屏四周各大 24px（给模糊留料），
+         真正露出来的底边在画布 97.9% 处，那里必须已经是纯黑，否则会和
+         下面的正文差 1 个色阶。 */
+      fadeGrad = ctx.createLinearGradient(0, fadeTop, 0, Math.round(bh * 0.978));
+      for (var fi = 0; fi <= 10; fi++) {
+        fadeGrad.addColorStop(fi / 10, 'rgba(10,10,10,' + (fi / 10).toFixed(2) + ')');
+      }
+      return true;
+    }
+
+    /* ---- 流动的蓝光 -----------------------------------------------------
+       2026-10-20 用户：「背景的蓝色可以改成流动的蓝色光效吗？也要这样渐变过渡到黑色」。
+       三团很淡的光各自沿一条很慢的椭圆轨迹游走，叠在静态色场上面（'lighter'）。
+
+       [cx0, cy0, ax, ay, 速度, 相位, rx, ry, 倾角, R, G, B, 峰值]
+       ⚠️ 必须在**收边之前**画 —— 否则光会跑到下半段的黑色里去。
+       ⚠️ 峰值 0.075~0.13：第一版只有 0.03~0.055，用户「完全没在动」——
+          那个量级 4 秒只变 1 个色阶，等于静止。现在 6 秒能看出 10~20 个色阶。
+       ⚠️ 速度是 rad/s：0.34 / 0.26 / 0.19 对应 **18 / 24 / 33 秒**一个来回。
+          第一版写成 0.021（周期 5 分钟），肉眼完全看不出在动。
+       ⚠️ 2026-10-20 用户：「这一页的背景动画动的幅度太小了」——
+          ax/ay（游走的椭圆半径，单位是画布宽）几乎翻倍：0.15/0.05 → 0.30/0.13。
+          第一版这两个数只有现在的一半，光团基本钉在原位上只是亮度起伏。 */
+    var LIGHTS = [
+      [0.30, 0.20, 0.300, 0.130, 0.34, 0.00, 0.44, 0.28, -0.28, 150, 195, 245, 0.130],
+      [0.72, 0.13, 0.270, 0.110, 0.26, 2.10, 0.38, 0.24,  0.22, 120, 170, 230, 0.105],
+      [0.50, 0.33, 0.340, 0.090, 0.19, 4.05, 0.52, 0.13, -0.06, 170, 205, 250, 0.075]
+    ];
+
+    function paint(t) {
       var g = ctx;
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalAlpha = 1;
       g.globalCompositeOperation = 'source-over';
-      g.fillStyle = '#0A0A0A';
-      g.fillRect(0, 0, bw, bh);
+      g.drawImage(base, 0, 0);
 
-      /* ⚠️ 这一整段的数字是拿参考页截图的**实测像素**反推出来的，
-         推导过程与对照表在 `_shots/model_glow.py` 的文件头。
-         要改就两边一起改，不然下次照着模型调出来的形状又对不上。 */
-
-      /* ① 底场：横向「左暗右亮」。参考页的左右比大约是 0.7，
-            而且**整条宽度上都在发光** —— 这才是它跟「一盏顶光」最大的区别。 */
-      g.globalCompositeOperation = 'source-over';
-      var hg = g.createLinearGradient(0, 0, bw, 0);
-      hg.addColorStop(0.00, 'rgb(21,39,63)');
-      hg.addColorStop(0.42, 'rgb(33,52,76)');
-      hg.addColorStop(1.00, 'rgb(46,67,95)');
-      g.fillStyle = hg;
-      g.fillRect(0, 0, bw, bh);
-
-      /* ② 结构：三片很淡的椭圆。参考页不是一片死平的蓝 ——
-            左上角（x≈0.01, ny≈0.22）有一小块偏灰的亮斑，
-            右侧有一条斜着往下的亮带。就是这三片。 */
       g.globalCompositeOperation = 'lighter';
-      blob(g, bw, bh, 0.02, 0.20, 0.15, 0.34, 0.0, [
-        [0.00, 'rgba(56,92,132,0.13)'], [0.55, 'rgba(40,66,96,0.05)'],
-        [1.00, 'rgba(10,10,10,0)']]);
-      blob(g, bw, bh, 0.86, 0.14, 0.34, 0.62, -0.55, [
-        [0.00, 'rgba(44,70,104,0.18)'], [0.55, 'rgba(30,50,80,0.07)'],
-        [1.00, 'rgba(10,10,10,0)']]);
-      blob(g, bw, bh, 1.00, 0.58, 0.26, 0.60, -0.40, [
-        [0.00, 'rgba(34,56,94,0.14)'], [1.00, 'rgba(10,10,10,0)']]);
+      if (!sprites) {
+        sprites = [];
+        for (var j = 0; j < LIGHTS.length; j++) sprites.push(lightSprite(LIGHTS[j][9], LIGHTS[j][10], LIGHTS[j][11]));
+      }
+      for (var i = 0; i < LIGHTS.length; i++) {
+        var L = LIGHTS[i];
+        var cx = L[0] + Math.sin(t * L[4] + L[5]) * L[2];
+        var cy = L[1] + Math.cos(t * L[4] * 0.73 + L[5]) * L[3];
+        /* 亮度也轻微起伏，节奏和位移不同步，看起来才不像机械循环 */
+        var a = L[12] * (0.62 + 0.38 * Math.sin(t * L[4] * 1.37 + L[5] * 1.7));
+        var half = L[6] * 3 * bw * 1.25;          /* 与 blob() 的填充半宽一致 */
+        var k = half / (SP / 2);
+        g.save();
+        g.translate(cx * bw, cy * bw);
+        g.rotate(L[8] || 0);
+        g.scale(k, k * (L[7] / L[6]));            /* 先转后压，和 blob() 一致 */
+        g.globalAlpha = a;
+        g.drawImage(sprites[i], -SP / 2, -SP / 2, SP, SP);
+        g.restore();
+      }
 
-      /* ③ 纵向遮罩：从 ny≈0.22 才开始暗，到 ny=1.0 收到全黑。
-            ⚠️ 必须收到底 —— 参考页下面还有很长的内容，我们没有，
-               不收到底首屏下沿会出现一条硬边。 */
+      /* 收边：拟合只覆盖到 y/W≈0.63，再往下是外推。
+         ⚠️ 必须收到 #0A0A0A —— 首屏下沿紧接的正文就是这个底色。 */
       g.globalCompositeOperation = 'source-over';
-      var vg = g.createLinearGradient(0, bh * 0.22, 0, bh);
-      var VS = [[0.000, 0.00], [0.256, 0.13], [0.513, 0.37],
-                [0.769, 0.67], [0.962, 0.94], [1.000, 1.00]];
-      for (var vi = 0; vi < VS.length; vi++) {
-        vg.addColorStop(VS[vi][0], 'rgba(10,10,10,' + VS[vi][1] + ')');
-      }
-      g.fillStyle = vg;
-      g.fillRect(0, 0, bw, bh);
+      g.fillStyle = fadeGrad;
+      g.fillRect(0, fadeTop, bw, bh - fadeTop);
 
-      /* 左右不再额外压暗边 —— 横向渐变本身已经把左边压下来了，
-         再叠一道暗角就又变回"聚光灯"。 */
-
-      /* ⭐ 噪点。'overlay' 下中灰是"不改变"，只有偏差部分起作用，
-         所以它只打碎色阶、不改变整体明暗。 */
-      if (grain) {
-        g.globalCompositeOperation = 'overlay';
-        g.globalAlpha = 0.45;
-        g.fillStyle = grain;
-        g.fillRect(0, 0, bw, bh);
-        g.globalAlpha = 1;
-        g.globalCompositeOperation = 'source-over';
-      }
+      /* ⚠️ 2026-10-20 用户：「上面有一层布纹一样的东西，去掉，做成流畅的光影」。
+         原来这里盖了一层 64×64 的噪点贴片（防色带）。它在半分辨率画布上
+         被放大成 2px 一颗，平铺出来就是一层**布纹**。
+         现在去掉了 —— 防色带改由 CSS 的轻微模糊负责（见 .harness-hero__glow）。 */
     }
 
-    draw();
+    /* ---- 动起来的调度 ---------------------------------------------------
+       · 30fps（33ms 一帧）—— 背景是缓慢流动，60fps 是浪费
+       · 首屏离开视口 / 标签页隐藏 → 立刻停，别在后台烧 CPU
+       · `prefers-reduced-motion: reduce` → 只画一帧静态的 */
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var rafId = 0, lastPaint = 0, inView = true;
+
+    function frame(ts) {
+      rafId = requestAnimationFrame(frame);
+      if (ts - lastPaint < 33) return;
+      lastPaint = ts;
+      paint(ts / 1000);
+    }
+    function start() {
+      if (reduce || rafId || !inView || doc.hidden) return;
+      lastPaint = 0;
+      rafId = requestAnimationFrame(frame);
+    }
+    function stop() {
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    }
+
+    function refresh() {
+      if (bake()) paint(0.6);       /* t=0.6 避开 sin 的零点，光斑位置更自然 */
+    }
+
+    refresh();
+    if (!reduce) {
+      start();
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (es) {
+          inView = es[0].isIntersecting;
+          if (inView) start(); else stop();
+        }, { rootMargin: '120px' }).observe(host);
+      }
+      doc.addEventListener('visibilitychange', function () {
+        if (doc.hidden) stop(); else start();
+      });
+    }
+
     var t0 = 0;
     window.addEventListener('resize', function () {
       clearTimeout(t0);
-      t0 = setTimeout(function () { lastW = 0; draw(); }, 160);
+      t0 = setTimeout(function () { lastW = 0; refresh(); }, 160);
+    });
+  })();
+
+  /* ----------------------------------------------------------------------
+     25b. 大模型页首屏：一颗自己会转的「数据球」
+
+     用户 2026-10-20 第五轮（定稿）：
+       「最开始要从四周凭空浮现小点（浮现的时候自然点，慢一点，规律一点不要乱跑，直接汇聚），
+         然后浮现的小点汇聚起来（汇聚成圆后，就可以在圆内乱跑了，可以有一两个速度很快，
+         大部分都是慢慢移动，注意这里不要颤抖）。
+         小点可以换个颜色或者改暗一点，不然和文字太接近了，小点改成圆形」
+
+     → 时间轴：
+        0 → 2.20s   四边淡入浮现，然后顺着直线慢慢飞向球心
+                    （这段时间**球本身不动**，所以路线是直的、规律的，
+                      不是追着一颗正在转的球跑曲线）
+        2.20 → 2.90s 成球；**从这一刻起**点才开始在球里动
+        2.90 → 5.40s 大球缩到最终尺寸
+        > 5.40s     一直在转的球
+
+     ⭐ 球内运动：每颗粒子一个固定球坐标，绕自己的纬度圈匀速走 + 一点点径向呼吸
+        （全是连续的正弦量）。85% 很慢，随机 1~2 颗给 6~10 倍角速度。
+     ⛔ 绝不能按阈值切换「随时间连续变化的量」（粒径、半径…）——
+        2026-10-20 那版按 `depth > 0.72` 切粒径，球一转就有一片点在 3↔4px 之间跳，
+        整屏都在抖。粒径现在是纯静态的。
+     ⭐ 点是**圆**的：预先烘一张圆形贴图，逐帧 drawImage 缩放
+        （比每帧画 arc 便宜，而且天然带抗锯齿边）。
+     ⚠️ 尺寸用 offsetWidth/offsetHeight；离开视口 / 标签页隐藏就停 rAF。
+     ---------------------------------------------------------------------- */
+  (function () {
+    var cv = doc.querySelector('.llm-hero__flow-cv');
+    if (!cv || !cv.getContext) return;
+    var ctx = cv.getContext('2d');
+    if (!ctx) return;
+
+    var reduce = false;
+    try { reduce = !!window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+    /* T_FORM 必须 ≥ T_FLY + 最大 delay，否则最后一颗还没落地球就转起来了，
+       它的路线会跟着弯 —— 用户明确要「直接汇聚、规律一点」 */
+    var T_FLY = 2.20, T_FORM = 2.65, T_BIG = 3.60, T_SMALL = 6.10, S_BIG = 1.55;
+    /* 成球后不是"哨声一响全体起跑"：半径的角速度用 0.8 秒从 0 缓升到正常，
+       否则那两颗快的会在同一帧里突然窜出去 */
+    var RAMP = 0.80;
+
+    var W = 0, H = 0, R = 0, bx = 0, by = 0;
+    var parts = [], sprite = null;
+    var lastKey = "", clock = 0, lastTs = 0, raf = 0, playing = false;
+
+    function rndFactory() {
+      var s = 20261020;
+      return function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    }
+    function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+    function smooth(v) { return v * v * (3 - 2 * v); }
+
+    /* 一颗圆点的贴图：实心 + 一圈柔和收边。颜色统一在这里改 */
+    function makeSprite() {
+      var c = doc.createElement('canvas');
+      var S = 16;
+      c.width = S; c.height = S;
+      var g = c.getContext('2d');
+      var grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+      grd.addColorStop(0.00, 'rgba(126,170,226,1)');
+      grd.addColorStop(0.82, 'rgba(126,170,226,1)');   /* 核心撑到 82%，圆才显得饱满 */
+      grd.addColorStop(1.00, 'rgba(126,170,226,0)');
+      g.fillStyle = grd;
+      g.beginPath(); g.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); g.fill();
+      return c;
+    }
+
+    function build() {
+      var cssW = cv.offsetWidth, cssH = cv.offsetHeight;
+      if (!cssW || !cssH) return false;
+      var dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      var w = Math.round(cssW * dpr), h = Math.round(cssH * dpr);
+      var key = w + 'x' + h;
+      if (key === lastKey) return false;
+      lastKey = key;
+      cv.width = w; cv.height = h;
+      W = w; H = h;
+      bx = W / 2;
+      var narrow = cssW < 560;
+      by = H * (narrow ? 0.24 : 0.37);
+      R = Math.min(W, H) * (narrow ? 0.26 : 0.22);
+
+      sprite = makeSprite();
+
+      var rnd = rndFactory();
+      var n = Math.round(Math.PI * R * R / 950);
+      var fast = 2;                                 /* 只给两颗"飞得很快"的 */
+      var out = [];
+      for (var i = 0; i < n; i++) {
+        var rr = Math.pow(rnd(), 0.40) * R * 0.97;
+        var ph = Math.acos(rnd() * 2 - 1);
+        var th0 = rnd() * Math.PI * 2;
+        var isFast = fast > 0 && rnd() < 0.05;
+        if (isFast) fast--;
+        var w2 = isFast ? (0.55 + rnd() * 0.55) * (rnd() < 0.5 ? -1 : 1)
+                        : (0.02 + rnd() * 0.07) * (rnd() < 0.5 ? -1 : 1);
+
+        /* 起点：画布四条边上，22% 压在角上 */
+        var edge = (rnd() * 4) | 0;
+        var alongT = rnd() < 0.22 ? (rnd() < 0.5 ? 0 : 1) : rnd();
+        var px, py;
+        if (edge === 0) { px = alongT * W; py = 0; }
+        else if (edge === 1) { px = W; py = alongT * H; }
+        else if (edge === 2) { px = alongT * W; py = H; }
+        else { px = 0; py = alongT * H; }
+
+        var r2 = rnd();
+        out.push({
+          r: rr, ph: ph, th0: th0, w: w2,
+          ph2: rnd() * Math.PI * 2,                 /* 径向呼吸的相位 */
+          ws: 0.35 + rnd() * 0.55,
+          amp: 0.03 + rnd() * 0.05,
+          /* 点少了以后整体会显虚，亮度稍微抬一点（仍是偏蓝、比白字暗） */
+          a: 0.46 + Math.pow(rnd(), 1.15) * 0.46,
+          /* 2/3/4/5 混着来：一半是 2px 的小点，跟 4、5px 的拉开对比
+             （用户：「有一些点点再小一点，来做对比，不要都那么大」） */
+          sz: Math.max(2, Math.round((r2 < 0.42 ? 2 : (r2 < 0.74 ? 3 : (r2 < 0.92 ? 4 : 5))) * dpr)),
+          fx: px, fy: py,
+          delay: rnd() * 0.45
+        });
+      }
+      parts = out;
+      clock = 0; lastTs = 0;
+      return true;
+    }
+
+    /* 球内运动的"有效时间"：前 RAMP 秒按 smoothstep 积分缓入，之后恢复正常速度。
+       这样 tB 的一阶导（= 点的实际速度）是从 0 连续升到 1 的，不会有起跑的顿挫。 */
+    function ballTime(t) {
+      var tb = t - T_FORM;
+      if (tb <= 0) return 0;
+      if (tb < RAMP) {
+        var u = tb / RAMP;
+        return RAMP * (u * u * u - u * u * u * u / 2);
+      }
+      return tb - RAMP * 0.5;
+    }
+
+    function scaleAt(t) {
+      if (t <= T_BIG) return S_BIG;
+      if (t >= T_SMALL) return 1;
+      return S_BIG + (1 - S_BIG) * smooth((t - T_BIG) / (T_SMALL - T_BIG));
+    }
+
+    function draw(t) {
+      var tB = ballTime(t);                        /* 球本身的运动从"成球"那一刻起，缓入 */
+
+      var ay = tB * 0.18, tilt = 0.42;
+      var sa = Math.sin(ay), ca = Math.cos(ay);
+      var st = Math.sin(tilt), ct = Math.cos(tilt);
+      var S = scaleAt(t);
+
+      ctx.clearRect(0, 0, W, H);
+
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+
+        /* ① 球内：绕自己的纬度圈 + 一点点径向呼吸（都是连续量，不会跳） */
+        var th = p.th0 + p.w * tB;
+        var rr = p.r * (1 + p.amp * Math.sin(p.ph2 + p.ws * tB));
+        var rp = rr * Math.sin(p.ph);
+        var lx = rp * Math.cos(th);
+        var ly = rr * Math.cos(p.ph);
+        var lz = rp * Math.sin(th);
+
+        /* ② 整球旋转 + ③ 透视 */
+        var x1 = lx * ca - lz * sa;
+        var z1 = lx * sa + lz * ca;
+        var y1 = ly * ct - z1 * st;
+        var z2 = ly * st + z1 * ct;
+        var persp = 1 + z2 / (R * 3.6);
+
+        var tx = bx + x1 * persp * S;
+        var ty = by + y1 * persp * S;
+
+        /* ④ 浮现 + 直接飞向球心：这段时间球不动，所以是直线 */
+        var k = clamp01((t - p.delay) / T_FLY);
+        var e = smooth(k);
+        var sx = p.fx + (tx - p.fx) * e;
+        var sy = p.fy + (ty - p.fy) * e;
+
+        /* ⑤ 先在原地淡入（前 35% 的行程），越近越亮 */
+        var born = clamp01((t - p.delay) / (T_FLY * 0.35));
+        var depth = (z2 / R + 1) * 0.5;
+        var al = p.a * born * (0.62 + 0.38 * depth);
+        if (al <= 0.004) continue;
+
+        ctx.globalAlpha = al;
+        var d = p.sz;
+        ctx.drawImage(sprite, sx - d / 2, sy - d / 2, d, d);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* ⚠️ 用累计时钟，不是 ts - started：
+       切到别的标签页 / 滚出视口会 stop()，回来再 start() 时如果直接用时间戳，
+       时间会凭空跳一大段，球会瞬移（入场那 6 秒更是直接跳过）。
+       这里只在"播放中"累加，暂停期间时间不动。单帧最多计 50ms，
+       掉帧时宁可慢一点，也不要一帧跳很远。 */
+    function loop(ts) {
+      if (!lastTs) lastTs = ts;
+      clock += Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
+      draw(clock);
+      raf = window.requestAnimationFrame(loop);
+    }
+
+    function start() {
+      if (reduce) { if (!parts.length && !build()) return; draw(99); return; }
+      if (playing) return;
+      if (!parts.length && !build()) return;
+      playing = true;
+      lastTs = 0;                       /* 恢复播放时不要把暂停的那段时间算进去 */
+      raf = window.requestAnimationFrame(loop);
+    }
+
+    function stop() {
+      if (!playing) return;
+      playing = false;
+      window.cancelAnimationFrame(raf);
+      raf = 0;
+    }
+
+    if (!build()) return;
+    start();
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) {
+        if (es[0].isIntersecting) start(); else stop();
+      }, { rootMargin: '80px' }).observe(cv);
+    }
+    doc.addEventListener('visibilitychange', function () {
+      if (doc.hidden) stop(); else start();
+    });
+
+    var rt = 0;
+    window.addEventListener('resize', function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () { stop(); lastKey = ""; if (build()) start(); }, 180);
     });
   })();
 
