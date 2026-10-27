@@ -2252,32 +2252,35 @@
   })();
 
   /* ----------------------------------------------------------------------
-     25b. 大模型页首屏：一颗自己会转的「数据球」
+     25b. 大模型页首屏：数据环流球（Latent Sphere）
 
-     用户 2026-10-20 第五轮（定稿）：
-       「最开始要从四周凭空浮现小点（浮现的时候自然点，慢一点，规律一点不要乱跑，直接汇聚），
-         然后浮现的小点汇聚起来（汇聚成圆后，就可以在圆内乱跑了，可以有一两个速度很快，
-         大部分都是慢慢移动，注意这里不要颤抖）。
-         小点可以换个颜色或者改暗一点，不然和文字太接近了，小点改成圆形」
+     用户 2026-10-27：「要像数据流动，并且有科技感」——但这是作品集首屏，
+     必须克制：不发光、不霓虹、不满屏噪点，整体亮度低于白色标题。
 
-     → 时间轴：
-        0 → 2.20s   四边淡入浮现，然后顺着直线慢慢飞向球心
-                    （这段时间**球本身不动**，所以路线是直的、规律的，
-                      不是追着一颗正在转的球跑曲线）
-        2.20 → 2.90s 成球；**从这一刻起**点才开始在球里动
-        2.90 → 5.40s 大球缩到最终尺寸
-        > 5.40s     一直在转的球
+     这一版由 claude-opus-5 出方案与代码（2026-10-27），接入后又按渲染结果
+     调过一轮密度/亮度（STREAM_N 14→20、STREAM_P 11→16、TRAIL 4→5、
+     DUST_DIV 2200→700、文字遮罩 0.52→0.30），结构没动。
 
-     ⭐ 球内运动：每颗粒子一个固定球坐标，绕自己的纬度圈匀速走 + 一点点径向呼吸
-        （全是连续的正弦量）。85% 很慢，随机 1~2 颗给 6~10 倍角速度。
-     ⛔ 绝不能按阈值切换「随时间连续变化的量」（粒径、半径…）——
-        2026-10-20 那版按 `depth > 0.72` 切粒径，球一转就有一片点在 3↔4px 之间跳，
-        整屏都在抖。粒径现在是纯静态的。
-     ⭐ 点是**圆**的：预先烘一张圆形贴图，逐帧 drawImage 缩放
-        （比每帧画 arc 便宜，而且天然带抗锯齿边）。
-     ⚠️ 尺寸用 offsetWidth/offsetHeight；离开视口 / 标签页隐藏就停 rAF。
+     四层结构（由内到外）：
+       ① 内核尘云 dust    —— 慢，暗，负责体积感；入场沿用「四边浮现 + 直线汇聚」
+       ② 表面流线 streams —— 主角。20 条大圆轨道（手机 12）编织在球面上，每条上
+                             跑一列带「点状拖尾」的数据点，正面亮背面暗 → 读出流向
+       ③ 进出流 inflow    —— 少量数据包沿缓弧从画布外汇入球面 / 从球面流出，长期循环
+       ④ 同步脉冲 pulse   —— 一圈亮度波从球心向外扫过，每 9.5s 一次
+
+     ⛔ 所有随时间变化的量都是连续函数：
+        - 角速度用「积分过的 smoothstep」(ballTime) → 速度从 0 连续升到 1，不会起跑顿挫
+        - 脉冲用紧支撑 bump (1-u²)²，边界处值和一阶导都是 0 → 不是阈值切换
+        - 进出流的循环用 sin²(πu) 做包络，u 回绕时亮度正好是 0 → 看不到瞬移
+        - 粒径全是静态的（只随拖尾序号 k 变，k 是整数索引，不随时间变）
+     ⭐ 拖尾不存历史：直接在 θ - k·Δ 处再采样几次。零分配、纯函数、可随时改长度
+     ⭐ 圆点贴图预烘 4 张（蓝 / 浅蓝 / 青 / 尘），逐帧只有 drawImage + globalAlpha
+     ⭐ 文字可读性：在标题带上做一个连续的亮度凹陷 maskAt()，副作用是球心偏暗、
+        边缘偏亮，反而更像一层壳
+     ⚠️ 尺寸用 offsetWidth/offsetHeight；离开视口 / 标签页隐藏就停 rAF
      ---------------------------------------------------------------------- */
   (function () {
+    var doc = window.document;
     var cv = doc.querySelector('.llm-hero__flow-cv');
     if (!cv || !cv.getContext) return;
     var ctx = cv.getContext('2d');
@@ -2286,37 +2289,206 @@
     var reduce = false;
     try { reduce = !!window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
 
-    /* T_FORM 必须 ≥ T_FLY + 最大 delay，否则最后一颗还没落地球就转起来了，
-       它的路线会跟着弯 —— 用户明确要「直接汇聚、规律一点」 */
-    var T_FLY = 2.20, T_FORM = 2.65, T_BIG = 3.60, T_SMALL = 6.10, S_BIG = 1.55;
-    /* 成球后不是"哨声一响全体起跑"：半径的角速度用 0.8 秒从 0 缓升到正常，
-       否则那两颗快的会在同一帧里突然窜出去 */
-    var RAMP = 0.80;
+    /* ============ 可调参数（数组都是 [桌面, 手机]）============ */
+    var CFG = {
+      SEED: 20261020,
 
-    var W = 0, H = 0, R = 0, bx = 0, by = 0;
-    var parts = [], sprite = null;
-    var lastKey = "", clock = 0, lastTs = 0, raf = 0, playing = false;
+      /* —— 密度 —— */
+      STREAM_N: [20, 12],     /* 流线条数 */
+      STREAM_P: [16, 12],     /* 每条流线上的数据点数 */
+      TRAIL: 5,               /* 拖尾采样数，0 = 关掉拖尾（最直接的性能旋钮）*/
+      DUST_DIV: [450, 320],   /* 尘云点数 = π·R² / 该值 */
+      IN_N: [8, 5],           /* 进出流条数 */
+      WEAVE: 0.95,            /* 流线编织的离散度，0 = 全部过极点，1.2 = 很乱 */
+
+      /* —— 速度 —— */
+      SPIN: 0.150,            /* 整球自转 rad/s */
+      FLOW: 0.26,             /* 流线基准角速度 rad/s */
+      DUST_W: 0.055,          /* 尘云角速度 */
+      TRAIL_GAP: 0.055,       /* 拖尾采样的角间距 rad（越大尾越长）*/
+      PULSE_T: 9.5,           /* 同步脉冲周期 s */
+
+      /* —— 亮度（全部明显低于白色文字）—— */
+      BRIGHT: 1.00,           /* 总亮度开关 */
+      A_DUST: 0.50,
+      A_HEAD: 0.95,           /* 流线头部 */
+      A_TRAIL: 0.72,          /* 拖尾 */
+      A_IN: 0.42,             /* 进出流 */
+      PULSE_A: 0.40,          /* 脉冲最多把亮度抬高多少（相对）*/
+      BACK: 0.30,             /* 球背面保留的亮度比 */
+
+      /* —— 文字可读性：标题带上的连续亮度凹陷 —— */
+      MASK: 0.30,             /* 0 = 关掉 */
+      MASK_Y: [0.46, 0.42],   /* 凹陷中心（画布高度比例，对准标题）*/
+      MASK_RX: 0.40, MASK_RY: 0.12,
+
+      /* —— 构图（与旧版一致，刻意避开标题）—— */
+      CY: [0.37, 0.24],       /* 球心高度比例 */
+      CR: [0.22, 0.26]        /* 球半径 = min(W,H) × 该值 */
+    };
+
+    /* 时间轴（秒）*/
+    var T_FLY   = 2.00;                 /* 尘云从四边直线汇聚 */
+    var T_FORM  = 2.30, RAMP = 1.20;    /* 流动 / 自转从这里开始，缓升 1.2s */
+    var TR_T0   = 1.05, TR_STEP = 0.085, TR_SPAN = 0.42, TR_DUR = 0.80; /* 流线写入 */
+    var T_BIG   = 3.40, T_SMALL = 6.20, S_BIG = 1.42;  /* 大球收到最终尺寸 */
+    var PULSE_0 = 2.80;                 /* 第一次同步脉冲 */
+    var IN_T0   = 4.00, IN_FADE = 2.20; /* 进出流开始出现 */
+    var TILT    = 0.42;                 /* 球的倾角 */
+
+    /* 拖尾按序号衰减：静态表，不随时间变 */
+    var TFALL = [1, 0.52, 0.34, 0.22, 0.14, 0.09, 0.06];
+    var TSZ   = [1, 0.80, 0.70, 0.62, 0.56, 0.50, 0.46];
+
+    /* ============ 状态 ============ */
+    var W = 0, H = 0, R = 0, bx = 0, by = 0, maskY = 0, DPR = 1, NAR = 0;
+    var streams = [], dust = [], inflow = [];
+    var spDust = null, spHead = null, spTrail = null, spCyan = null;
+    var lastKey = '', clock = 0, lastTs = 0, raf = 0, playing = false;
+    /* 每帧的投影参数 + 投影结果（挂在闭包上，省掉传参和返回对象）*/
+    var _sa = 0, _ca = 1, _st = 0, _ct = 1, _S = 1;
+    var PX = 0, PY = 0, PD = 0;
+    /* 当前脉冲：半径 / 宽度 / 幅度 */
+    var pR = 0, pW = 1, pA = 0;
 
     function rndFactory() {
-      var s = 20261020;
+      var s = CFG.SEED;
       return function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
     }
     function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
     function smooth(v) { return v * v * (3 - 2 * v); }
 
-    /* 一颗圆点的贴图：实心 + 一圈柔和收边。颜色统一在这里改 */
-    function makeSprite() {
-      var c = doc.createElement('canvas');
-      var S = 16;
+    /* 一颗圆点的贴图：实心 + 一圈柔和收边，天然带抗锯齿 */
+    function makeDot(rgb) {
+      var S = 16, c = doc.createElement('canvas');
       c.width = S; c.height = S;
       var g = c.getContext('2d');
       var grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-      grd.addColorStop(0.00, 'rgba(126,170,226,1)');
-      grd.addColorStop(0.82, 'rgba(126,170,226,1)');   /* 核心撑到 82%，圆才显得饱满 */
-      grd.addColorStop(1.00, 'rgba(126,170,226,0)');
+      grd.addColorStop(0.00, 'rgba(' + rgb + ',1)');
+      grd.addColorStop(0.78, 'rgba(' + rgb + ',1)');   /* 核心撑到 78%，圆才饱满 */
+      grd.addColorStop(1.00, 'rgba(' + rgb + ',0)');
       g.fillStyle = grd;
       g.beginPath(); g.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); g.fill();
       return c;
+    }
+
+    /* ---------- 构建 ---------- */
+
+    /* ① 表面流线：每条是球面上的一个大圆
+       法线 n 绕 Y 轴均匀铺开、再离开赤道面一点 → 得到一束「编织的经线」，
+       有组织感，而不是一堆随机圆环 */
+    function buildStreams(rnd) {
+      var n = CFG.STREAM_N[NAR], per = CFG.STREAM_P[NAR];
+      var all = [];
+      streams = [];
+      for (var i = 0; i < n; i++) {
+        var a = Math.PI * (i + 0.5) / n + (rnd() - 0.5) * 0.20;
+        var ty = (rnd() - 0.5) * CFG.WEAVE;
+        var cn = Math.cos(ty);
+        var nx = cn * Math.cos(a), ny = Math.sin(ty), nz = cn * Math.sin(a);
+        /* u = normalize(n × Y)，v = n × u —— 该大圆的正交基 */
+        var ul = Math.sqrt(nx * nx + nz * nz) || 1;
+        var ux = -nz / ul, uy = 0, uz = nx / ul;
+        var vx = ny * uz - nz * uy;
+        var vy = nz * ux - nx * uz;
+        var vz = nx * uy - ny * ux;
+
+        var sw = CFG.FLOW * (0.72 + rnd() * 0.56) * (rnd() < 0.5 ? -1 : 1);
+        var ps = [];
+        for (var j = 0; j < per; j++) {
+          var r2 = rnd();
+          var p = {
+            /* 沿弧均匀分布 + 一点抖动，避免看起来像等分刻度 */
+            th0: Math.PI * 2 * (j + (rnd() - 0.5) * 0.45) / per,
+            rad: R * (0.925 + rnd() * 0.075),
+            w: sw * (0.98 + rnd() * 0.04),       /* 同一条流线速度几乎一致 → 读得出「流」*/
+            phB: rnd() * Math.PI * 2,            /* 径向呼吸相位 */
+            wB: 0.30 + rnd() * 0.45,
+            amp: 0.015 + rnd() * 0.025,
+            aH: CFG.A_HEAD * (0.72 + rnd() * 0.36),
+            aT: CFG.A_TRAIL * (0.80 + rnd() * 0.30),
+            /* 2.4 / 3.2 / 4.2 混着来，小点占一半，和大点拉开对比 */
+            szH: Math.max(2.2, (r2 < 0.50 ? 3.2 : (r2 < 0.85 ? 4.4 : 5.8)) * DPR),
+            gap: CFG.TRAIL_GAP * (0.82 + rnd() * 0.40),
+            dir: sw > 0 ? 1 : -1,
+            fast: 0,
+            /* 入场：第 i 条、弧上第 j 个点的「写入时刻」→ 流线像被一条条画出来 */
+            t0: TR_T0 + i * TR_STEP + (j / per) * TR_SPAN
+          };
+          ps.push(p);
+          all.push(p);
+        }
+        streams.push({ ux: ux, uy: uy, uz: uz, vx: vx, vy: vy, vz: vz, ps: ps });
+      }
+      /* 随机挑 2 颗「很快的数据包」：角速度 3~4 倍、拖尾更长、头部用青色。
+         它会从同列点中超车穿过去，是最像「数据在跑」的一笔 */
+      for (var f = 0; f < 2 && all.length; f++) {
+        var q = all[(rnd() * all.length) | 0];
+        q.fast = 1;
+        q.w = q.w * (3.0 + rnd() * 1.2);
+        q.gap = 0.085 + rnd() * 0.030;
+        q.dir = q.w > 0 ? 1 : -1;
+      }
+    }
+
+    /* ② 内核尘云：每颗绕自己的纬度圈匀速走 + 一点径向呼吸（全是连续量）
+       入场沿用旧版：从画布四条边浮现，然后直线飞向球心位置 */
+    function buildDust(rnd) {
+      var n = Math.round(Math.PI * R * R / CFG.DUST_DIV[NAR]);
+      dust = [];
+      for (var i = 0; i < n; i++) {
+        var edge = (rnd() * 4) | 0;
+        var al = rnd() < 0.22 ? (rnd() < 0.5 ? 0 : 1) : rnd();  /* 22% 压在角上 */
+        var px, py;
+        if (edge === 0) { px = al * W; py = 0; }
+        else if (edge === 1) { px = W; py = al * H; }
+        else if (edge === 2) { px = al * W; py = H; }
+        else { px = 0; py = al * H; }
+        var r2 = rnd();
+        dust.push({
+          rad: Math.pow(rnd(), 0.42) * R * 0.92,
+          ph: Math.acos(rnd() * 2 - 1),
+          th0: rnd() * Math.PI * 2,
+          w: CFG.DUST_W * (0.35 + rnd() * 1.3) * (rnd() < 0.5 ? -1 : 1),
+          phB: rnd() * Math.PI * 2,
+          wB: 0.30 + rnd() * 0.50,
+          amp: 0.03 + rnd() * 0.05,
+          a: CFG.A_DUST * (0.55 + Math.pow(rnd(), 1.15) * 0.75),
+          sz: Math.max(2, (r2 < 0.55 ? 2.4 : (r2 < 0.88 ? 3.2 : 4.2)) * DPR),
+          fx: px, fy: py,
+          delay: rnd() * 0.45
+        });
+      }
+    }
+
+    /* ③ 进出流：画布外一点 ↔ 球面上一点，之间是一段二次贝塞尔缓弧。
+       奇数条反向（从球里流出去）→ 读作「输入 → 推理 → 输出」 */
+    function buildInflow(rnd) {
+      var n = CFG.IN_N[NAR];
+      inflow = [];
+      for (var i = 0; i < n; i++) {
+        var ta = rnd() * Math.PI * 2, trr = R * (0.52 + rnd() * 0.46);
+        var ix = bx + Math.cos(ta) * trr, iy = by + Math.sin(ta) * trr;
+        var edge = (rnd() * 4) | 0, al = rnd(), ox, oy;
+        if (edge === 0) { ox = al * W; oy = -H * 0.06; }
+        else if (edge === 1) { ox = W * 1.06; oy = al * H; }
+        else if (edge === 2) { ox = al * W; oy = H * 1.06; }
+        else { ox = -W * 0.06; oy = al * H; }
+        /* 控制点 = 中点往垂直方向偏 → 缓弧，不是直线 */
+        var dx = ix - ox, dy = iy - oy, bend = (rnd() - 0.5) * 0.34;
+        var out = (i % 2) === 1;
+        inflow.push({
+          x0: out ? ix : ox, y0: out ? iy : oy,
+          cx: (ox + ix) / 2 - dy * bend, cy: (oy + iy) / 2 + dx * bend,
+          x1: out ? ox : ix, y1: out ? oy : iy,
+          out: out,
+          period: 6.0 + rnd() * 6.0,
+          phase: rnd(),
+          a: CFG.A_IN * (0.70 + rnd() * 0.50),
+          sz: Math.max(2, (1.9 + rnd() * 1.1) * DPR),
+          gap: 0.020 + rnd() * 0.012
+        });
+      }
     }
 
     function build() {
@@ -2328,58 +2500,33 @@
       if (key === lastKey) return false;
       lastKey = key;
       cv.width = w; cv.height = h;
-      W = w; H = h;
+      W = w; H = h; DPR = dpr;
+      NAR = cssW < 560 ? 1 : 0;
       bx = W / 2;
-      var narrow = cssW < 560;
-      by = H * (narrow ? 0.24 : 0.37);
-      R = Math.min(W, H) * (narrow ? 0.26 : 0.22);
+      by = H * CFG.CY[NAR];
+      R = Math.min(W, H) * CFG.CR[NAR];
+      maskY = H * CFG.MASK_Y[NAR];
 
-      sprite = makeSprite();
+      /* 贴图只烘这一次。蓝系为主（#3A86FF 拖尾 / #7EAAE2 头部与尘云），
+         青色 #6FE3FF 只给 2 颗快包和进出流的头部 —— 用量刻意很小 */
+      spTrail = makeDot('58,134,255');
+      spHead  = makeDot('126,170,226');
+      spDust  = makeDot('126,170,226');
+      spCyan  = makeDot('111,227,255');
 
-      var rnd = rndFactory();
-      var n = Math.round(Math.PI * R * R / 950);
-      var fast = 2;                                 /* 只给两颗"飞得很快"的 */
-      var out = [];
-      for (var i = 0; i < n; i++) {
-        var rr = Math.pow(rnd(), 0.40) * R * 0.97;
-        var ph = Math.acos(rnd() * 2 - 1);
-        var th0 = rnd() * Math.PI * 2;
-        var isFast = fast > 0 && rnd() < 0.05;
-        if (isFast) fast--;
-        var w2 = isFast ? (0.55 + rnd() * 0.55) * (rnd() < 0.5 ? -1 : 1)
-                        : (0.02 + rnd() * 0.07) * (rnd() < 0.5 ? -1 : 1);
+      var rnd = rndFactory();          /* 固定种子，刷新后构图一致 */
+      buildStreams(rnd);
+      buildDust(rnd);
+      buildInflow(rnd);
 
-        /* 起点：画布四条边上，22% 压在角上 */
-        var edge = (rnd() * 4) | 0;
-        var alongT = rnd() < 0.22 ? (rnd() < 0.5 ? 0 : 1) : rnd();
-        var px, py;
-        if (edge === 0) { px = alongT * W; py = 0; }
-        else if (edge === 1) { px = W; py = alongT * H; }
-        else if (edge === 2) { px = alongT * W; py = H; }
-        else { px = 0; py = alongT * H; }
-
-        var r2 = rnd();
-        out.push({
-          r: rr, ph: ph, th0: th0, w: w2,
-          ph2: rnd() * Math.PI * 2,                 /* 径向呼吸的相位 */
-          ws: 0.35 + rnd() * 0.55,
-          amp: 0.03 + rnd() * 0.05,
-          /* 点少了以后整体会显虚，亮度稍微抬一点（仍是偏蓝、比白字暗） */
-          a: 0.46 + Math.pow(rnd(), 1.15) * 0.46,
-          /* 2/3/4/5 混着来：一半是 2px 的小点，跟 4、5px 的拉开对比
-             （用户：「有一些点点再小一点，来做对比，不要都那么大」） */
-          sz: Math.max(2, Math.round((r2 < 0.42 ? 2 : (r2 < 0.74 ? 3 : (r2 < 0.92 ? 4 : 5))) * dpr)),
-          fx: px, fy: py,
-          delay: rnd() * 0.45
-        });
-      }
-      parts = out;
       clock = 0; lastTs = 0;
       return true;
     }
 
-    /* 球内运动的"有效时间"：前 RAMP 秒按 smoothstep 积分缓入，之后恢复正常速度。
-       这样 tB 的一阶导（= 点的实际速度）是从 0 连续升到 1 的，不会有起跑的顿挫。 */
+    /* ---------- 连续量 ---------- */
+
+    /* 球的「有效时间」：成球后角速度用 RAMP 秒按 smoothstep 从 0 缓升到 1，
+       这里返回的是它的积分 → 一阶导（也就是实际速度）连续，不会有起跑的顿挫 */
     function ballTime(t) {
       var tb = t - T_FORM;
       if (tb <= 0) return 0;
@@ -2396,101 +2543,230 @@
       return S_BIG + (1 - S_BIG) * smooth((t - T_BIG) / (T_SMALL - T_BIG));
     }
 
-    function draw(t) {
-      var tB = ballTime(t);                        /* 球本身的运动从"成球"那一刻起，缓入 */
+    /* 同步脉冲：紧支撑 bump，|u|≥1 处值与一阶导都是 0 —— 不是阈值切换 */
+    function waveAt(rad) {
+      if (pA <= 0) return 0;
+      var u = (rad - pR) / pW;
+      if (u < -1 || u > 1) return 0;
+      var q = 1 - u * u;
+      return pA * q * q;
+    }
 
-      var ay = tB * 0.18, tilt = 0.42;
-      var sa = Math.sin(ay), ca = Math.cos(ay);
-      var st = Math.sin(tilt), ct = Math.cos(tilt);
-      var S = scaleAt(t);
+    /* 文字可读性：标题带上的连续凹陷。处处光滑，副作用是球心偏暗、边缘偏亮 */
+    function maskAt(x, y) {
+      var mx = (x - bx) / (W * CFG.MASK_RX);
+      var my = (y - maskY) / (H * CFG.MASK_RY);
+      var d = mx * mx + my * my;
+      return 1 - CFG.MASK / (1 + d * d);
+    }
 
+    /* 球内坐标 → 屏幕：整球旋转 + 倾角 + 轻透视。结果写进 PX / PY / PD */
+    function project(lx, ly, lz) {
+      var x1 = lx * _ca - lz * _sa;
+      var z1 = lx * _sa + lz * _ca;
+      var y1 = ly * _ct - z1 * _st;
+      var z2 = ly *_st + z1 * _ct;
+      var persp = 1 / (1 + z2 / (R * 7));
+      PX = bx + x1 * persp * _S;
+      PY = by + y1 * persp * _S;
+      PD = z2;
+    }
+
+    /* ---------- 绘制 ---------- */
+
+    function drawFrame(t) {
       ctx.clearRect(0, 0, W, H);
 
-      for (var i = 0; i < parts.length; i++) {
-        var p = parts[i];
+      var bt = ballTime(t);
+      var ang = bt * CFG.SPIN;
+      _S = scaleAt(t);
+      _sa = Math.sin(ang); _ca = Math.cos(ang);
+      _st = Math.sin(TILT); _ct = Math.cos(TILT);
 
-        /* ① 球内：绕自己的纬度圈 + 一点点径向呼吸（都是连续量，不会跳） */
-        var th = p.th0 + p.w * tB;
-        var rr = p.r * (1 + p.amp * Math.sin(p.ph2 + p.ws * tB));
-        var rp = rr * Math.sin(p.ph);
-        var lx = rp * Math.cos(th);
-        var ly = rr * Math.cos(p.ph);
-        var lz = rp * Math.sin(th);
+      /* 脉冲：每 PULSE_T 秒一次 */
+      var tp = ((t - PULSE_0) % CFG.PULSE_T) / CFG.PULSE_T;
+      if (t >= PULSE_0 && tp >= 0 && tp < 0.35) {
+        var u = tp / 0.35;
+        pR = R * 1.8 * smooth(u);
+        pW = R * 0.28;
+        pA = CFG.PULSE_A * Math.sin(u * Math.PI);
+      } else {
+        pA = 0;
+      }
 
-        /* ② 整球旋转 + ③ 透视 */
-        var x1 = lx * ca - lz * sa;
-        var z1 = lx * sa + lz * ca;
-        var y1 = ly * ct - z1 * st;
-        var z2 = ly * st + z1 * ct;
-        var persp = 1 + z2 / (R * 3.6);
+      var buf = [];
 
-        var tx = bx + x1 * persp * S;
-        var ty = by + y1 * persp * S;
+      /* ① 尘云 */
+      for (var i = 0; i < dust.length; i++) {
+        var d = dust[i];
+        var td = t - d.delay;
+        if (td < 0) continue;
+        /* 飞入用完整 2 秒，但**淡入只占前 55%** —— 否则前 0.6 秒几乎看不见 */
+        var fade = smooth(clamp01(td / (T_FLY * 0.55)));
+        var breath = 1 + Math.sin(d.phB + bt * d.wB) * d.amp;
+        var rr = d.rad * breath;
+        var sp = Math.sin(d.ph), cp = Math.cos(d.ph);
+        var th = d.th0 + bt * d.w;
+        var lx = rr * sp * Math.cos(th);
+        var ly = rr * cp;
+        var lz = rr * sp * Math.sin(th);
+        project(lx, ly, lz);
+        var x = d.fx + (PX - d.fx) * fade;
+        var y = d.fy + (PY - d.fy) * fade;
+        var side = PD < 0 ? 1 : CFG.BACK;
+        var m = maskAt(x, y);
+        buf.push({ x: x, y: y, z: PD, a: d.a * side * m * fade * CFG.BRIGHT, sz: d.sz, sp: spDust });
+      }
 
-        /* ④ 浮现 + 直接飞向球心：这段时间球不动，所以是直线 */
-        var k = clamp01((t - p.delay) / T_FLY);
-        var e = smooth(k);
-        var sx = p.fx + (tx - p.fx) * e;
-        var sy = p.fy + (ty - p.fy) * e;
+      /* ② 流线 */
+      for (var si = 0; si < streams.length; si++) {
+        var s = streams[si];
+        for (var pi = 0; pi < s.ps.length; pi++) {
+          var p = s.ps[pi];
+          /* 入场：该点在 t0 时刻逐渐写入 */
+          var age = t - p.t0;
+          if (age < 0) continue;
+          var born = age < TR_DUR ? smooth(age / TR_DUR) : 1;
 
-        /* ⑤ 先在原地淡入（前 35% 的行程），越近越亮 */
-        var born = clamp01((t - p.delay) / (T_FLY * 0.35));
-        var depth = (z2 / R + 1) * 0.5;
-        var al = p.a * born * (0.62 + 0.38 * depth);
-        if (al <= 0.004) continue;
+          var breath2 = 1 + Math.sin(p.phB + bt * p.wB) * p.amp;
+          var rr2 = p.rad * breath2;
+          var th2 = p.th0 + bt * p.w;
 
-        ctx.globalAlpha = al;
-        var d = p.sz;
-        ctx.drawImage(sprite, sx - d / 2, sy - d / 2, d, d);
+          /* 头部 */
+          var cost = Math.cos(th2), sint = Math.sin(th2);
+          var lx2 = rr2 * (s.ux * cost + s.vx * sint);
+          var ly2 = rr2 * (s.uy * cost + s.vy * sint);
+          var lz2 = rr2 * (s.uz * cost + s.vz * sint);
+          project(lx2, ly2, lz2);
+          var side2 = PD < 0 ? 1 : CFG.BACK;
+          var m2 = maskAt(PX, PY);
+          var wave2 = 1 + waveAt(Math.sqrt(lx2 * lx2 + ly2 * ly2 + lz2 * lz2));
+          var aHead = p.aH * side2 * m2 * wave2 * born * CFG.BRIGHT;
+          var spUse = p.fast ? spCyan : spHead;
+          buf.push({ x: PX, y: PY, z: PD, a: aHead, sz: p.szH, sp: spUse });
+
+          /* 拖尾：在 θ - k·gap 处再采样几次，零分配、纯函数 */
+          if (CFG.TRAIL > 0 && aHead > 0.01) {
+            for (var k = 1; k <= CFG.TRAIL; k++) {
+              var thT = th2 - p.dir * k * p.gap;
+              var costT = Math.cos(thT), sintT = Math.sin(thT);
+              var lxT = rr2 * (s.ux * costT + s.vx * sintT);
+              var lyT = rr2 * (s.uy * costT + s.vy * sintT);
+              var lzT = rr2 * (s.uz * costT + s.vz * sintT);
+              project(lxT, lyT, lzT);
+              var sideT = PD < 0 ? 1 : CFG.BACK;
+              var mT = maskAt(PX, PY);
+              var waveT = 1 + waveAt(Math.sqrt(lxT * lxT + lyT * lyT + lzT * lzT));
+              var fall = TFALL[k] || 0.05;
+              var szT = p.szH * (TSZ[k] || 0.4);
+              var aT = p.aT * fall * sideT * mT * waveT * born * CFG.BRIGHT;
+              buf.push({ x: PX, y: PY, z: PD, a: aT, sz: szT, sp: spTrail });
+            }
+          }
+        }
+      }
+
+      /* ③ 进出流 */
+      if (t >= IN_T0) {
+        var tf = t - IN_T0;
+        var fade3 = tf < IN_FADE ? smooth(tf / IN_FADE) : 1;
+        for (var ii = 0; ii < inflow.length; ii++) {
+          var inf = inflow[ii];
+          var phase = (inf.phase + (t - IN_T0) / inf.period) % 1;
+          /* 用 sin²(πu) 做包络：u=0 和 u=1 时值与一阶导都是 0 → 看不到回绕 */
+          var env = Math.sin(phase * Math.PI);
+          env = env * env * fade3;
+          if (env < 0.01) continue;
+
+          var u0 = phase;
+          for (var step = 0; step < 18; step++) {
+            var uu = u0 - step * inf.gap;
+            if (uu < 0) break;
+            var t1 = 1 - uu, t2 = uu;
+            var ix = (1 - uu) * (1 - uu) * inf.x0 + 2 * (1 - uu) * uu * inf.cx + uu * uu * inf.x1;
+            var iy = (1 - uu) * (1 - uu) * inf.y0 + 2 * (1 - uu) * uu * inf.cy + uu * uu * inf.y1;
+            var m3 = maskAt(ix, iy);
+            var fall3 = TFALL[step] || 0.05;
+            var sz3 = inf.sz * (TSZ[step] || 0.4);
+            var a3 = inf.a * env * fall3 * m3 * CFG.BRIGHT;
+            var sp3 = (step === 0) ? spCyan : spTrail;
+            buf.push({ x: ix, y: iy, z: 0, a: a3, sz: sz3, sp: sp3 });
+          }
+        }
+      }
+
+      /* 按 Z 排序（画家算法）→ 正确的前后遮挡 */
+      buf.sort(function (a, b) { return a.z - b.z; });
+
+      /* 逐帧只有 drawImage + globalAlpha：零路径、零填充、零渐变 */
+      for (var bi = 0; bi < buf.length; bi++) {
+        var pt = buf[bi];
+        if (pt.a < 0.01) continue;
+        ctx.globalAlpha = clamp01(pt.a);
+        var half = pt.sz / 2;
+        ctx.drawImage(pt.sp, pt.x - half, pt.y - half, pt.sz, pt.sz);
       }
       ctx.globalAlpha = 1;
     }
 
-    /* ⚠️ 用累计时钟，不是 ts - started：
-       切到别的标签页 / 滚出视口会 stop()，回来再 start() 时如果直接用时间戳，
-       时间会凭空跳一大段，球会瞬移（入场那 6 秒更是直接跳过）。
-       这里只在"播放中"累加，暂停期间时间不动。单帧最多计 50ms，
-       掉帧时宁可慢一点，也不要一帧跳很远。 */
-    function loop(ts) {
+    /* ---------- 主循环 ---------- */
+
+    function tick(ts) {
+      if (!playing) return;
       if (!lastTs) lastTs = ts;
-      clock += Math.min(0.05, (ts - lastTs) / 1000);
+      var dt = Math.min(0.1, (ts - lastTs) / 1000);
       lastTs = ts;
-      draw(clock);
-      raf = window.requestAnimationFrame(loop);
+      clock += dt;
+
+      if (!W || !H) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+
+      drawFrame(clock);
+      raf = requestAnimationFrame(tick);
     }
 
     function start() {
-      if (reduce) { if (!parts.length && !build()) return; draw(99); return; }
       if (playing) return;
-      if (!parts.length && !build()) return;
+      if (!W || !H) { if (!build()) return; }
+      /* 减弱动态效果：不跑循环，只画一帧「已经成球、流线都在」的定格 */
+      if (reduce) { drawFrame(8); return; }
       playing = true;
-      lastTs = 0;                       /* 恢复播放时不要把暂停的那段时间算进去 */
-      raf = window.requestAnimationFrame(loop);
+      lastTs = 0;
+      raf = requestAnimationFrame(tick);
     }
 
     function stop() {
-      if (!playing) return;
       playing = false;
-      window.cancelAnimationFrame(raf);
-      raf = 0;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
     }
 
-    if (!build()) return;
-    start();
-
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (es) {
-        if (es[0].isIntersecting) start(); else stop();
-      }, { rootMargin: '80px' }).observe(cv);
+    /* 离开视口就停 rAF */
+    var obs = null;
+    try {
+      obs = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          if (e.isIntersecting) start(); else stop();
+        });
+      }, { threshold: 0 });
+      obs.observe(cv);
+    } catch (e) {
+      start();
     }
+
+    /* 标签页隐藏也停 */
     doc.addEventListener('visibilitychange', function () {
-      if (doc.hidden) stop(); else start();
+      if (doc.hidden) stop(); else if (!obs) start();
     });
 
-    var rt = 0;
+    if (!obs && !doc.hidden) start();
     window.addEventListener('resize', function () {
-      clearTimeout(rt);
-      rt = setTimeout(function () { stop(); lastKey = ""; if (build()) start(); }, 180);
+      stop();
+      lastKey = '';
+      if (build()) {
+        if (reduce) drawFrame(8); else start();
+      }
     });
   })();
 

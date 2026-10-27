@@ -1319,13 +1319,20 @@ function fireWave(p) {
    敌人子弹（哨戒炮）
    ================================================================== */
 let pickups = [];          // BOSS 掉的属性点
+let healthOrbs = [];       // 回血球（红色十字）
 function spawnPickups(x, y, n) {
   for (let i = 0; i < n; i++) {
     pickups.push({ x: x + rnd(-16, 16), y: y - 18,
                    vx: rnd(-1.8, 1.8), vy: rnd(-5.4, -3.4), t: i * 7, life: 1200 });
   }
 }
+// heal 是最大生命的比例（0.25 = 回 25%）
+function spawnHealthOrb(x, y, heal) {
+  healthOrbs.push({ x, y: y - 18, vx: rnd(-1.5, 1.5), vy: rnd(-4.8, -3.2),
+                    t: 0, life: 1500, heal: heal || 0.25 });
+}
 function updatePickups() {
+  /* 永久属性点 */
   for (let i = pickups.length - 1; i >= 0; i--) {
     const p = pickups[i];
     p.t++; p.life--;
@@ -1346,8 +1353,33 @@ function updatePickups() {
       }
     }
   }
+
+  /* 回血球：满血时不捡，留在原地等下次 */
+  for (let i = healthOrbs.length - 1; i >= 0; i--) {
+    const orb = healthOrbs[i];
+    orb.t++; orb.life--;
+    orb.vy += 0.32; orb.x += orb.vx; orb.y += orb.vy; orb.vx *= 0.985;
+    const gy = groundBelow(orb.x, orb.y, level.platforms);
+    const floor = (gy === null || gy === undefined) ? 236 : gy;
+    if (orb.y > floor) { orb.y = floor; orb.vy = 0; orb.vx *= 0.78; }
+    if (orb.life <= 0 || orb.x < -60 || orb.x > LEVEL_W + 60) { healthOrbs.splice(i, 1); continue; }
+    if (player.hp >= player.maxHp) continue;
+    if (hit({ x: orb.x - 14, y: orb.y - 28, w: 28, h: 32 }, player.hitbox)) {
+      healthOrbs.splice(i, 1);
+      const heal = Math.max(1, Math.round(player.maxHp * orb.heal));
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      audio.band(0.35, 520, 1.0, 0.18, 980);
+      feel.shakeIt(3);
+      for (let k = 0; k < 18; k++) {
+        const a = rnd(0, Math.PI * 2);
+        particles.push({ x: orb.x, y: orb.y - 14, vx: Math.cos(a) * rnd(1, 3.6), vy: Math.sin(a) * rnd(1, 3.6) - 1,
+                         life: 22, col: k % 2 ? '#FF6A6A' : '#FFD0D0', s: 2 });
+      }
+    }
+  }
 }
 function drawPickups(g) {
+  /* 属性点（原样） */
   for (const p of pickups) {
     const bob = Math.sin(p.t * 0.11) * 3.5;
     const cy = p.y - 16 + bob;
@@ -1368,6 +1400,32 @@ function drawPickups(g) {
     g.beginPath(); g.moveTo(0, -8); g.lineTo(5.5, 0); g.lineTo(0, 8); g.lineTo(-5.5, 0); g.closePath(); g.fill();
     g.fillStyle = '#5FA8FF';
     g.beginPath(); g.moveTo(0, -3.4); g.lineTo(2.4, 0); g.lineTo(0, 3.4); g.lineTo(-2.4, 0); g.closePath(); g.fill();
+    g.restore();
+  }
+
+  /* 回血球：红色光晕 + 白色十字 */
+  for (const orb of healthOrbs) {
+    const bob = Math.sin(orb.t * 0.13) * 3.2;
+    const cy = orb.y - 14 + bob;
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const R = 20;
+    const gr = g.createRadialGradient(orb.x, cy, 1, orb.x, cy, R);
+    gr.addColorStop(0,    'rgba(255,106,106,0.90)');
+    gr.addColorStop(0.38, 'rgba(255,140,140,0.50)');
+    gr.addColorStop(1,    'rgba(255,60,60,0)');
+    g.fillStyle = gr;
+    g.fillRect(orb.x - R, cy - R, R * 2, R * 2);
+    g.restore();
+    g.save();
+    g.translate(orb.x, cy);
+    g.rotate(Math.sin(orb.t * 0.03) * 0.20);
+    g.fillStyle = '#FFE8E8';
+    g.fillRect(-8, -2, 16, 4);
+    g.fillRect(-2, -8, 4, 16);
+    g.fillStyle = '#FF5A5A';
+    g.fillRect(-6, -1.5, 12, 3);
+    g.fillRect(-1.5, -6, 3, 12);
     g.restore();
   }
 }
@@ -1409,20 +1467,20 @@ class EShot {
 const ENEMY_TYPES = {
   // ---- 普通怪 ----
   wolf:    { w:30, h:22, hp:38,  spd:1.15, dmg:9,  eye:'#F0565E', spr:'ewolf',   col:'#3A4152', col2:'#5A657C', kind:'quad',
-             melee:true, attack:'lunge', reach:58,  atkLen:34, atkCool:96,  atkLead:12, lungeSpd:4.6, wakeDist:240, tag:'雨夜野狼' },
+             melee:true, attack:'lunge', reach:58,  atkLen:40, atkCool:140, atkLead:18, lungeSpd:3.6, wakeDist:240, tag:'雨夜野狼' },
   bug:     { w:28, h:24, hp:66,  spd:0.5,  dmg:13, eye:'#4FA8D8', spr:'ebug',    col:'#4A3E33', col2:'#6E5C48', kind:'shell',
              wakeDist:180, tag:'岩壳虫' },
   guard:   { w:26, h:52, hp:84,  spd:0.75, dmg:16, eye:'#F0565E', spr:'eguard',  col:'#2E3340', col2:'#4E586E', kind:'biped',
              wakeDist:190, tag:'赤核守卫' },
   // 飞行怪：不吃重力，悬停在玩家斜上方，靠近了就俯冲啄一下
   bat:     { w:26, h:18, hp:30,  spd:0,    dmg:8,  eye:'#FF5A5A', spr:'ebat',    col:'#22283A', col2:'#48526A', kind:'fly',
-             melee:true, attack:'lunge', reach:104, atkLen:30, atkCool:84, atkLead:10, lungeSpd:3.2, wakeDist:300, tag:'夜翼蝠' },
+             melee:true, attack:'lunge', reach:104, atkLen:36, atkCool:120, atkLead:16, lungeSpd:2.8, wakeDist:300, tag:'夜翼蝠' },
   // 炮台：不移动，玩家进射程就蓄力打一发实弹
   turret:  { w:34, h:34, hp:80,  spd:0,    dmg:0,  eye:'#FF4A3A', spr:'eturret', col:'#3A2E2E', col2:'#6A4A44', kind:'turret',
-             attack:'shot', atkLen:46, atkCool:116, atkLead:6, wakeDist:340, tag:'哨戒炮' },
+             attack:'shot', atkLen:46, atkCool:150, atkLead:6, wakeDist:340, tag:'哨戒炮' },
   // ---- 小 BOSS ----
   elwolf:  { w:50, h:36, hp:155, spd:1.3,  dmg:16, eye:'#FF3A3A', spr:'elwolf',  col:'#2E3444', col2:'#5A657C', kind:'quad',
-             melee:true, attack:'lunge', reach:78, atkLen:42, atkCool:74, atkLead:15, lungeSpd:6.4, wakeDist:520,
+             melee:true, attack:'lunge', reach:78, atkLen:48, atkCool:110, atkLead:20, lungeSpd:5.2, wakeDist:520,
              miniBoss:true, tag:'雷牙 · 精英猎犬' },
   // 重装铁卫：正面塔盾减伤 60%，而且转身慢 —— 绕到背后打才有完整伤害
   eshield: { w:36, h:74, hp:215, spd:0.6,  dmg:20, eye:'#F0565E', spr:'eshield', col:'#2E3340', col2:'#4E586E', kind:'biped',
@@ -1431,16 +1489,16 @@ const ENEMY_TYPES = {
   // 三个 BOSS：近战重击（够近）+ 各有一手技能（中远距离）。
   // atkLead 定在招式时长的 40% —— 那一帧正好是图集的"砸中"帧，画面和判定是同一件事。
   boss1:   { w:60, h:78, hp:430, spd:0.55, dmg:22, eye:'#FF4A3A', spr:'eboss2',  col:'#2E3444', col2:'#5A657C', kind:'boss',
-             melee:true, reach:84,  atkLen:58, atkCool:88, atkLead:23,
-             skill:'volley',  skillRange:430, skillCool:196,
+             melee:true, reach:84,  atkLen:58, atkCool:120, atkLead:23,
+             skill:'volley',  skillRange:430, skillCool:220,
              wakeDist:9999, drops:4, tag:'钢牙 · 四足攻城机兽' },
   boss2:   { w:50, h:86, hp:520, spd:0.5,  dmg:23, eye:'#7FD6FF', spr:'eboss3',  col:'#2A3444', col2:'#4E6E8E', kind:'boss',
-             melee:true, reach:88,  atkLen:64, atkCool:96, atkLead:26,
-             skill:'quake',   skillRange:250, skillCool:214,
+             melee:true, reach:88,  atkLen:64, atkCool:130, atkLead:26,
+             skill:'quake',   skillRange:250, skillCool:240,
              wakeDist:9999, drops:4, tag:'霜核 · 晶簇巨像' },
   boss:    { w:62, h:82, hp:600, spd:0.6,  dmg:25, eye:'#FF8A4D', spr:'eboss',   col:'#3A2A2E', col2:'#74403F', kind:'boss',
-             melee:true, reach:92,  atkLen:60, atkCool:90, atkLead:24,
-             skill:'spread',  skillRange:470, skillCool:204,
+             melee:true, reach:92,  atkLen:60, atkCool:120, atkLead:24,
+             skill:'spread',  skillRange:470, skillCool:230,
              wakeDist:9999, drops:6, tag:'熔核巨像' }
 };
 
@@ -1527,6 +1585,11 @@ class Enemy {
         audio.ko(); feel.freeze(8); feel.punch(0.08);
       }
       spawnDust(this.cx, this.y, 10, 1.2);
+      // 回血球：普通怪 18%，精英/BOSS 必掉（BOSS 回得更多）
+      const healChance = this.isBoss ? 1 : (this.miniBoss ? 1 : 0.18);
+      if (rnd(0, 1) < healChance) {
+        spawnHealthOrb(this.cx, this.y, this.isBoss ? 0.5 : 0.25);
+      }
       for (let i = 0; i < 14; i++) {
         particles.push({ x: this.cx, y: this.y - this.h / 2, vx: rnd(-3.4, 3.4), vy: rnd(-4.4, 0),
                          life: 28, col: i % 2 ? this.eye : this.col2, s: 2 });
@@ -1556,6 +1619,9 @@ class Enemy {
     this.faceTo(dx);
 
     if (this.isBoss) {
+      const arena = level.bossArena;
+      // 玩家还没进 BOSS 场地：守在场地里，不追到门口外面去
+      if (arena && player.cx < arena.x - 8) { this.vx = 0; return; }
       this.vx = this.dir * this.spd;
       if (this.ledgeAhead(level, this.dir)) this.vx = 0;        // 坑沿上站住别迈
       if (this.wake && this.atkCd <= 0 && this.hurtT <= 0) {
@@ -1593,6 +1659,18 @@ class Enemy {
     this.faceTo(dx);
     this.vx = 0;
     if (this.wake && this.atkCd <= 0 && dist < 330) { this.atkCd = this.atkCool; this.atkT = this.atkLen; }
+  }
+
+  // 面前的「嘴/爪」判定框：只有正面一小块能伤人（BOSS 走 bossSlam，不走这里）
+  getMouthBox() {
+    if (this.dmg <= 0 || this.isBoss || this.kind === 'turret') return null;
+    let w = 22, h = 18, ahead = this.w * 0.30, height = this.h * 0.45;
+    if (this.kind === 'quad')       { w = 28; h = 20; ahead = this.w * 0.35; height = this.h * 0.45; }
+    else if (this.kind === 'biped') { w = 22; h = 28; ahead = this.w * 0.30; height = this.h * 0.35; }
+    else if (this.kind === 'fly')   { w = 20; h = 16; ahead = this.w * 0.32; height = this.h * 0.50; }
+    else if (this.kind === 'shell') { w = 22; h = 18; ahead = this.w * 0.38; height = this.h * 0.55; }
+    const fx = this.dir > 0 ? this.x + this.w + ahead : this.x - ahead - w;
+    return { x: fx, y: this.y - height - h, w: w, h: h };
   }
 
   // BOSS 近战重击：往前压一步 + 脚下冲击波 + 身前一记判定
@@ -1704,6 +1782,10 @@ class Enemy {
       this.flyCollide(level.platforms);
     } else this.groundCollide(level.platforms);
     this.x = clamp(this.x, 0, LEVEL_W - this.w);
+    if (this.isBoss && level.bossArena) {
+      const a = level.bossArena;
+      this.x = clamp(this.x, a.x + 6, a.x + a.w - this.w - 6);
+    }
 
     // 撞到石柱侧面就跳过去，别在原地顶着不动
     if (this.wallHit > 0 && this.onGround) this.vy = this.isBoss ? -8.4 : -7.6;
@@ -1713,9 +1795,13 @@ class Enemy {
     this.walkAcc += moving ? Math.abs(this.vx) : 0;
     if (moving || this.kind === 'fly' || this.kind === 'turret') this.animT += 1;
 
-    if (this.dmg > 0 && this.hitCd <= 0 && !player.attacking && hit(this.hitbox, player.hitbox)) {
-      this.hitCd = 20;
-      player.hurt(this.dmg, sign(player.cx - this.cx) || 1);
+    // 只有面前那一小块「嘴/爪」判定能伤人 —— 不再按整只身体判定，背后和头顶都不吃
+    if (this.hitCd <= 0 && !player.attacking) {
+      const mouth = this.getMouthBox();
+      if (mouth && hit(mouth, player.hitbox)) {
+        this.hitCd = 56;
+        player.hurt(this.dmg, sign(player.cx - this.cx) || 1);
+      }
     }
   }
 
@@ -1848,51 +1934,60 @@ let LEVEL_W = 2400;
 
 const LEVELS = [
   {
-    name: '第一关 · 雨夜旷野', width: 2400, theme: 'field', power: 1.0,
+    name: '第一关 · 雨夜旷野', width: 3100, theme: 'field', power: 1.0,
     spawn: { x: 60, y: 220 },
     platforms: [
-      {x:0,y:236,w:520},    {x:600,y:236,w:420},  {x:1100,y:236,w:640}, {x:1820,y:236,w:580},
+      // 前半段：保留原来的深渊设计
+      {x:0,y:236,w:520},    {x:600,y:236,w:420},  {x:1100,y:236,w:720},
       {x:300,y:186,w:96},   {x:760,y:176,w:110},  {x:1240,y:178,w:120},
-      {x:1500,y:196,w:100}, {x:1960,y:180,w:120}, {x:2200,y:200,w:110}
+      // BOSS 场地（x=1820 起）：地面连续到关卡末尾，没有一处深渊；
+      // 只留两块靠边的挡块，中间一大片空地留给走位
+      {x:1820,y:236,w:1280},
+      {x:2050,y:196,w:100}, {x:2700,y:186,w:110}
     ],
     enemies: [ ['wolf',420,236], ['wolf',780,176], ['wolf',1150,236],
                ['bat',900,150], ['bat',1620,140],
-               ['elwolf',1400,236],                       // 中途的小 BOSS
-               ['boss1',2180,236] ],                      // 关底 BOSS
-    hazards: [ {x:520,y:236,w:80}, {x:1020,y:236,w:80}, {x:1740,y:236,w:80} ],
+               ['elwolf',1400,236],
+               ['boss1',2930,236] ],
+    hazards: [ {x:520,y:236,w:80}, {x:1020,y:236,w:80} ],
+    bossArena: { x: 1820, w: 1280 },
     deathY: 330
   },
   {
-    name: '第二关 · 幽蓝洞窟', width: 2240, theme: 'cave', power: 1.2,
+    name: '第二关 · 幽蓝洞窟', width: 2900, theme: 'cave', power: 1.2,
     spawn: { x: 50, y: 220 },
     platforms: [
-      // 4 段宽地面，坑统一 80px（平跳射程 102px，余量 22px）
-      {x:0,y:236,w:480},    {x:560,y:236,w:560},  {x:1200,y:236,w:500}, {x:1780,y:236,w:460},
-      // 高台：离地 ≤60px；右缘距后面的坑 ≥140px（走台沿飘出去也够时间反应）；
-      //       距前面的坑 ≥80px（跳过来落地不会直接怼上石柱）
-      {x:120,y:180,w:160},  {x:640,y:178,w:200},  {x:1280,y:176,w:200}, {x:1880,y:180,w:200}
+      {x:0,y:236,w:480},    {x:560,y:236,w:560},  {x:1200,y:236,w:580},
+      {x:120,y:180,w:160},  {x:640,y:178,w:200},  {x:1280,y:176,w:200},
+      // BOSS 场地（x=1780 起）：连续地面到关卡末尾；两块挡块靠边放
+      {x:1780,y:236,w:1120},
+      {x:2000,y:190,w:100}, {x:2550,y:184,w:110}
     ],
-    enemies: [ ['bug',320,236], ['bug',760,178], ['bug',1900,180],
+    enemies: [ ['bug',320,236], ['bug',760,178], ['bug',1350,176],
                ['wolf',1000,236],
                ['bat',560,140], ['bat',1520,150], ['turret',980,236],
-               ['elwolf',1620,236],                       // 中途的小 BOSS
-               ['boss2',2120,236] ],                      // 关底 BOSS
-    hazards: [ {x:480,y:236,w:80}, {x:1120,y:236,w:80}, {x:1700,y:236,w:80} ],
+               ['elwolf',1620,236],
+               ['boss2',2750,236] ],
+    hazards: [ {x:480,y:236,w:80}, {x:1120,y:236,w:80} ],
+    bossArena: { x: 1780, w: 1120 },
     deathY: 330
   },
   {
-    name: '第三关 · 赤核殿堂', width: 2000, theme: 'hall', power: 1.4,
+    name: '第三关 · 赤核殿堂', width: 2700, theme: 'hall', power: 1.4,
     spawn: { x: 60, y: 220 },
     platforms: [
-      {x:0,y:236,w:760},    {x:840,y:236,w:1160},
+      {x:0,y:236,w:760},    {x:840,y:236,w:640},
       {x:300,y:180,w:130},  {x:520,y:178,w:120},
-      {x:1050,y:176,w:130}, {x:1400,y:178,w:140}, {x:1700,y:186,w:120}
+      {x:1050,y:176,w:130},
+      // BOSS 场地（x=1480 起）：连续地面到关卡末尾；两块挡块靠边放
+      {x:1480,y:236,w:1220},
+      {x:1750,y:192,w:110}, {x:2400,y:186,w:110}
     ],
-    // 第三关全是精英：没有杂兵
     enemies: [ ['elwolf',400,236], ['elwolf',1180,236],
-               ['eshield',700,236], ['eshield',1420,236],
-               ['boss',1820,236] ],
+               ['eshield',700,236], ['eshield',1300,236],
+               ['boss',2550,236] ],
     hazards: [ {x:760,y:236,w:80} ],
+    bossArena: { x: 1480, w: 1220 },
     deathY: 330
   }
 ];
@@ -1947,7 +2042,9 @@ function loadLevel(i) {
     e.maxHp = Math.round(e.maxHp * pw); e.hp = e.maxHp;
     e.dmg = Math.round(e.dmg * pw);
   }
-  shocks = []; particles = []; waves = []; slashes = []; eShots = []; pickups = [];
+  shocks = []; particles = []; waves = []; slashes = []; eShots = []; pickups = []; healthOrbs = [];
+  // BOSS 场地入口固定放一颗回血球：走到关底时一般已经掉了不少血
+  if (level.bossArena) spawnHealthOrb(level.bossArena.x + 70, 236, 0.35);
   camera.x = clamp(player.cx - VW / 2, 0, Math.max(0, LEVEL_W - VW));
   camera.y = 0;                      // 纵向偏移也必须清 —— 空中死亡/过关会把 -34 带进下一关
   storm = null;
@@ -2430,6 +2527,24 @@ function drawTerrain(g, lv, ox) {
     g.fillRect(hz.x, hz.y + 6, hz.w, VH - hz.y + 60);
     g.fillStyle = 'rgba(196,48,60,0.28)';
     g.fillRect(hz.x, hz.y + 6, hz.w, 3);
+  }
+
+  // BOSS 场地入口：地面一条标线 + 两根矮门柱（纯视觉，不是墙，不挡路）
+  if (lv.bossArena) {
+    const a = lv.bossArena;
+    const gc = lv.theme === 'hall' ? C.red : '#4FA8D8';
+    g.fillStyle = gc;
+    g.globalAlpha = 0.55;
+    g.fillRect(a.x, 234, a.w, 2);
+    g.globalAlpha = 1;
+    if (a.x > x0 - 60 && a.x < x1 + 60) {
+      g.fillStyle = gc;
+      g.fillRect(a.x - 7, 202, 4, 34);
+      g.fillRect(a.x + 3, 202, 4, 34);
+      g.globalAlpha = 0.35;
+      g.fillRect(a.x - 7, 202, 14, 4);
+      g.globalAlpha = 1;
+    }
   }
 }
 

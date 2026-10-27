@@ -1038,6 +1038,18 @@
   opacity: var(--fade);
 }
 
+/* 2026-10-27 标题从 8 个字（我让画面动起来）换成 10 个字
+   （电影质感还做不出来？）。10 个字在 1000px 的版心里放不下一行：
+   1440 下 100.8px × 10 ≈ 1008 > 952，会自动折成「…做不出 / 来？」——
+   实测就是这个断法，很难看。两条规则一起解决：
+     · ≥1000px：不折行；同时把版心放宽（见下面那条 `.page-hero__stage`），
+       文字必须落在版心里才能被 text-align 真正居中 ——
+       只加 nowrap 的话行盒会从版心左边开始往右溢出，实测 1440 下
+       文字中心在 743、视口中心 720，偏右 23px（用户 2026-10-27：「文字没居中」）
+     · ≤460px：在「电影质感」后面主动断一次（`.hero-br`），
+       两行是「4 字 + 6 字」，看着是设计出来的，不是被挤断的
+   460 这个数是算出来的：40px × 9.9 ≈ 396，390 宽的版心 342 放不下，
+   而 440 宽（版心 392）就已经放得下了。 */
 .page-hero__title {
   font-size: clamp(2.5rem, min(7vw, 12.5vh), 8.5rem);
   font-weight: var(--fw-bold);
@@ -1053,6 +1065,18 @@
   text-shadow:
     0 1px 4px rgba(0, 0, 0, .55),
     0 8px 40px rgba(0, 0, 0, .28);
+}
+
+/* 标题里的主动断行：只在放不下一行的窄屏出现 */
+.hero-br { display: none; }
+@media (max-width: 460px) {
+  .hero-br { display: inline; }
+}
+@media (min-width: 1000px) {
+  .page-hero__title { white-space: nowrap; }
+  /* 10 个字的最大宽度是 136px × 9.9 ≈ 1346（1920 及以上字号封顶 136），
+     1440 的版心（含左右 24 内边距）正好放得下；再宽就由 `100vw - 64px` 兜住。 */
+  .page-hero__stage { max-width: min(1440px, calc(100vw - 64px)); }
 }
 
 /* 「动起来」的彩色渐变。
@@ -3578,7 +3602,17 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
 .clip__desc { color: var(--ink-2); font-size: .9375rem; line-height: 1.65; }
 
 /* ==========================================================================
-   22. 讲课板块的「章节带」（2026-10-13，两轮改定）
+   22. 「章节带」浅蓝渐变面板（2026-10-13 做给讲课板块，2026-10-27 换给成品展示）
+
+   ⭐ 2026-10-27 用户：「教学视频调整到上面来，把视频展示调整下去，
+      然后教学视频的背景框换给视频展示。」
+      → 讲课板块（.band-lecture → 现在只剩 .band-lecture__kicker 这个小名）
+        不再有蓝带，改用 `.section--raised`（白底）；
+        成品展示 section 挂 `.band-frame`，原样继承这块通版浅蓝渐变 + 圆角。
+      ⚠️ 换到更长的一节之后，渐变是按**整节高度**铺的（0~100%），
+        中段已经淡到 #EBF3FD 左右；这是有意留的，别再按「讲课带」那个长度去调停靠点。
+      ⚠️ 带内的正文要按浅蓝底重新压深（见下面那组 `.band-frame` 覆盖），
+        不能直接用 --ink-2 / --ink-3 —— 它们在 #CFE1F9 上不到 4.5:1。
 
    用户：「我想让这块教学内容，在页面里更明显一点」→ 选了"做成章节横幅"，
    并逐轮给了三条硬要求：
@@ -3601,33 +3635,42 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
       `--ink-2` / `--ink-3` / `--title-blue` 这几支压在浅蓝上都在 4:1 上下，
       肉眼看不出来，只能从渲染像素上量。
    ========================================================================== */
-.section.band-lecture {
+.section.band-frame {
   position: relative;
   /* 通版：没有左右边距；弧形交给 border-radius。
      ⚠️ 弧度是**用户调过一轮**的：第一版 30px 他说「圆角大一点」，
         现在是 clamp(28px, 3.2vw, 56px)（1600px 下约 51px）。
         再要改，只动这一行；verify_lecture.py 里有一条"半径要够大"的断言。 */
   border-radius: clamp(28px, 3.2vw, 56px);
-  /* 浅蓝洗色：0% 也只有 #CFE1F9，到 100% 基本回到页面白 */
+  /* 浅蓝洗色：0 也只有 #CFE1F9，到底部基本回到页面白。
+     ⚠️ 2026-10-27 换到成品展示（3647px 高）之后，原来按百分比停靠的
+        #EBF3FD 48% / #F5FAFE 76% 在中段就已经淡成 (237,244,253)，
+        实测半屏之后基本看不出这是块"面板"。改成按**像素**停靠：
+        前 800px 渐变到 #E6F0FC，之后一直保持这块浅蓝，最后 540px 才回白。 */
   background: linear-gradient(180deg,
-      #CFE1F9 0%,
-      #DEECFB 20%,
-      #EBF3FD 48%,
-      #F5FAFE 76%,
+      #CFE1F9 0,
+      #DEECFB 240px,
+      #E6F0FC 800px,
+      #E6F0FC calc(100% - 540px),
+      #F5FAFE calc(100% - 140px),
       #FBFDFF 100%);
   padding-block: clamp(var(--sp-8), 10vh, var(--sp-10));
 }
 
 /* --- 深色字（不再有白字）：带内各压深一档 ---
    ⚠️ 只在带内覆盖，**不动全局令牌** —— 这几支在站里其它浅底（#F5F5F7）上是够用的。 */
-.band-lecture .section__eyebrow { color: #14509F; }   /* 原 --title-blue #2471E1 */
-.band-lecture .section__intro   { color: #4F4F55; }   /* 原 --ink-2      #6E6E73 */
-.band-lecture .clip__no         { color: #14509F; }   /* 原 --title-blue #2471E1 */
-.band-lecture .clip__meta       { color: #5A5A60; }   /* 原 --ink-3      #86868B */
-.band-lecture .clip__desc       { color: #4C4C52; }   /* 原 --ink-2      #6E6E73 */
-/* 标题回到站里那支彩虹渐变（`.title-gradient` 自带 background-clip:text，
-   那版白字时被这里清掉的 background-image / -webkit-text-fill-color 已经不再覆盖，
-   自动恢复） */
+.band-frame .section__eyebrow { color: #14509F; }   /* 原 --title-blue #2471E1 */
+.band-frame .section__intro   { color: #4F4F55; }   /* 原 --ink-2      #6E6E73 */
+.band-frame .work__meta       { color: #5A5A60; }   /* 原 --ink-3      #86868B */
+.band-frame .work__desc       { color: #4C4C52; }   /* 原 --ink-2      #6E6E73 */
+.band-frame .tag              { color: #4C4C52; }   /* 原 --ink-2      #6E6E73 */
+/* 作品标题（.work--video .work__title）是 #2471E1、字号 ≥22px 粗体，
+   在浅蓝上约 3.8:1，过 WCAG 大字号那条 3:1 线，保持原样。 */
+/* 讲课板块现在落在白底（.section--raised）上，蓝带没了；
+   但卡片文字仍要压深一档 —— --ink-3 在白底上仍不到 4.5:1。 */
+.band-lecture .clip__no   { color: #14509F; }   /* 原 --title-blue #2471E1 */
+.band-lecture .clip__meta { color: #5A5A60; }   /* 原 --ink-3      #86868B */
+.band-lecture .clip__desc { color: #4C4C52; }   /* 原 --ink-2      #6E6E73 */
 
 /* 标题下面那行信息。这块原本没有"排面"，加上它信息密度才撑得住 */
 .band-lecture__kicker {
