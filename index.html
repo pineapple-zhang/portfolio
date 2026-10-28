@@ -80,6 +80,23 @@ setTimeout(function () {
     <p class="eyebrow hero__eyebrow">一个平面设计师</p>
     <h1 class="hero__title">天生我材<span class="title-gradient">必有用</span></h1>
     <p class="hero__sub">这里是用代码构建的一个小世界</p>
+
+    <!-- 两个入口 CTA：面试官 → 平面设计作品页；合作方 → AI 视频作品页。
+         ⚠️ 两个按钮材质、颜色、hover 全部一致，只靠文字区分入口。
+         ⚠️ .hero__act-wrap 是出场动画专用外壳：出场动 wrap，hover 动 a，
+            互不打架（同一个元素上 animation 会压掉 transition 的 transform）。 -->
+    <div class="hero__acts">
+      <span class="hero__act-wrap">
+        <a class="hero__act" href="design.html">
+          <span class="hero__act-text">面试官点击跳转</span>
+        </a>
+      </span>
+      <span class="hero__act-wrap">
+        <a class="hero__act" href="ai-video.html">
+          <span class="hero__act-text">合作点击跳转</span>
+        </a>
+      </span>
+    </div>
   </div>
 
   <!-- 滚动提示：白色小卡贴 + 右侧蓝色圆圈（圈里是白色向下箭头）。
@@ -337,7 +354,7 @@ setTimeout(function () {
     </div>
 
     <div class="site-footer__bottom">
-      <span>©<span id="year">2026</span> 本站作者保留所有权利 · 当前网站版本：<span class="site-ver">V2.4</span></span>
+      <span>©<span id="year">2026</span> 本站作者保留所有权利 · 当前网站版本：<span class="site-ver">V2.5</span></span>
       <span>本网站全部由个人开发</span>
       <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
     </div>

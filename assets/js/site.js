@@ -204,6 +204,7 @@
     var heroTitleEl = doc.querySelector('.hero__title');
     var subEl = doc.querySelector('.hero__sub');
     var eyebrowEl = doc.querySelector('.hero__eyebrow');
+    var actsEl = doc.querySelector('.hero__acts');
 
     var actors = [];          /* 待点亮的元素 */
     var charSpans = [];
@@ -281,6 +282,10 @@
     if (subEl) {
       subEl.style.setProperty('--d', (tail + 180) + 'ms');
       actors.push(subEl);
+    }
+    if (actsEl) {
+      /* 出场延迟写在 CSS 里（1.2s / 1.35s），这里只负责点亮 is-in */
+      actors.push(actsEl);
     }
     if (cuePill) {
       /* 只负责把首屏节奏的起跑时刻给它；卡贴的宽度、透明度、描边

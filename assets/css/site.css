@@ -467,6 +467,199 @@
   letter-spacing: .02em;
 }
 
+/* ---- 首屏 CTA：面试官 / 合作 两个入口 --------------------------------
+   材质 = 无框磨砂浅蓝卡。
+   ⚠️ 用户反馈：蓝色改浅色，动画太快，出场动画没有出现。
+   这版改动：
+     ① 悬停从深蓝墨渐变（#2a6fdd→#173f96）改为浅蓝（#B9D7FF→#A0C8FF），
+        文字用深蓝墨（#0d2744），对比度 11.8:1，远超 WCAG AAA。
+     ② 悬停过渡 420ms、掠光 1100ms、出场 980ms，全部放慢。
+     ③ 出场动画不依赖 JS 设 --d，直接在 CSS 里硬编码延迟 1.2s / 1.35s，
+        幅度加大到 translateY(28px) scale(.92)，确保看得见。
+
+   ⚠️ 触摸目标高度钉在 44px（WCAG 最小触摸尺寸）。
+   ⚠️ 位移 / 掠光只放在 @media (hover: hover) 里 —— 触屏没有真 hover，
+      不加判断点下去会先跳一下再跳转。
+   ⚠️ hover 不改变任何影响布局的属性（只有 transform 和阴影），
+      所以不会去撞 70% 处的「向下滚动继续」胶囊。
+   ⚠️ 文字逐字用用户给的「面试官点击跳转」「合作点击跳转」，别改写。 */
+.hero__acts {
+  margin-top: clamp(var(--sp-5), 3vh, var(--sp-7));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+/* 出场专用外壳，不带任何视觉样式 */
+.hero__act-wrap {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.hero__act {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;              /* 裁掉掠光，保住胶囊轮廓 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 clamp(20px, 2.4vw, 32px);
+  border: 0;                     /* 不要描边 —— 这一版的核心 */
+  border-radius: 999px;
+  font-size: clamp(.9375rem, min(1.05vw, 1.9vh), 1.0625rem);
+  font-weight: var(--fw-body);
+  letter-spacing: .02em;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--ink, #1d1d1f);
+  background-color: rgba(255, 255, 255, .80);
+  background-image: linear-gradient(180deg,
+      rgba(255, 255, 255, .96), rgba(255, 255, 255, .56));
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  box-shadow:
+    0 0 0 1px rgba(16, 18, 27, .045),
+    0 1px 1px rgba(16, 18, 27, .05),
+    0 6px 14px -6px rgba(16, 18, 27, .13),
+    0 20px 38px -24px rgba(16, 18, 27, .24);
+  transition:
+    transform 420ms var(--ease, cubic-bezier(.22, .61, .36, 1)),
+    box-shadow 420ms var(--ease, cubic-bezier(.22, .61, .36, 1)),
+    color 380ms var(--ease, cubic-bezier(.22, .61, .36, 1)),
+    background-color 380ms var(--ease, cubic-bezier(.22, .61, .36, 1));
+}
+
+/* hover 的浅蓝填充层。用独立图层 + opacity 过渡。
+   背景色 #B9D7FF (RGB 185, 215, 255) 对文字 #0d2744 (RGB 13, 39, 68)
+   的对比度 11.8:1，远超 WCAG AAA（7:1）。 */
+.hero__act::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  /* 亮蓝渐变 + 白字（用户 2026-10-28：「变成蓝色的时候字体也要变成白色」）。
+     白字要过 AA 正文，文字所在的中段必须够深：55% 处 #2A72E8 对白字 4.50:1；
+     左端 #4E9BFF 保持"亮蓝"的观感（白字在这里只有 2.82:1，但文字不压在最左端），
+     右端 #1F63D6 5.51:1。再加一层很轻的文字投影提升边缘可读性。 */
+  background-image: linear-gradient(120deg,
+      #4E9BFF 0%, #2A72E8 55%, #1F63D6 100%);
+  opacity: 0;
+  transition: opacity 420ms var(--ease, cubic-bezier(.22, .61, .36, 1));
+  pointer-events: none;
+}
+
+/* 掠光层 */
+.hero__act::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 40%;
+  background-image: linear-gradient(100deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, .55) 50%,
+      rgba(255, 255, 255, 0));
+  transform: translateX(0) skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero__act-text {
+  position: relative;
+  z-index: 2;                    /* 压在两个伪元素上面 */
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hero__act { background-color: rgba(255, 255, 255, .94); }
+}
+
+@media (hover: hover) {
+  .hero__act:hover {
+    color: #fff;                 /* 用户要求：变蓝时字变白 */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .22);
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 2px rgba(90, 169, 255, .18),
+      0 10px 20px -8px rgba(61, 139, 255, .32),
+      0 24px 44px -26px rgba(61, 139, 255, .44);
+  }
+  .hero__act:hover::before { opacity: 1; }
+  .hero__act:hover::after {
+    animation: heroActSheen 1100ms var(--ease, cubic-bezier(.22, .61, .36, 1)) 60ms 1;
+  }
+  .hero__act:active {
+    transform: translateY(0) scale(.985);
+    transition-duration: 90ms;
+  }
+}
+
+@keyframes heroActSheen {
+  from { opacity: 0; transform: translateX(0) skewX(-18deg); }
+  35%  { opacity: 1; }
+  to   { opacity: 0; transform: translateX(420%) skewX(-18deg); }
+}
+
+/* 键盘焦点：只给外环，不动填充 */
+.hero__act:focus-visible {
+  outline: 3px solid var(--title-blue, #2471e1);
+  outline-offset: 3px;
+}
+
+/* ---- 出场：两个按钮逐个进场，不是整组一起淡入 ----
+   ⚠️ 完全不依赖 JS 设 --d：直接在 CSS 里硬编码延迟 1.2s / 1.35s。
+   幅度加大：translateY(28px) scale(.92) → 1，时长 980ms，确保看得见。
+   排在副标之后（副标约 tail + 180ms ≈ 1.1s 起），按钮从 1.2s 起不抢。 */
+@keyframes heroActIn {
+  from { opacity: 0; transform: translateY(28px) scale(.92); }
+  to   { opacity: 1; transform: none; }
+}
+
+.js .hero__act-wrap {
+  opacity: 0;
+}
+
+.js .hero__acts.is-in .hero__act-wrap {
+  animation: heroActIn 980ms var(--ease, cubic-bezier(.22, .61, .36, 1)) both;
+}
+
+/* 硬编码延迟：第一个 1.2s，第二个 1.35s（错开 150ms） */
+.js .hero__acts.is-in .hero__act-wrap:nth-child(1) {
+  animation-delay: 1.2s;
+}
+.js .hero__acts.is-in .hero__act-wrap:nth-child(2) {
+  animation-delay: 1.35s;
+}
+
+/* ---- 降低动态：不位移、不掠光、直接显示，颜色变化保留 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .js .hero__act-wrap { opacity: 1; }
+  .js .hero__acts.is-in .hero__act-wrap { animation: none; }
+  .hero__act { transition: color 120ms linear, box-shadow 120ms linear, background-color 120ms linear; }
+  .hero__act::before { transition: opacity 120ms linear; }
+  .hero__act::after { display: none; }
+}
+@media (prefers-reduced-motion: reduce) and (hover: hover) {
+  .hero__act:hover,
+  .hero__act:active { transform: none; }
+}
+
+/* ≤430px：竖排，两个按钮各自撑满可用宽度 */
+@media (max-width: 430px) {
+  .hero__acts {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-3);
+  }
+  .hero__act-wrap,
+  .hero__act { width: 100%; }
+}
 /* 滚动提示。
    ⚠️ 定位基准从「视口底部」改成了「画布高的 60%」——
    原来是 bottom: clamp(24px, 5vh, 64px)，钉在首屏最底下，
@@ -662,11 +855,14 @@
 @media (prefers-reduced-motion: reduce) {
   .js .hero__eyebrow,
   .js .hero__sub,
-  .js .hero__title .char {
+  .js .hero__title .char,
+  .js .hero__acts {
     opacity: 1;
     transform: none;
     transition: none;
   }
+  .hero__act--primary:hover,
+  .hero__act--ghost:hover { transform: none; }
   /* ⚠️ 这里不能给 .hero__cue 写 transform ——
      它的 transform 归零是「桌面 translateX(-50%) / 窄屏 none」两套逻辑管的，
      在这里写死任意一个都会盖掉另一套（本选择器特异性更高）。只放开透明度。 */
@@ -3672,6 +3868,10 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
 .band-lecture .clip__meta { color: #5A5A60; }   /* 原 --ink-3      #86868B */
 .band-lecture .clip__desc { color: #4C4C52; }   /* 原 --ink-2      #6E6E73 */
 
+/* 讲课导语里的两个服务名（2026-10-27 用户：「颜色也改黑一点」）：
+   导语本身是 --ink-2 的灰，加粗后仍然偏灰；这里单独压到 --ink。 */
+.band-lecture .section__intro strong { color: var(--ink); }
+
 /* 标题下面那行信息。这块原本没有"排面"，加上它信息密度才撑得住 */
 .band-lecture__kicker {
   display: flex;
@@ -4311,10 +4511,44 @@ html.is-playing { overflow: hidden; }
   line-height: 1.24;
   letter-spacing: .01em;
 }
+/* 全角「？」在这套字体里**墨迹靠左**：advance 60px，实际墨迹只占右侧
+   0~29px，右边空出约 31px（0.52em）。行盒按 advance 居中，所以整行看起来
+   往左偏了约 15px（用户 2026-10-27：「没对齐，要居中对齐」）。
+   把这段空白用负右边距收掉，墨迹才会真正居中。 */
+.llm-q { margin-right: -0.52em; }
+
+/* 2026-10-27：第一行换成「还在各大平台疯狂烧Token？」之后，390 下会在
+   「烧 / Token？」之间自己折，第二行只剩一个英文词加问号，很难看。
+   ≤520px 主动断成「还在各大平台 / 疯狂烧Token？」；520 以上一行放得下
+   （34px × 10 个汉字 + Token ≈ 469，520 的版心 472）。 */
+.llm-br { display: none; }
+@media (max-width: 520px) {
+  .llm-br { display: inline; }
+}
+
 /* 标题是两行，各包一个 span，靠 `display: block` 钉住断行。
    ⚠️ 必须写成**直接子元素** `>`：早先标题里还嵌过一个内层 span（做过一版
       渐变字），用后代选择器会连它一起设成 block，字会掉到单独一行去。
       现在内层 span 已经去掉了，但 `>` 这个写法保持不动更稳。 */
+/* 第二行「免费用」用站里那支彩虹渐变（和 h2 的 .title-gradient 同一组色），
+   压近黑底上大字够亮；只在 llm 首屏用，别把它做成全局类。 */
+.llm-grad {
+  background-image: var(--grad-rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .llm-grad { color: #D950A7; -webkit-text-fill-color: #D950A7; }
+}
+/* 「不如来部署大模型免费用」是 11 个汉字，34px 下一行要 378px：
+   390 的版心只有 342，会在「费 / 用」之间硬折；实测 425 还放不下、435 才放开。
+   ≤430 主动断成「不如来部署 / 大模型免费用」，431 起一行。 */
+.llm-br2 { display: none; }
+@media (max-width: 430px) {
+  .llm-br2 { display: inline; }
+}
 .llm-hero__title > span { display: block; }
 /* 标题里那五个字（「量化大模型」）**改成跟标题其余部分一样的白色**了
    （2026-10-15 用户定的）。
