@@ -284,7 +284,22 @@
       actors.push(subEl);
     }
     if (actsEl) {
-      /* 出场延迟写在 CSS 里（1.2s / 1.35s），这里只负责点亮 is-in */
+      /* 光晕的彩色渐变在 SVG 里用 SMIL 一直转（5s 一圈）。
+         只在鼠标进入 / 键盘聚焦时跑，平时 pause，避免首页空转。 */
+      var traceSvgs = actsEl.querySelectorAll('.hero__trace');
+      var traceLinks = actsEl.querySelectorAll('.hero__act');
+      for (var ti = 0; ti < traceSvgs.length; ti++) {
+        (function (svg, link) {
+          if (!svg.pauseAnimations) return;
+          svg.pauseAnimations();
+          var spinOn = function () { svg.unpauseAnimations(); };
+          var spinOff = function () { svg.pauseAnimations(); };
+          link.addEventListener('pointerenter', spinOn);
+          link.addEventListener('pointerleave', spinOff);
+          link.addEventListener('focus', spinOn);
+          link.addEventListener('blur', spinOff);
+        })(traceSvgs[ti], traceLinks[ti]);
+      }
       actors.push(actsEl);
     }
     if (cuePill) {
@@ -612,8 +627,11 @@
     var cueT0 = 0;                        /* 起点，下面设成脚本跑起来的时刻 */
     var cueLooping = false;
     var cueTick = 0;
+    var cueIsBottom = cueEl.classList.contains('hero__cue--bottom');
+    var cueStarted = false;
 
     var cueApply = function (now) {
+      if (cueIsBottom && !cueStarted) return;
       var reduced = reduceMotion && reduceMotion.matches;
       var el = now - cueT0 - cueDelay;    /* 出场已经过去多久（ms） */
 
@@ -651,7 +669,8 @@
       /* ---- 退场（滚动驱动） ---- */
       var y = window.pageYOffset || doc.documentElement.scrollTop || 0;
       var vh = window.innerHeight || doc.documentElement.clientHeight;
-      var xe = clamp01(y / (vh * 0.5));
+      /* 底部胶囊不随滚动淡出：它本来就在文档末尾 */
+      var xe = cueIsBottom ? 0 : clamp01(y / (vh * 0.5));
       var eText   = clamp01((xe - 0.00) / 0.34);   /* 文字/蓝球消失 */
       var eShrink = clamp01((xe - 0.30) / 0.42);   /* 收回成小球 */
       var eFade   = clamp01((xe - 0.72) / 0.28);   /* 整体淡出 */
@@ -679,7 +698,7 @@
       /* 位移：纯装饰，减弱动态效果时不位移 */
       var reduced2 = reduceMotion && reduceMotion.matches;
       cueEl.style.setProperty('--cue-drift',
-        (reduced2 ? 0 : -12 * xe).toFixed(1) + 'px');
+        (cueIsBottom || reduced2) ? '0px' : (-12 * xe).toFixed(1) + 'px');
     };
 
     var cueLoop = function (now) {
@@ -709,7 +728,7 @@
           不减的话那段整体正好铺满视口，导航压在它的留白上，谁也不碰谁。
        ⚠️ 只在首页有下一段时才拦（子页面没有 .hero__cue，进来也白搭）。 */
     var cueNext = doc.querySelector('#main > section');
-    if (cueNext) {
+    if (cueNext && !cueIsBottom) {
       cuePill.addEventListener('click', function (ev) {
         ev.preventDefault();
         var to = cueNext.getBoundingClientRect().top +
@@ -723,9 +742,28 @@
       });
     }
 
-    cueT0 = performance.now();
-    cueLooping = true;
-    window.requestAnimationFrame(cueLoop);
+    var cueStart = function () {
+      if (cueStarted) return;
+      cueStarted = true;
+      cueT0 = performance.now();
+      cueLooping = true;
+      window.requestAnimationFrame(cueLoop);
+    };
+    if (cueIsBottom) {
+      if ('IntersectionObserver' in window) {
+        var cueIO = new IntersectionObserver(function (entries) {
+          if (entries[0] && entries[0].isIntersecting) {
+            cueIO.disconnect();
+            cueStart();
+          }
+        }, { threshold: 0.35 });
+        cueIO.observe(cueEl);
+      } else {
+        cueStart();
+      }
+    } else {
+      cueStart();
+    }
     window.addEventListener('scroll', cueOnScroll, { passive: true });
     window.addEventListener('resize', cueOnScroll, { passive: true });
   }
@@ -2324,12 +2362,12 @@
 
       /* —— 文字可读性：标题带上的连续亮度凹陷 —— */
       MASK: 0.30,             /* 0 = 关掉 */
-      MASK_Y: [0.46, 0.42],   /* 凹陷中心（画布高度比例，对准标题）*/
+      MASK_Y: [0.30, 0.42],   /* 凹陷中心（画布高度比例，对准标题）*/
       MASK_RX: 0.40, MASK_RY: 0.12,
 
       /* —— 构图（与旧版一致，刻意避开标题）—— */
-      CY: [0.37, 0.24],       /* 球心高度比例 */
-      CR: [0.22, 0.26]        /* 球半径 = min(W,H) × 该值 */
+      CY: [0.26, 0.24],       /* 球心高度比例 */
+      CR: [0.16, 0.26]        /* 球半径 = min(W,H) × 该值 */
     };
 
     /* 时间轴（秒）*/
@@ -2749,20 +2787,32 @@
 
     /* 离开视口就停 rAF */
     var obs = null;
+    var inView = false;
     try {
       obs = new IntersectionObserver(function (es) {
         es.forEach(function (e) {
+          inView = e.isIntersecting;
           if (e.isIntersecting) start(); else stop();
         });
       }, { threshold: 0 });
       obs.observe(cv);
     } catch (e) {
+      inView = true;
       start();
     }
 
-    /* 标签页隐藏也停 */
+    /* 标签页隐藏就停，切回来必须重启。
+       ⚠️ 不能只在 `!obs` 时 start：有 IntersectionObserver 时元素一直在视口里，
+          hidden 再 visible 不会触发 observer 回调，循环就永远停在 stop() 之后
+          —— 用户 2026-10-29 报的「切网页再切回来卡住」。 */
     doc.addEventListener('visibilitychange', function () {
-      if (doc.hidden) stop(); else if (!obs) start();
+      if (doc.hidden) stop();
+      else if (inView || !obs) { lastTs = 0; start(); }
+    });
+
+    /* 从往返缓存（bfcache）恢复时 rAF 也会被冻住，补一次 */
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted && !doc.hidden && (inView || !obs)) { lastTs = 0; start(); }
     });
 
     if (!obs && !doc.hidden) start();
@@ -2834,4 +2884,115 @@
       if (e.key === 'Escape' || e.keyCode === 27) close();
     });
   })();
+
+  /* ----------------------------------------------------------------------
+     首屏底部提示：滚到半屏就淡出
+     用户 2026-10-29：「这里这句话等用户下滑到一半的时候，让这句话消失」
+     · 从开始滚动就淡：0 → 1/2 屏，透明度 1 → 0，同时上移 8px；
+     · 到半屏已经完全看不见。
+     用 rAF 节流，滚动里只改 opacity / transform，不触发布局。
+     ---------------------------------------------------------------------- */
+  (function () {
+    var hint = doc.querySelector('.hero__scrollhint');
+    if (!hint) return;
+    var ticking = false;
+    var clamp = function (x) { return x < 0 ? 0 : (x > 1 ? 1 : x); };
+    var update = function () {
+      ticking = false;
+      var vh = window.innerHeight || doc.documentElement.clientHeight || 0;
+      if (!vh) return;
+      var y = window.pageYOffset || doc.documentElement.scrollTop || 0;
+      var p = clamp(y / (vh * 0.5));
+      hint.style.opacity = (1 - p).toFixed(3);
+      hint.style.transform = prefersReduced
+        ? 'none'
+        : 'translateY(' + (-8 * p).toFixed(1) + 'px)';
+    };
+    var onScroll = function () {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+  })();
+})();
+
+/* 2026-10-29 大模型页首屏演示视频：
+   1) 系统开了「减少动态效果」就不自动播，停在 poster；
+   2) 滚出视口暂停，滚回来继续，省电也省解码。 */
+(function () {
+  var v = document.querySelector('.llm-video__el');
+  if (!v) return;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (reduce && reduce.matches) {
+    v.removeAttribute('autoplay');
+    v.pause();
+    return;
+  }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting) {
+          var p = v.play();
+          if (p && p.catch) p.catch(function () {});
+        } else {
+          v.pause();
+        }
+      });
+    }, { threshold: 0.15 }).observe(v);
+  }
+})();
+
+/* 2026-10-30 大模型页页脚 CTA：点击复制邮箱，并弹一条提示。
+   页脚那行邮箱本身已在 HTML 里改成跳 QQ 邮箱（https://mail.qq.com/）。 */
+(function () {
+  var btn = document.getElementById('contact-copy');
+  if (!btn) return;
+  var email = btn.getAttribute('data-email') || '2235126059@qq.com';
+  var toast = null, timer = 0;
+
+  function showToast(msg) {
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.className = 'site-toast';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-live', 'polite');
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    void toast.offsetWidth;
+    toast.classList.add('is-on');
+    window.clearTimeout(timer);
+    timer = window.setTimeout(function () { toast.classList.remove('is-on'); }, 2400);
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  btn.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    var done = function () { showToast('已复制邮箱：' + email); };
+    var fail = function () { showToast('复制失败，请手动复制：' + email); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(email).then(done, function () {
+        legacyCopy(email) ? done() : fail();
+      });
+    } else {
+      legacyCopy(email) ? done() : fail();
+    }
+  });
 })();

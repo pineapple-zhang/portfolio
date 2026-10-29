@@ -83,50 +83,73 @@ setTimeout(function () {
 
     <!-- 两个入口 CTA：面试官 → 平面设计作品页；合作方 → AI 视频作品页。
          ⚠️ 两个按钮材质、颜色、hover 全部一致，只靠文字区分入口。
-         ⚠️ .hero__act-wrap 是出场动画专用外壳：出场动 wrap，hover 动 a，
-            互不打架（同一个元素上 animation 会压掉 transition 的 transform）。 -->
+         ⚠️ Apple 风格简约动画：依次淡入 + 上浮 + 轻微 scale。 -->
     <div class="hero__acts">
       <span class="hero__act-wrap">
         <a class="hero__act" href="design.html">
           <span class="hero__act-text">面试官点击跳转</span>
+          <svg class="hero__trace" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="ctaTrace1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#0071e3"></stop>
+                <stop offset=".28" stop-color="#5e5ce6"></stop>
+                <stop offset=".46" stop-color="#bf5af2"></stop>
+                <stop offset=".62" stop-color="#ff2d55"></stop>
+                <stop offset=".78" stop-color="#ff9f0a"></stop>
+                <stop offset=".9" stop-color="#30d158"></stop>
+                <stop offset="1" stop-color="#64d2ff"></stop>
+                <animateTransform attributeName="gradientTransform" type="rotate"
+                  from="0 0.5 0.5" to="360 0.5 0.5" dur="5s" repeatCount="indefinite"></animateTransform>
+              </linearGradient>
+            </defs>
+            <g class="trace-glow-group">
+              <rect class="glow-1" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace1)"></rect>
+              <rect class="glow-2" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace1)"></rect>
+              <rect class="glow-3" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace1)"></rect>
+              <rect class="glow-4" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace1)"></rect>
+              <rect class="glow-5" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace1)"></rect>
+              <rect class="glow-6" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace1)"></rect>
+            </g>
+            <rect class="trace-cover" x="0" y="0" width="100%" height="100%" rx="22" ry="22" fill="#fff"></rect>
+          </svg>
         </a>
       </span>
       <span class="hero__act-wrap">
         <a class="hero__act" href="ai-video.html">
           <span class="hero__act-text">合作点击跳转</span>
+          <svg class="hero__trace" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="ctaTrace2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#0071e3"></stop>
+                <stop offset=".28" stop-color="#5e5ce6"></stop>
+                <stop offset=".46" stop-color="#bf5af2"></stop>
+                <stop offset=".62" stop-color="#ff2d55"></stop>
+                <stop offset=".78" stop-color="#ff9f0a"></stop>
+                <stop offset=".9" stop-color="#30d158"></stop>
+                <stop offset="1" stop-color="#64d2ff"></stop>
+                <animateTransform attributeName="gradientTransform" type="rotate"
+                  from="0 0.5 0.5" to="360 0.5 0.5" dur="5s" repeatCount="indefinite"></animateTransform>
+              </linearGradient>
+            </defs>
+            <g class="trace-glow-group">
+              <rect class="glow-1" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace2)"></rect>
+              <rect class="glow-2" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace2)"></rect>
+              <rect class="glow-3" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace2)"></rect>
+              <rect class="glow-4" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace2)"></rect>
+              <rect class="glow-5" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace2)"></rect>
+              <rect class="glow-6" x="0" y="0" width="100%" height="100%" rx="22" ry="22" pathLength="100" stroke="url(#ctaTrace2)"></rect>
+            </g>
+            <rect class="trace-cover" x="0" y="0" width="100%" height="100%" rx="22" ry="22" fill="#fff"></rect>
+          </svg>
         </a>
       </span>
     </div>
   </div>
 
-  <!-- 滚动提示：白色小卡贴 + 右侧蓝色圆圈（圈里是白色向下箭头）。
-       出场是一条五段时间线：弹出白底蓝边的圆 → 拉长成胶囊 → 出文字和蓝圆
-       → 出箭头 → 箭头缓缓闪烁。时间点写在 site.css 的 .hero__cue-pill 上，
-       起点由 site.js 给 --d 对齐首屏 1→2→3→4 的节奏。
-       外层 .hero__cue 只管「随滚动淡出」，与出场分开（见 CSS 注释）。
-
-       ⚠️ 2026-10-12：卡贴从 <div> 改成 <a href="#main"> —— 用户要求
-          「点这个蓝色小箭头，自动滑到下一页」。
-          · 用 <a> 不用 <button>：这一下干的事就是「跳到下一段」，
-            是内容型锚点；而且**没 JS 时锚点自己就能跳**，
-            做成 <button> 的话没 JS 就是个点不动的死按钮。
-          · 同时去掉了外层那个 aria-hidden="true" —— 里面有了可聚焦元素
-            就不能再对读屏隐藏（Chrome 会因「焦点落在隐藏子树里」直接拦掉）。
-          · 锚点只是兜底，真实落点由 site.js 第 12b 节接管
-            （平滑滚到下一段的顶边，会先把这次点击 preventDefault 掉）。 -->
-  <div class="hero__cue">
-    <a class="hero__cue-pill" href="#main" aria-label="向下滚动到精选作品">
-      <span class="hero__cue-text">向下滚动继续</span>
-      <span class="hero__cue-dot">
-        <!-- 粗圆角的向下雪佛龙（参考 Material 那种「>」的粗细和圆头），
-             不是带竖杆的细箭头 -->
-        <svg class="hero__cue-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 9.2 12 15.4l6-6.2" stroke="currentColor"
-                stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </span>
-    </a>
-  </div>
+  <!-- 首屏最下方的一句纯文字提示。
+       2026-10-29 用户要求把原来的「向下滚动继续」胶囊整个去掉，
+       只保留这句提醒；不再有入场动画，也不拦截点击。 -->
+  <p class="hero__scrollhint">向下滚动也可继续参观</p>
 
 </header>
 
@@ -337,7 +360,7 @@ setTimeout(function () {
       <div>
         <p class="site-footer__title">联系方式</p>
         <ul class="site-footer__list">
-          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="https://mail.qq.com/" target="_blank" rel="noopener noreferrer">2235126059@qq.com</a></li>
         </ul>
         <p class="site-footer__note">欢迎对相关领域感兴趣的朋友通过邮箱进行交流探讨，期待您的来信。</p>
       </div>

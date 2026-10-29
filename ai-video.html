@@ -49,7 +49,7 @@ setTimeout(function () {
   </div>
 </nav>
 
-<main id="main">
+<main id="main" class="has-cue">
 
   <!-- 沉浸式页头：全屏大图 + 居中巨字，「动起来」用渐变强调。
        高度 = 视口高 − 粘顶条高（--nav-h），所以导航 + 大图正好一屏。
@@ -72,6 +72,7 @@ setTimeout(function () {
       </div>
     </header>
   </div>
+
 
   <!-- 课堂片段（2026-10-13 用户要求：「在作品库上方再加一个小板块，
        是我给人家讲课的（内容是 ai 视频生成课）…挑几个精彩片段放进去，
@@ -473,6 +474,17 @@ setTimeout(function () {
 
 <footer class="site-footer">
   <div class="wrap">
+    <div class="hero__cue hero__cue--bottom">
+      <a class="hero__cue-pill" href="game.html" aria-label="继续和我一起探索合作">
+        <span class="hero__cue-text">继续和我一起探索合作</span>
+        <span class="hero__cue-dot">
+          <svg class="hero__cue-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9.2 12 15.4l6-6.2" stroke="currentColor"
+                  stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </a>
+    </div>
     <div class="site-footer__grid">
       <div>
         <p class="site-footer__title">合作说明</p>
@@ -484,7 +496,7 @@ setTimeout(function () {
       <div>
         <p class="site-footer__title">联系方式</p>
         <ul class="site-footer__list">
-          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="https://mail.qq.com/" target="_blank" rel="noopener noreferrer">2235126059@qq.com</a></li>
         </ul>
         <p class="site-footer__note">欢迎对相关领域感兴趣的朋友通过邮箱进行交流探讨，期待您的来信。</p>
       </div>

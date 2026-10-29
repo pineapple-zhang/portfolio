@@ -48,7 +48,7 @@ setTimeout(function () {
   </div>
 </nav>
 
-<main id="main">
+<main id="main" class="has-cue">
 
   <!-- 深色首屏（2026-10-15）。
        用户点名参考豆包下载页（doubao.com/download/desktop）的版式：
@@ -72,51 +72,23 @@ setTimeout(function () {
         <span>还在各大平台<br class="llm-br">疯狂烧Token<span class="llm-q">？</span></span>
         <span>不如来部署<br class="llm-br2">大模型<span class="llm-grad">免费用</span></span>
       </h1>
-      <!-- 两个句子各占一行：用户 2026-10-15 指出「不」被挤到了上一行末尾
-           （……跑起来。不 / 联网、……）。用两个 block 的 span 把断行钉在句号处，
-           每句内部该折还照折 —— 窄屏不会因此溢出。 -->
+      <!-- 2026-10-29 用户要求去掉首屏那两句里的第一句（llama.cpp / Qwen 那句）
+           和下面两个按钮，只留「不联网、不租显卡……」这一句。 -->
       <p class="llm-hero__sub">
-        <span>用 llama.cpp 的 Windows CUDA 版，把量化后的 Qwen 多模态模型跑起来。</span>
-        <span>不联网、不租显卡，双击一个 .bat 就能在浏览器里用。</span>
+        <span>不联网、不花钱，不买API，只要双击一个 .bat 就能用！</span>
       </p>
-      <div class="llm-hero__acts">
-        <a class="llm-btn" href="#scripts">看启动脚本</a>
-        <a class="llm-hero__link" href="#pick">看怎么选模型 →</a>
-      </div>
 
-      <div class="llm-win llm-win--dark llm-hero__win">
+      <div class="llm-win llm-win--dark llm-hero__win llm-video">
         <div class="llm-win__bar">
           <span class="llm-win__dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="llm-win__name">启动_Qwen3.5-4B.bat</span>
-          <span class="llm-win__tag">Windows / CUDA 12.4</span>
+          <span class="llm-win__name">Agent · 本地部署</span>
+          <span class="llm-win__tag">01:24 / 21:9</span>
         </div>
-        <pre class="llm-code"><code>"%~dp0llama-server.exe" -m "models\Qwen3.5-4B-Q4_K_M.gguf" -mm "models\mmproj-Qwen3.5-4B-BF16.gguf" -a "Qwen3.5-4B" --fit on -c 131072 -fa on -ctk q8_0 -ctv q8_0 -np 1 --reasoning off --host 127.0.0.1 --port 8081 --image-min-tokens 1024 --ui-config-file "ui-config.json" --jinja --ui-mcp-proxy --mcp-servers-config "mcp-config.json"</code></pre>
+        <video class="llm-video__el" src="assets/video/agent-local.mp4" poster="assets/video/agent-local-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Agent 能力与本地部署演示，无音轨"></video>
       </div>
     </div>
   </header>
 
-  <!-- 硬件与版本：一句话交代清楚"跑在什么东西上"，
-       后面的所有取舍（上下文能开多大、为什么 9B 慢）都从这儿来。 -->
-  <section class="llm-spec wrap" aria-label="运行环境">
-    <dl class="llm-spec__list">
-      <div class="llm-spec__item reveal-line">
-        <dt>我的显卡</dt>
-        <dd>RTX 3060 Laptop <b>6 GB</b></dd>
-      </div>
-      <div class="llm-spec__item reveal-line">
-        <dt>推理引擎</dt>
-        <dd>llama.cpp <b>b11222</b><br><span>0.4.0-dev · CUDA 12.4</span></dd>
-      </div>
-      <div class="llm-spec__item reveal-line">
-        <dt>可选模型</dt>
-        <dd><b>3 个</b><br><span>GGUF 量化，共约 11.1 GB</span></dd>
-      </div>
-      <div class="llm-spec__item reveal-line">
-        <dt>启动方式</dt>
-        <dd><b>双击 .bat</b><br><span>浏览器里用，127.0.0.1</span></dd>
-      </div>
-    </dl>
-  </section>
 
   <!-- 三步 -->
   <section class="llm-sec wrap wrap--wide" id="steps" aria-label="三步跑起来">
@@ -602,6 +574,20 @@ setTimeout(function () {
 
 <footer class="site-footer">
   <div class="wrap">
+    <div class="hero__cue hero__cue--bottom">
+      <button class="hero__cue-pill" type="button" id="contact-copy"
+              data-email="2235126059@qq.com" aria-label="复制邮箱 2235126059@qq.com">
+        <span class="hero__cue-text">期待您通过邮箱联络洽谈</span>
+        <span class="hero__cue-dot">
+          <svg class="hero__cue-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="5.5" width="18" height="13" rx="2.4"
+                  stroke="currentColor" stroke-width="1.8"/>
+            <path d="m3.9 7.1 8.1 6 8.1-6" stroke="currentColor"
+                  stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </button>
+    </div>
     <div class="site-footer__grid">
       <div>
         <p class="site-footer__title">合作说明</p>
@@ -613,7 +599,7 @@ setTimeout(function () {
       <div>
         <p class="site-footer__title">联系方式</p>
         <ul class="site-footer__list">
-          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="https://mail.qq.com/" target="_blank" rel="noopener noreferrer">2235126059@qq.com</a></li>
         </ul>
         <p class="site-footer__note">欢迎对相关领域感兴趣的朋友通过邮箱进行交流探讨，期待您的来信。</p>
       </div>

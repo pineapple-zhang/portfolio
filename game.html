@@ -49,7 +49,7 @@ setTimeout(function () {
   </div>
 </nav>
 
-<main id="main">
+<main id="main" class="has-cue">
 
   <!-- 暗底首屏：参考 deepseek.com/harness 的版式（2026-10-15 用户指定）。
        视频放在圆角矩形里，不通版铺满；配色与尺寸的来路见 site.css 第 23 节。 -->
@@ -65,16 +65,16 @@ setTimeout(function () {
           <path d="M19.4 15.2c.24 1.9 1.16 3 2.9 3.4-1.74.4-2.66 1.5-2.9 3.4-.24-1.9-1.16-3-2.9-3.4
                    1.74-.4 2.66-1.5 2.9-3.4Z" fill="currentColor" opacity=".8"/>
         </svg>
-        五个网页小游戏
+        AI带你开发更简单
       </p>
 
       <h1 class="harness-hero__title">
-        <span>这几个游戏</span>
-        <span>现在，打开就能玩</span>
+        <span>有想法却不会开发？</span>
+        <span>我带你用Agent<em class="harness-hl">大白话</em>就能开发</span>
       </h1>
 
       <p class="harness-hero__sub">
-        都是单文件 HTML：逻辑、画面、音效全在里面，没有引擎、没有构建。
+        逻辑、画面、音效、代码、你担心的一切，<span style="white-space:nowrap;">AI全部搞定</span>
       </p>
 
       <div class="harness-hero__frame">
@@ -215,11 +215,11 @@ setTimeout(function () {
             <span>横版动作 · 关卡制</span>
           </div>
           <h3 class="work__title reveal-line">玉兔下凡</h3>
-          <p class="work__desc reveal-line">像素风的横版动作。除了跑、跳、二段跳，还有轻击、重击、气功波、冲刺、升龙这些连招；城镇里用点数强化攻击力、生命上限和护甲，再进关卡。</p>
+          <p class="work__desc reveal-line">像素风横版动作，共四关：雨夜旷野、幽蓝洞窟、赤核殿堂、月蚀天穹。跑跳、二段跳之外，还有轻击、重击、气功波、冲锋、升龙、空中下劈/天降斧和雷霆天怒；击杀怪物攒经验，六级成长，死亡只清空当前经验、不掉等级。</p>
           <div class="work__tags reveal-line">
             <span class="tag">像素动作</span>
             <span class="tag">连招</span>
-            <span class="tag">强化成长</span>
+            <span class="tag">六级成长</span>
           </div>
         </div>
         <figure class="work__media work__media--wide reveal-line">
@@ -335,6 +335,17 @@ setTimeout(function () {
 
 <footer class="site-footer">
   <div class="wrap">
+    <div class="hero__cue hero__cue--bottom">
+      <a class="hero__cue-pill" href="llm.html" aria-label="继续和我一起探索合作">
+        <span class="hero__cue-text">继续和我一起探索合作</span>
+        <span class="hero__cue-dot">
+          <svg class="hero__cue-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9.2 12 15.4l6-6.2" stroke="currentColor"
+                  stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </a>
+    </div>
     <div class="site-footer__grid">
       <div>
         <p class="site-footer__title">合作说明</p>
@@ -346,7 +357,7 @@ setTimeout(function () {
       <div>
         <p class="site-footer__title">联系方式</p>
         <ul class="site-footer__list">
-          <li><a href="mailto:2235126059@qq.com">2235126059@qq.com</a></li>
+          <li><a href="https://mail.qq.com/" target="_blank" rel="noopener noreferrer">2235126059@qq.com</a></li>
         </ul>
         <p class="site-footer__note">欢迎对相关领域感兴趣的朋友通过邮箱进行交流探讨，期待您的来信。</p>
       </div>

@@ -467,199 +467,218 @@
   letter-spacing: .02em;
 }
 
-/* ---- 首屏 CTA：面试官 / 合作 两个入口 --------------------------------
-   材质 = 无框磨砂浅蓝卡。
-   ⚠️ 用户反馈：蓝色改浅色，动画太快，出场动画没有出现。
-   这版改动：
-     ① 悬停从深蓝墨渐变（#2a6fdd→#173f96）改为浅蓝（#B9D7FF→#A0C8FF），
-        文字用深蓝墨（#0d2744），对比度 11.8:1，远超 WCAG AAA。
-     ② 悬停过渡 420ms、掠光 1100ms、出场 980ms，全部放慢。
-     ③ 出场动画不依赖 JS 设 --d，直接在 CSS 里硬编码延迟 1.2s / 1.35s，
-        幅度加大到 translateY(28px) scale(.92)，确保看得见。
+/* 首屏最下方的一句纯文字提示（2026-10-29 用户要求去掉原来的胶囊，
+   改成「向下滚动也可继续参观」）。固定贴首屏下沿，不参与文档流。 */
+.hero__scrollhint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(20px, 3.4vh, 40px);
+  margin: 0;
+  z-index: 2;
+  text-align: center;
+  font-size: clamp(.8125rem, .95vw, .9375rem);
+  font-weight: var(--fw-body);
+  color: var(--ink-2);
+  letter-spacing: .06em;
+  pointer-events: none;
+  /* 透明度/位移由 site.js 按滚动逐帧写入，这里只做合成层提示 */
+  will-change: opacity, transform;
+}
 
-   ⚠️ 触摸目标高度钉在 44px（WCAG 最小触摸尺寸）。
-   ⚠️ 位移 / 掠光只放在 @media (hover: hover) 里 —— 触屏没有真 hover，
-      不加判断点下去会先跳一下再跳转。
-   ⚠️ hover 不改变任何影响布局的属性（只有 transform 和阴影），
-      所以不会去撞 70% 处的「向下滚动继续」胶囊。
-   ⚠️ 文字逐字用用户给的「面试官点击跳转」「合作点击跳转」，别改写。 */
+/* ---- 首屏 CTA：面试官 / 合作 两个入口 --------------------------------
+   2026-10-29 第四版（用户要求）：
+   · 内框永远是白胶囊 + 深色字，悬停/按下都不变色；
+   · 悬停放大一点（scale 1.035），同时按钮外面浮现一圈彩色外发光，
+     光从左上一点开始顺时针画满整圈；
+   · 按下不再额外加环，发光保持不变。
+   ⚠️ 入场动画必须挂 .hero__act-wrap，不能挂 .hero__act：
+      animation 的 fill-mode: both 会一直压住 transform，hover 的缩放就失效了。
+   ⚠️ 悬停发光是 .hero__act 里的 SVG（.hero__trace），
+      所以会跟着按钮一起缩放；SVG 与按钮同框，描边中心压在边框上，
+      内侧一半由白色 .trace-cover 盖住，只留外发光。
+   ⚠️ 静止时 .trace-glow-group 必须 opacity:0 —— 否则 round 线帽会在
+      dashoffset 等于 dasharray 时留一个小圆点（用户截图里的两个蓝点）。
+   ⚠️ 阴影固定，不参与 transition 或逐帧动画；动效只用 opacity / transform。
+   ⚠️ 触摸目标 44px；文案逐字用「面试官点击跳转」「合作点击跳转」，别改写。 */
 .hero__acts {
-  margin-top: clamp(var(--sp-5), 3vh, var(--sp-7));
+  --act-blue: #0071e3;
+  --act-ink: #1d1d1f;
+  --act-ease: cubic-bezier(.22, 1, .36, 1);
+  position: relative;
+  margin-top: clamp(72px, 8vh, 110px);
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: var(--sp-4);
+  gap: clamp(28px, 3vw, 48px);
 }
 
-/* 出场专用外壳，不带任何视觉样式 */
+.hero__act-wrap,
+.hero__act { box-sizing: border-box; }
+
+/* 出场专用外壳：不承载视觉，也不承担 hover */
 .hero__act-wrap {
+  position: relative;
   display: inline-flex;
+  min-width: 0;
   max-width: 100%;
+  isolation: isolate; /* 让彩色环的 z-index:-1 留在 wrap 里，不跑到页面背景后面 */
 }
+
 
 .hero__act {
   position: relative;
   isolation: isolate;
-  overflow: hidden;              /* 裁掉掠光，保住胶囊轮廓 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  max-width: 100%;
+  min-width: 44px;
   min-height: 44px;
+  max-width: 100%;
   padding: 0 clamp(20px, 2.4vw, 32px);
-  border: 0;                     /* 不要描边 —— 这一版的核心 */
+  border: 0;
   border-radius: 999px;
   font-size: clamp(.9375rem, min(1.05vw, 1.9vh), 1.0625rem);
   font-weight: var(--fw-body);
+  line-height: 1.4;
   letter-spacing: .02em;
+  text-align: center;
   text-decoration: none;
   white-space: nowrap;
-  color: var(--ink, #1d1d1f);
-  background-color: rgba(255, 255, 255, .80);
-  background-image: linear-gradient(180deg,
-      rgba(255, 255, 255, .96), rgba(255, 255, 255, .56));
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  backdrop-filter: blur(16px) saturate(150%);
+  color: var(--act-ink);
+  background: #fff;
+  /* 1px 描边用阴影画，避免 border 改变盒模型 */
   box-shadow:
-    0 0 0 1px rgba(16, 18, 27, .045),
-    0 1px 1px rgba(16, 18, 27, .05),
-    0 6px 14px -6px rgba(16, 18, 27, .13),
-    0 20px 38px -24px rgba(16, 18, 27, .24);
-  transition:
-    transform 420ms var(--ease, cubic-bezier(.22, .61, .36, 1)),
-    box-shadow 420ms var(--ease, cubic-bezier(.22, .61, .36, 1)),
-    color 380ms var(--ease, cubic-bezier(.22, .61, .36, 1)),
-    background-color 380ms var(--ease, cubic-bezier(.22, .61, .36, 1));
+    0 0 0 1px rgba(29, 29, 31, .08),
+    0 1px 2px rgba(0, 0, 0, .04),
+    0 6px 16px -8px rgba(0, 0, 0, .10);
+  -webkit-tap-highlight-color: rgba(0, 113, 227, .12);
+  transition: transform 260ms var(--act-ease);
 }
 
-/* hover 的浅蓝填充层。用独立图层 + opacity 过渡。
-   背景色 #B9D7FF (RGB 185, 215, 255) 对文字 #0d2744 (RGB 13, 39, 68)
-   的对比度 11.8:1，远超 WCAG AAA（7:1）。 */
-.hero__act::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: inherit;
-  /* 亮蓝渐变 + 白字（用户 2026-10-28：「变成蓝色的时候字体也要变成白色」）。
-     白字要过 AA 正文，文字所在的中段必须够深：55% 处 #2A72E8 对白字 4.50:1；
-     左端 #4E9BFF 保持"亮蓝"的观感（白字在这里只有 2.82:1，但文字不压在最左端），
-     右端 #1F63D6 5.51:1。再加一层很轻的文字投影提升边缘可读性。 */
-  background-image: linear-gradient(120deg,
-      #4E9BFF 0%, #2A72E8 55%, #1F63D6 100%);
-  opacity: 0;
-  transition: opacity 420ms var(--ease, cubic-bezier(.22, .61, .36, 1));
-  pointer-events: none;
-}
-
-/* 掠光层 */
-.hero__act::after {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  top: 0;
-  bottom: 0;
-  left: -40%;
-  width: 40%;
-  background-image: linear-gradient(100deg,
-      rgba(255, 255, 255, 0),
-      rgba(255, 255, 255, .55) 50%,
-      rgba(255, 255, 255, 0));
-  transform: translateX(0) skewX(-18deg);
-  opacity: 0;
-  pointer-events: none;
-}
+/* 内框保持白色：不再有蓝色填充层和掠光层 */
 
 .hero__act-text {
   position: relative;
-  z-index: 2;                    /* 压在两个伪元素上面 */
+  z-index: 1;
 }
 
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .hero__act { background-color: rgba(255, 255, 255, .94); }
+/* 悬停光圈：一条沿着胶囊边走的彩色描边，像灯光从一点画满整圈。
+   用 SVG rect 的 pathLength=100 把周长归一化，stroke-dashoffset 100→0
+   就是“从起点画满”；不需要 JS 量长度，窗口缩放也不会失效。
+   halo 是同一条描边加粗、降透明度，做柔和光晕。 */
+.hero__trace {
+  position: absolute;
+  /* 和按钮同框同圆角：描边中心正好落在边框上，不会“框没对准”。
+     内侧那一半由 .trace-cover 白色矩形盖住，只留下外发光。 */
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
 }
-
-@media (hover: hover) {
-  .hero__act:hover {
-    color: #fff;                 /* 用户要求：变蓝时字变白 */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, .22);
-    transform: translateY(-2px);
-    box-shadow:
-      0 1px 2px rgba(90, 169, 255, .18),
-      0 10px 20px -8px rgba(61, 139, 255, .32),
-      0 24px 44px -26px rgba(61, 139, 255, .44);
-  }
-  .hero__act:hover::before { opacity: 1; }
-  .hero__act:hover::after {
-    animation: heroActSheen 1100ms var(--ease, cubic-bezier(.22, .61, .36, 1)) 60ms 1;
-  }
-  .hero__act:active {
-    transform: translateY(0) scale(.985);
-    transition-duration: 90ms;
-  }
-}
-
-@keyframes heroActSheen {
-  from { opacity: 0; transform: translateX(0) skewX(-18deg); }
-  35%  { opacity: 1; }
-  to   { opacity: 0; transform: translateX(420%) skewX(-18deg); }
-}
-
-/* 键盘焦点：只给外环，不动填充 */
-.hero__act:focus-visible {
-  outline: 3px solid var(--title-blue, #2471e1);
-  outline-offset: 3px;
-}
-
-/* ---- 出场：两个按钮逐个进场，不是整组一起淡入 ----
-   ⚠️ 完全不依赖 JS 设 --d：直接在 CSS 里硬编码延迟 1.2s / 1.35s。
-   幅度加大：translateY(28px) scale(.92) → 1，时长 980ms，确保看得见。
-   排在副标之后（副标约 tail + 180ms ≈ 1.1s 起），按钮从 1.2s 起不抢。 */
-@keyframes heroActIn {
-  from { opacity: 0; transform: translateY(28px) scale(.92); }
-  to   { opacity: 1; transform: none; }
-}
-
-.js .hero__act-wrap {
+.trace-cover { fill: #fff; }
+/* 六层不同粗细的描边叠出柔和光晕。
+   ⚠️ 不用 SVG 高斯模糊：实测每次 hover 会有 55–75ms 的长帧，
+      叠层方案几乎没有额外开销。 */
+.trace-glow-group {
   opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.trace-glow-group rect {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 320ms cubic-bezier(.4, 0, 1, 1);
+}
+.trace-glow-group .glow-1 { stroke-width: 26; opacity: .020; }
+.trace-glow-group .glow-2 { stroke-width: 20; opacity: .030; }
+.trace-glow-group .glow-3 { stroke-width: 15; opacity: .048; }
+.trace-glow-group .glow-4 { stroke-width: 11; opacity: .075; }
+.trace-glow-group .glow-5 { stroke-width: 7;  opacity: .140; }
+/* 2026-10-29 用户要求「彩色描边改淡一点」：主描边 .90 → .55，外圈同步减淡 */
+.trace-glow-group .glow-6 { stroke-width: 3.5; opacity: .550; }
+
+@media (hover: hover) and (pointer: fine) {
+  .hero__act:hover .trace-glow-group { opacity: 1; transition: opacity 120ms ease-out; }
+  .hero__act:hover .trace-glow-group rect {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 700ms cubic-bezier(.65, 0, .35, 1);
+  }
+}
+
+/* 键盘焦点也用同一圈外发光 */
+.hero__act:focus-visible .trace-glow-group { opacity: 1; }
+.hero__act:focus-visible .trace-glow-group rect {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 700ms cubic-bezier(.65, 0, .35, 1);
+}
+
+/* 键盘焦点：蓝色外环（不改内框颜色） */
+.hero__act:focus-visible {
+  outline: 3px solid var(--act-blue);
+  outline-offset: 4px;
+}
+
+/* 鼠标：只放大一点，不变色 */
+@media (hover: hover) and (pointer: fine) {
+  /* 只放大，不按下回缩 —— 按下时光圈保持原样，不变粗也不缩小 */
+  .hero__act:hover { transform: scale(1.035); }
+}
+
+/* 没有 .js 时默认可见；有 JS 时先藏住等出场 */
+.js .hero__act-wrap { opacity: 0; }
+
+@keyframes heroActEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .js .hero__acts.is-in .hero__act-wrap {
-  animation: heroActIn 980ms var(--ease, cubic-bezier(.22, .61, .36, 1)) both;
-}
-
-/* 硬编码延迟：第一个 1.2s，第二个 1.35s（错开 150ms） */
-.js .hero__acts.is-in .hero__act-wrap:nth-child(1) {
-  animation-delay: 1.2s;
+  animation: heroActEnter 520ms var(--act-ease) 1.15s both;
 }
 .js .hero__acts.is-in .hero__act-wrap:nth-child(2) {
-  animation-delay: 1.35s;
+  animation-delay: 1.24s;
 }
 
-/* ---- 降低动态：不位移、不掠光、直接显示，颜色变化保留 ---- */
-@media (prefers-reduced-motion: reduce) {
-  .js .hero__act-wrap { opacity: 1; }
-  .js .hero__acts.is-in .hero__act-wrap { animation: none; }
-  .hero__act { transition: color 120ms linear, box-shadow 120ms linear, background-color 120ms linear; }
-  .hero__act::before { transition: opacity 120ms linear; }
-  .hero__act::after { display: none; }
-}
-@media (prefers-reduced-motion: reduce) and (hover: hover) {
-  .hero__act:hover,
-  .hero__act:active { transform: none; }
+/* 键盘提前 Tab 进来时立即显示，别让焦点停在透明按钮上 */
+.js .hero__acts .hero__act-wrap:focus-within {
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
-/* ≤430px：竖排，两个按钮各自撑满可用宽度 */
-@media (max-width: 430px) {
+/* ---- 手机：竖排满宽 ---- */
+@media (max-width: 600px) {
   .hero__acts {
     flex-direction: column;
-    align-items: stretch;
-    gap: var(--sp-3);
+    gap: 24px;
   }
-  .hero__act-wrap,
+  .hero__act-wrap { width: 100%; }
   .hero__act { width: 100%; }
 }
+
+/* ---- 降低动态：直接显示，不位移、不等待 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .js .hero__act-wrap {
+    opacity: 1;
+    transform: none;
+  }
+  .js .hero__acts.is-in .hero__act-wrap {
+    animation: none;
+  }
+  .hero__act,
+  .hero__act:hover,
+  .hero__act:active {
+    transform: none;
+    transition: none;
+  }
+  .hero__trace { display: none; }
+}
+
 /* 滚动提示。
    ⚠️ 定位基准从「视口底部」改成了「画布高的 60%」——
    原来是 bottom: clamp(24px, 5vh, 64px)，钉在首屏最底下，
@@ -719,6 +738,10 @@
   font-size: 1rem;
   letter-spacing: .05em;
   color: var(--ink);
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
 }
 
 .hero__cue-text { flex: 0 0 auto; }
@@ -793,6 +816,83 @@
   50%      { opacity: .3; }
 }
 .js .hero__cue-arrow.is-blink { animation: cueBlink 2s ease-in-out infinite; }
+
+/* ---- 子页面底部的「继续探索」胶囊 ----
+   视觉上放在页脚分隔线**上方**的留白里（用户 2026-10-29 指定）：
+   绝对定位到 footer 顶边之上，不占正常文档流，所以页脚高度和
+   页面总长都不变；它背后的底色直接是上一块 section 的底色，
+   不会出现单独一条色带。
+   动画仍由 site.js 12b 驱动，开始时机改为进入视口，
+   并且不再按滚动淡出（它本来就在页面底部）。 */
+.site-footer .hero__cue--bottom {
+  position: absolute;
+  left: 50%;
+  /* 基础 .hero__cue 带着 top:70%，这里必须清掉，否则 top+bottom 同时生效，
+     高度会被压成 0。 */
+  top: auto;
+  bottom: calc(100% + 88px);
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding-inline: var(--sp-5);
+  z-index: 3;
+}
+/* 窄屏页脚上方的留白只有 ~70–95px，按桌面那个偏移会把按钮顶进作品图里。
+   收紧到 14px，54px 的胶囊仍能完整落在留白内。 */
+/* 桌面：把最后一块 section 的底部留白加到 230px，给胶囊腾出真正的空位。
+   否则像 AI 视频页那样最后一行卡片贴着页脚，胶囊会直接压在卡片上。
+   只作用于带底部胶囊的四页（main.has-cue），首页不受影响。 */
+@media (min-width: 861px) {
+  main.has-cue > section:last-of-type { padding-bottom: 230px; }
+  /* 平面设计页最后一张 .promo 自带 108px 下边距，会把留白撑到 338px，
+     胶囊就偏到页脚那边去了。撤掉它，四页的留白统一成 230px，
+     胶囊用 bottom:88px 正好垂直居中（上下各 88px）。 */
+  main.has-cue > section:last-of-type .promo:last-child { margin-bottom: 0; }
+}
+@media (max-width: 860px) {
+  /* 手机页脚本身就比一屏高，胶囊若放在分隔线之上，滚到页底时会被切在屏幕外。
+     所以窄屏改为放在页脚内侧顶部（分隔线下方），并给页脚多留一点上内边距。
+     特异性要压过下面 @media(max-width:860px) 里 `.hero__cue` 的
+     position:static / transform:none / margin-top，所以带上 .site-footer。 */
+  body .site-footer { padding-top: max(94px, 10vh); }
+  /* 页脚三栏在手机上纵向堆叠，整体约 800px 高；上内边距加高后，
+     滚到页底时页脚顶边会被顶到固定导航下面。把三栏与版权行之间的
+     下留白收掉 40px，页脚总高回到 ~786px，胶囊就完整落在导航之下。 */
+  body .site-footer__grid { padding-bottom: 8px; }
+  .site-footer .hero__cue--bottom {
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    bottom: auto;
+    transform: translateX(-50%);
+    margin: 0;
+  }
+}
+.hero__cue--bottom .hero__cue-pill {
+  --d: 120ms;
+  /* 2026-10-29 用户二次改配色：按「向下滚动继续」那张参考图，
+     改回白底 + 深色字 + 蓝色圆球。
+     阴影不再单独覆盖，直接沿用基础 .hero__cue-pill 那条
+     （和首页参考图是同一套）；浅色页面上全靠它撑出边界。
+     文字色必须写死：深色主题下 --ink 是浅色，会和白底撞在一起。 */
+  /* 2026-10-29 用户反馈「白色的字体颜色太深了」：从近黑 #1D1D1F
+     提到中深灰 #4F4F55，白底上仍有 7.7:1，够 AA。 */
+  color: #4F4F55;
+  background: #fff;
+  font-weight: 600;
+}
+.hero__cue--bottom .hero__cue-dot { background: #2F7BF6; }
+/* 深色页（平面设计 / 小游戏开发）继续保持原来的深灰胶囊 + 白字；
+   白底配色只给浅色的 AI视频、大模型两页。 */
+.theme-dark .hero__cue--bottom .hero__cue-pill {
+  color: #fff;
+  background: #2C2C2E;
+  box-shadow: 0 12px 28px -16px rgba(0, 0, 0, .55);
+}
+/* 底部胶囊在进入视口前保持「完整宽度但透明」：
+   否则 JS 的 54px 起始宽会把右侧蓝球裁在视口外，手机审计会误报横向溢出。 */
+.js .hero__cue--bottom .hero__cue-pill { width: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   /* 出场时间线整条不播，直接给最终样子（退场的淡出由 JS 保留） */
@@ -1539,6 +1639,7 @@
    ========================================================================== */
 
 .site-footer {
+  position: relative;             /* 底部胶囊绝对定位的基准，见上一节 */
   background: var(--bg-raised);
   border-top: 1px solid var(--line);
   padding-block: clamp(var(--sp-7), 8vh, var(--sp-9)) var(--sp-6);
@@ -3963,11 +4064,53 @@ html.theme-dark .site-nav--bar:not(.is-stuck) {
 .harness-hero__title {
   margin: clamp(14px, 2vh, 22px) 0 0;
   font-size: clamp(2.25rem, 4.7vw, 4rem);
-  font-weight: 500;
+  /* 2026-10-29 用户要求「字体粗一点」：500 → 600 */
+  font-weight: 600;
   line-height: 1.22;
   letter-spacing: .01em;
 }
-.harness-hero__title span { display: block; }
+.harness-hero__title span { display: block; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .harness-hero__title {
+    font-size: clamp(1.5rem, 6.2vw, 2rem);
+    line-height: 1.3;
+  }
+}
+
+/* 「大白话」：打开页面时 白 → 彩色 → 流光 → 回白（2026-10-29 用户要求）。
+   单元素方案：渐变一直铺在字后面，用 -webkit-text-fill-color 在白色和透明之间过渡。
+   白色盖住渐变 → 透明露出渐变；最后再盖回白色，不残留彩色。
+   ⚠️ 不要用 inline-block + 叠加层：那会让手机端的「大白话」变成一个不可断行的整体，
+      整句被挤成三行。 */
+.harness-hero__title .harness-hl {
+  font-style: normal;
+  color: #fff;
+  background-image: linear-gradient(90deg,
+    #f0923a 0%, #f5b44a 16%, #f2ce86 32%, #dde3c9 48%,
+    #a9cbd6 60%, #6fb4e8 74%, #3f8cdd 88%, #2f74d0 100%);
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: #fff;
+  animation: hlColorRun 6s linear .7s both;
+}
+@keyframes hlColorRun {
+  0%   { -webkit-text-fill-color: #fff; background-position: 0% 50%; }
+  8%   { -webkit-text-fill-color: #fff; }
+  20%  { -webkit-text-fill-color: transparent; }
+  76%  { -webkit-text-fill-color: transparent; }
+  88%  { -webkit-text-fill-color: #fff; }
+  100% { -webkit-text-fill-color: #fff; background-position: 100% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .harness-hl {
+    animation: none;
+    -webkit-text-fill-color: #fff;
+    background-image: none;
+  }
+}
+
 
 .harness-hero__sub {
   max-width: 640px;
@@ -4571,7 +4714,7 @@ html.is-playing { overflow: hidden; }
 }
 /* 每句一行。`display: block` 只钉住「句号处」这个断点，
    句子内部照样按容器宽度折行 —— 所以窄屏不会溢出。 */
-.llm-hero__sub span { display: block; }
+.llm-hero__sub span { display: block; text-wrap: balance; }
 .llm-hero__acts {
   display: flex;
   flex-wrap: wrap;
@@ -4580,7 +4723,29 @@ html.is-playing { overflow: hidden; }
   gap: var(--sp-4) var(--sp-5);
   margin-top: clamp(24px, 3.4vh, 36px);
 }
-.llm-hero__win { margin-top: clamp(34px, 5vh, 58px); text-align: left; }
+.llm-hero__win { margin-top: clamp(58px, 8vh, 94px); text-align: left; }
+
+/* 2026-10-29 用户要求：把首屏的启动脚本窗口换成 21:9 的 Agent 演示视频。
+   无音轨、静音自动循环；poster 兜底，移动端也按 21:9 缩放。 */
+.llm-video__el {
+  display: block;
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  object-fit: cover;
+  background: #05080F;
+}
+/* 手机：窗口标题不许折行，右侧规格标签直接隐藏，避免压到视频上 */
+@media (max-width: 600px) {
+  .llm-video .llm-win__bar { height: 44px; padding: 0 12px; }
+  .llm-video .llm-win__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .llm-video .llm-win__tag { display: none; }
+}
 /* ⚠️ 首屏那条命令**要换行**。默认的 `white-space: pre` + `overflow-x: auto`
    会把 300 多个字符的一行截断，首屏里没人会去横向拖 ——
    观众第一眼看到的就成了「一行的前半截」，而这条命令正是这一页的主角。 */
@@ -5273,3 +5438,27 @@ html { touch-action: manipulation; }
   /* 小游戏页的源码卡 24 → 22，和上面两块对齐 */
   .gx-card { padding: 22px; }
 }
+
+
+/* 2026-10-30 大模型页页脚 CTA：点击复制邮箱后的小提示 */
+.site-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 34px;
+  transform: translate(-50%, 16px);
+  max-width: calc(100vw - 32px);
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: rgba(20, 26, 34, .94);
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .7);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 9999;
+}
+.site-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
