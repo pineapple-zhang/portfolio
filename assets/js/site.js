@@ -186,7 +186,7 @@
      只在 index.html 生效 —— 靠 .hero__stage 是否存在判断，子页面没有这个节点。
 
      拆字用的是 textContent 再逐字包 span，文本本身没变，
-     选中复制、读屏、搜索引擎看到的都还是「天生我材必有用」。
+     选中复制、读屏、搜索引擎看到的都还是「欢迎来到一个小世界」。
      ---------------------------------------------------------------------- */
   /* ⚠️⚠️ 这两个查询必须在 `if (heroStageEl)` **外面**。
      `var` 只把**声明**提到函数作用域，赋值不会 —— 原来这两个写在
@@ -282,6 +282,11 @@
     if (subEl) {
       subEl.style.setProperty('--d', (tail + 180) + 'ms');
       actors.push(subEl);
+    }
+    var hintEl = doc.querySelector('.hero__hint');
+    if (hintEl) {
+      hintEl.style.setProperty('--d', (tail + 280) + 'ms');
+      actors.push(hintEl);
     }
     if (actsEl) {
       /* 光晕的彩色渐变在 SVG 里用 SMIL 一直转（5s 一圈）。
