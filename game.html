@@ -7,7 +7,8 @@
 <meta name="description" content="张杰波的五个网页小游戏：炸弹人双人对战、玉兔下凡、雨夜便利店街角、祈年殿、五子棋 —— 原生 Canvas 与 three.js，零构建，打开就能玩。">
 <meta name="theme-color" content="#0A0A0A">
 <link rel="preload" as="image" href="assets/video/game-hero-poster.jpg">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161616'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='17' font-weight='700' fill='%23F5F5F7' text-anchor='middle'%3E%E6%B3%A2%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/img/favicon-pineapple.png?v=2">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png?v=2">
 <!-- ⚠️ 必须在样式表之前把 .js 挂上，不能等到 body 末尾的 site.js。
      首屏入场的初始态（opacity:0）只写在 `.js` 选择器下面 ——
      .js 挂晚了的话，浏览器已经按「全可见」画过一帧，
@@ -177,7 +178,7 @@ setTimeout(function () {
   <section class="section wrap wrap--wide" aria-label="五个网页小游戏">
     <div class="section__head">
       <p class="eyebrow section__eyebrow reveal-line">小游戏</p>
-      <h2 class="section-title reveal-line">五个能直接打开玩的小游戏</h2>
+      <h2 class="section-title reveal-line">五个大白话开发的小游戏</h2>
       <p class="section__intro reveal-line">每个游戏就是一个 HTML 文件，逻辑、画面、音效全在里面（目前简单的游戏才能做到一个文件），文件双击就能玩。现在我把它内置在网页里，马上就点击「打开玩」就在本页面试玩一把。</p>
     </div>
 
@@ -185,33 +186,17 @@ setTimeout(function () {
 
       <article class="work reveal-line">
         <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/bomberman.jpg" alt="炸弹人双人对战：可破坏方块的地图、四名角色与倒计时 HUD"
+          <img src="assets/img/game/rabbit.jpg" alt="玉兔下凡：雨夜城市里重甲兔战士与前方装甲猎犬的对峙"
                width="1280" height="720" loading="lazy" decoding="async">
         
-          <button class="work__launch" type="button" data-play="games/bomberman.html"
-                  aria-label="在这里打开玩：炸弹人双人对战">
+          <button class="work__launch" type="button" data-play="games/rabbit.html"
+                  aria-label="在这里打开玩：玉兔下凡">
             <span class="work__launch-ico" aria-hidden="true"></span>打开玩
           </button>
         </figure>
         <div>
           <div class="work__meta reveal-line">
             <span>01</span>
-            <span>双人同屏 · 3 分钟一局</span>
-          </div>
-          <h3 class="work__title reveal-line">炸弹人双人对战</h3>
-          <p class="work__desc reveal-line">两个人共用一台键盘打同一张地图：WASD + 空格 对 方向键 + 回车。木箱能炸开，会掉随机道具——加速、护盾、火箭筒、地雷、推箱……一局三分钟。</p>
-          <div class="work__tags reveal-line">
-            <span class="tag">双人同屏</span>
-            <span class="tag">道具系统</span>
-            <span class="tag">追焦镜头</span>
-          </div>
-        </div>
-      </article>
-
-      <article class="work reveal-line">
-        <div>
-          <div class="work__meta reveal-line">
-            <span>02</span>
             <span>横版动作 · 关卡制</span>
           </div>
           <h3 class="work__title reveal-line">玉兔下凡</h3>
@@ -222,62 +207,28 @@ setTimeout(function () {
             <span class="tag">六级成长</span>
           </div>
         </div>
-        <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/rabbit.jpg" alt="玉兔下凡：雨夜城市里重甲兔战士与前方装甲猎犬的对峙"
-               width="1280" height="720" loading="lazy" decoding="async">
-        
-          <button class="work__launch" type="button" data-play="games/rabbit.html"
-                  aria-label="在这里打开玩：玉兔下凡">
-            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
-          </button>
-        </figure>
-      </article>
-
-      <article class="work reveal-line">
-        <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/store.jpg" alt="雨夜便利店街角：湿路面反光、霓虹招牌与雨丝的三渲二街景"
-               width="1280" height="720" loading="lazy" decoding="async">
-        
-          <button class="work__launch" type="button" data-play="games/store.html"
-                  aria-label="在这里打开玩：雨夜便利店街角">
-            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
-          </button>
-        </figure>
-        <div>
-          <div class="work__meta reveal-line">
-            <span>03</span>
-            <span>three.js · 三渲二</span>
-          </div>
-          <h3 class="work__title reveal-line">雨夜便利店街角</h3>
-          <p class="work__desc reveal-line">雨夜的街角便利店。湿路面的反光、招牌霓虹、路灯下的雨丝都是实时算的；拖拽可以转视角，手一停它就自己慢慢运镜。</p>
-          <div class="work__tags reveal-line">
-            <span class="tag">three.js</span>
-            <span class="tag">夜景</span>
-            <span class="tag">实时光照</span>
-          </div>
-        </div>
       </article>
 
       <article class="work reveal-line">
         <div>
           <div class="work__meta reveal-line">
-            <span>04</span>
-            <span>three.js · 古建场景</span>
+            <span>02</span>
+            <span>双人同屏 · 3 分钟一局</span>
           </div>
-          <h3 class="work__title reveal-line">祈年殿</h3>
-          <p class="work__desc reveal-line">祈年殿的三维复原：三重檐、鎏金宝顶、汉白玉台基与栏杆。画面右侧有视角按钮、雷声开关，以及一键回到初始机位。</p>
+          <h3 class="work__title reveal-line">炸弹人双人对战</h3>
+          <p class="work__desc reveal-line">两个人共用一台键盘打同一张地图：WASD + 空格 对 方向键 + 回车。木箱能炸开，会掉随机道具——加速、护盾、火箭筒、地雷、推箱……一局三分钟。</p>
           <div class="work__tags reveal-line">
-            <span class="tag">three.js</span>
-            <span class="tag">古建</span>
-            <span class="tag">可交互</span>
+            <span class="tag">双人同屏</span>
+            <span class="tag">道具系统</span>
+            <span class="tag">追焦镜头</span>
           </div>
         </div>
         <figure class="work__media work__media--wide reveal-line">
-          <img src="assets/img/game/temple.jpg" alt="祈年殿：三重檐鎏金宝顶的三维复原，蓝天下带台基栏杆"
+          <img src="assets/img/game/bomberman.jpg" alt="炸弹人双人对战：可破坏方块的地图、四名角色与倒计时 HUD"
                width="1280" height="720" loading="lazy" decoding="async">
         
-          <button class="work__launch" type="button" data-play="games/temple.html"
-                  aria-label="在这里打开玩：祈年殿">
+          <button class="work__launch" type="button" data-play="games/bomberman.html"
+                  aria-label="在这里打开玩：炸弹人双人对战">
             <span class="work__launch-ico" aria-hidden="true"></span>打开玩
           </button>
         </figure>
@@ -295,7 +246,7 @@ setTimeout(function () {
         </figure>
         <div>
           <div class="work__meta reveal-line">
-            <span>05</span>
+            <span>03</span>
             <span>双人同屏 · 每回合限时</span>
           </div>
           <h3 class="work__title reveal-line">五子棋</h3>
@@ -308,6 +259,57 @@ setTimeout(function () {
         </div>
       </article>
 
+      <article class="work reveal-line">
+        <div>
+          <div class="work__meta reveal-line">
+            <span>04</span>
+            <span>three.js · 三渲二</span>
+          </div>
+          <h3 class="work__title reveal-line">雨夜便利店街角</h3>
+          <p class="work__desc reveal-line">雨夜的街角便利店。湿路面的反光、招牌霓虹、路灯下的雨丝都是实时算的；拖拽可以转视角，手一停它就自己慢慢运镜。</p>
+          <div class="work__tags reveal-line">
+            <span class="tag">three.js</span>
+            <span class="tag">夜景</span>
+            <span class="tag">实时光照</span>
+          </div>
+        </div>
+        <figure class="work__media work__media--wide reveal-line">
+          <img src="assets/img/game/store.jpg" alt="雨夜便利店街角：湿路面反光、霓虹招牌与雨丝的三渲二街景"
+               width="1280" height="720" loading="lazy" decoding="async">
+        
+          <button class="work__launch" type="button" data-play="games/store.html"
+                  aria-label="在这里打开玩：雨夜便利店街角">
+            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
+          </button>
+        </figure>
+      </article>
+
+      <article class="work reveal-line">
+        <figure class="work__media work__media--wide reveal-line">
+          <img src="assets/img/game/temple.jpg" alt="祈年殿：三重檐鎏金宝顶的三维复原，蓝天下带台基栏杆"
+               width="1280" height="720" loading="lazy" decoding="async">
+        
+          <button class="work__launch" type="button" data-play="games/temple.html"
+                  aria-label="在这里打开玩：祈年殿">
+            <span class="work__launch-ico" aria-hidden="true"></span>打开玩
+          </button>
+        </figure>
+        <div>
+          <div class="work__meta reveal-line">
+            <span>05</span>
+            <span>three.js · 古建场景</span>
+          </div>
+          <h3 class="work__title reveal-line">祈年殿</h3>
+          <p class="work__desc reveal-line">祈年殿的三维复原：三重檐、鎏金宝顶、汉白玉台基与栏杆。画面右侧有视角按钮、雷声开关，以及一键回到初始机位。</p>
+          <div class="work__tags reveal-line">
+            <span class="tag">three.js</span>
+            <span class="tag">古建</span>
+            <span class="tag">可交互</span>
+          </div>
+        </div>
+      </article>
+
+    
     </div>
   </section>
 
@@ -374,7 +376,7 @@ setTimeout(function () {
     </div>
 
     <div class="site-footer__bottom">
-      <span>©<span id="year">2026</span> 本站作者保留所有权利 · 当前网站版本：<span class="site-ver">V2.6</span></span>
+      <span>©<span id="year">2026</span> 本站作者保留所有权利 · 当前网站版本：<span class="site-ver">V2.7</span></span>
       <span>本网站全部由个人开发</span>
       <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
     </div>
