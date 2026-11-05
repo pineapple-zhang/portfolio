@@ -1223,6 +1223,40 @@
   var bandTrack = bandEl && bandEl.querySelector('.band__track');
 
   if (bandEl && bandTrack && bandTrack.children.length) {
+    /* 2026-11-02：每次打开随机从各子页面截图里抽一张。
+       预生成：每页 2 张（首屏 / 内容段），共 8 张；再加上 5 张游戏实机。
+       这里先把 HTML 里原来那 4 张固定页面图换掉，再走下面的随机排序。 */
+    var bandPagePool = [
+      { href: 'design.html',   name: '平面设计', shots: ['assets/img/band/pool-design-1.jpg', 'assets/img/band/pool-design-2.jpg'] },
+      { href: 'ai-video.html', name: 'AI视频',   shots: ['assets/img/band/pool-ai-video-1.jpg', 'assets/img/band/pool-ai-video-2.jpg'] },
+      { href: 'game.html',     name: '小游戏开发', shots: ['assets/img/band/pool-game-1.jpg', 'assets/img/band/pool-game-2.jpg'] },
+      { href: 'llm.html',      name: '大模型部署', shots: ['assets/img/band/pool-llm-1.jpg', 'assets/img/band/pool-llm-2.jpg'] }
+    ];
+    var bandOldPages = bandTrack.querySelectorAll('[data-band-page]');
+    for (var bp = bandOldPages.length - 1; bp >= 0; bp--) {
+      if (bandOldPages[bp].parentNode) bandOldPages[bp].parentNode.removeChild(bandOldPages[bp]);
+    }
+    var bandFrag = document.createDocumentFragment();
+    for (var bpp = 0; bpp < bandPagePool.length; bpp++) {
+      var P = bandPagePool[bpp];
+      var src = P.shots[Math.random() < 0.5 ? 0 : 1];
+      var li = document.createElement('li');
+      li.className = 'band__item';
+      var a = document.createElement('a');
+      a.href = P.href;
+      var img = document.createElement('img');
+      img.src = src;
+      img.alt = '「' + P.name + '」页截图';
+      img.width = 1280;
+      img.height = 720;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      a.appendChild(img);
+      li.appendChild(a);
+      bandFrag.appendChild(li);
+    }
+    bandTrack.insertBefore(bandFrag, bandTrack.firstChild);
+
     var setCount = bandTrack.children.length;
 
     /* 顺序随机。每次刷新重排一次，所以加新卡片不用手动安排谁在前谁在后。 */
@@ -1265,6 +1299,10 @@
        bandDwellTimer：还没到点的那段计时 */
     var bandDwelling = false;
     var bandDwellTimer = null;
+    /* 拖过一次之后，光标通常还停在带子上（或者正好压在卡片上）。
+       这时不能再让「停留 2 秒」把自动滑按住，否则拖完就永远不走了。
+       拖完先屏蔽停留计时，等鼠标离开再恢复。 */
+    var bandDwellBlocked = false;
     /* 还没确认进视野之前当作「不在视野」—— 否则页面刚加载时会先推进一帧
        才被 IntersectionObserver 纠正。没有 IO 的浏览器直接当可见。 */
     var bandInView = !('IntersectionObserver' in window);
@@ -1306,7 +1344,9 @@
        拖 / 横向滚轮 / 横向划都走这里。⚠️ 不放在 bandHold 里：
        bandHold 也会被 pointerdown（按下但没拖）触发，那样「点一下」就把动画废了。 */
     var bandTakeOver = function () {
-      bandFinished = true;
+      /* 2026-11-02 用户新要求：手动拖过之后，自动滑**不要永久终止**，
+         暂停 BAND_RESUME 后从当前 scrollLeft 继续滑到最右。
+         一次性闩 bandFinished 只留给「自动滑自己到达最右」那一刻。 */
       bandTouched = true;
       bandHold();
     };
@@ -1326,7 +1366,7 @@
           所以置回 false 的下一帧就接着滑，不用等 BAND_RESUME。
           这一点和 bandHeld（手动操作后等 1.8 秒）刻意分开。 */
     var bandEnter = function () {
-      if (bandDwellTimer || bandDwelling) return;
+      if (bandDwellBlocked || bandDwellTimer || bandDwelling) return;
       bandDwellTimer = setTimeout(function () {
         bandDwellTimer = null;
         bandDwelling = true;      /* 到点了：停住 */
@@ -1335,6 +1375,7 @@
     var bandLeave = function () {
       if (bandDwellTimer) { clearTimeout(bandDwellTimer); bandDwellTimer = null; }
       if (bandDwelling) bandDwelling = false;   /* 移开立刻放行 */
+      bandDwellBlocked = false;                 /* 下次进来重新计停留 */
     };
     bandEl.addEventListener('mouseenter', bandEnter);
     bandEl.addEventListener('mouseleave', bandLeave);
@@ -1437,10 +1478,19 @@
       bandEl.classList.remove('is-dragging');
       try { bandEl.releasePointerCapture(bandDragId); } catch (err) {}
       bandDragId = null;
-      /* 真的拖动过（不是点一下）→ 用户接手，自动滑到此为止。
-         ⚠️ 原来这里写的是「拖回左边之后，自动滑接着从当前位置走」——
-            那是错的，用户 2026-10-16 明确要求「拉回去就不需要再滚动了」。 */
-      if (bandMoved) bandTakeOver(); else bandHold();
+      /* 真的拖动过（不是点一下）→ 暂停一会儿，然后接着自动滑到最右。
+         ⚠️ 2026-11-02 用户改了需求：拖过之后不能永久停住，
+            必须继续自动滚动到结束。 */
+      if (bandMoved) {
+        /* 2026-11-02：拖完光标还在带子上，必须清掉「停留停住」，
+           否则自动滑 1.8 秒后刚恢复就被 dwell 按住，永远到不了最右。 */
+        if (bandDwellTimer) { clearTimeout(bandDwellTimer); bandDwellTimer = null; }
+        bandDwelling = false;
+        bandDwellBlocked = true;
+        bandTakeOver();
+      } else {
+        bandHold();
+      }
     };
     bandEl.addEventListener('pointerup', bandEndDrag);
     bandEl.addEventListener('pointercancel', bandEndDrag);
