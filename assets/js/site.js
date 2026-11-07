@@ -1031,7 +1031,12 @@
   var staggerRows = doc.querySelectorAll(
     '.work, .section__head, .gallery, .pages__item, .promo, .plate, .clips,'
     + ' .gx-head, .gx-card, .gx-shot--wide,'
-    + ' .llm-head, .llm-card, .llm-tile, .llm-spec__item, .empty-state');
+    + ' .llm-head, .llm-card, .llm-tile, .llm-spec__item, .empty-state,'
+    + ' .web-hero__inner, .web-band, .web-works,'
+    + ' .web-plans, .web-table-wrap, .web-cta,'
+    /* 2026-11-07 大模型页改火山式排版：新容器全部是 .vs-* */
+    + ' .vs-promise, .vs-three__col, .vs-row, .vs-cell,'
+    + ' .vs-split, .vs-table-wrap, .vs-flow li, .vs-final__head, .vs-final__scene');
   if (staggerRows.length) {
     var revealRow = function (row) {
       var lines = row.querySelectorAll('.reveal-line');
@@ -1230,6 +1235,7 @@
       { href: 'design.html',   name: '平面设计', shots: ['assets/img/band/pool-design-1.jpg', 'assets/img/band/pool-design-2.jpg'] },
       { href: 'ai-video.html', name: 'AI视频',   shots: ['assets/img/band/pool-ai-video-1.jpg', 'assets/img/band/pool-ai-video-2.jpg'] },
       { href: 'game.html',     name: '小游戏开发', shots: ['assets/img/band/pool-game-1.jpg', 'assets/img/band/pool-game-2.jpg'] },
+      { href: 'web.html',      name: '网页开发',   shots: ['assets/img/band/pool-web-1.jpg', 'assets/img/band/pool-web-2.jpg'] },
       { href: 'llm.html',      name: '大模型部署', shots: ['assets/img/band/pool-llm-1.jpg', 'assets/img/band/pool-llm-2.jpg'] }
     ];
     var bandOldPages = bandTrack.querySelectorAll('[data-band-page]');
@@ -3003,9 +3009,11 @@
 /* 2026-10-30 大模型页页脚 CTA：点击复制邮箱，并弹一条提示。
    页脚那行邮箱本身已在 HTML 里改成跳 QQ 邮箱（https://mail.qq.com/）。 */
 (function () {
-  var btn = document.getElementById('contact-copy');
-  if (!btn) return;
-  var email = btn.getAttribute('data-email') || '2235126059@qq.com';
+  /* 2026-11-07：大模型页底部联系卡也改成点击复制，改成支持多个按钮 */
+  var btns = Array.prototype.slice.call(
+    document.querySelectorAll('#contact-copy, [data-copy-email]')
+  );
+  if (!btns.length) return;
   var toast = null, timer = 0;
 
   function showToast(msg) {
@@ -3038,16 +3046,21 @@
     return ok;
   }
 
-  btn.addEventListener('click', function (ev) {
-    ev.preventDefault();
-    var done = function () { showToast('已复制邮箱：' + email); };
-    var fail = function () { showToast('复制失败，请手动复制：' + email); };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(email).then(done, function () {
+  btns.forEach(function (btn) {
+    var email = btn.getAttribute('data-email') ||
+                btn.getAttribute('data-copy-email') ||
+                '2235126059@qq.com';
+    btn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      var done = function () { showToast('已复制邮箱：' + email); };
+      var fail = function () { showToast('复制失败，请手动复制：' + email); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(email).then(done, function () {
+          legacyCopy(email) ? done() : fail();
+        });
+      } else {
         legacyCopy(email) ? done() : fail();
-      });
-    } else {
-      legacyCopy(email) ? done() : fail();
-    }
+      }
+    });
   });
 })();

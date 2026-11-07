@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>网页开发 · 个人网页开发</title>
+<meta name="description" content="设计师帮你开发网页，功能+审美都在线：从结构、视觉到前端实现与上线，展示个人作品集、网页小游戏与大模型部署页的开发过程。">
+<meta name="theme-color" content="#F5F5F7">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/img/favicon-pineapple.png?v=2">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png?v=2">
+<script>document.documentElement.classList.remove('no-js');
+document.documentElement.classList.add('js');
+setTimeout(function () {
+  if (!window.__siteReady) document.documentElement.classList.remove('js');
+}, 4000);</script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/web.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<nav class="site-nav site-nav--bar" aria-label="主导航">
+  <div class="site-nav__inner">
+    <a class="site-nav__home" href="index.html">首页</a>
+    <button class="nav-toggle" type="button"
+            aria-expanded="false" aria-controls="nav-list" aria-label="打开菜单">
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <ul class="site-nav__list" id="nav-list">
+        <li><a class="site-nav__link" href="design.html">平面设计</a></li>
+        <li><a class="site-nav__link" href="ai-video.html">AI视频</a></li>
+        <li><a class="site-nav__link" href="game.html">小游戏开发</a></li>
+        <li><a class="site-nav__link" aria-current="page" href="web.html">网页开发</a></li>
+        <li><a class="site-nav__link" href="llm.html">大模型部署</a></li>
+        <li><a class="site-nav__link" href="culture.html">文学馆</a></li>
+</ul>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- ====================================================================
+       网页开发 · 首屏
+       版式参考千问 Token Plan 页：浅色、居中、超大标题 + 渐变强调，
+       下面是一个会动的舞台：渐变卡片、浏览器、代码卡、技术标签和输入框。
+       ==================================================================== -->
+  <section class="web-hero">
+    <span class="web-hero__glow web-hero__glow--a" aria-hidden="true"></span>
+    <span class="web-hero__glow web-hero__glow--b" aria-hidden="true"></span>
+    <div class="wrap web-hero__inner">
+      <p class="eyebrow web-hero__eyebrow reveal-line">网页开发 · WEB DEVELOPMENT</p>
+      <h1 class="web-hero__title reveal-line">设计师帮你开发网页<span class="web-hero__line"><span class="grad">功能+审美</span>都在线</span></h1>
+      <p class="web-hero__sub reveal-line">设计师更清楚功能应该搭配什么视觉艺术，开发更高效。</p>
+      <ul class="web-hero__meta reveal-line" aria-label="技术范围">
+        <li>HTML / CSS / JavaScript</li>
+        <li>响应式</li>
+        <li>动效</li>
+        <li>Nginx / GitHub Pages</li>
+      </ul>
+
+      <div class="web-stage reveal-line" role="img"
+           aria-label="网页开发动效演示：浏览器窗口、代码卡片、技术标签和输入框">
+        <div class="web-stage__mesh" aria-hidden="true"></div>
+        <div class="web-stage__pane web-stage__pane--a" aria-hidden="true"></div>
+        <div class="web-stage__pane web-stage__pane--b" aria-hidden="true"></div>
+
+        <ul class="web-stage__chips" aria-hidden="true">
+          <li><i></i>HTML</li>
+          <li><i></i>CSS</li>
+          <li><i></i>JavaScript</li>
+          <li><i></i>Nginx</li>
+        </ul>
+
+        <div class="web-stage__window" aria-hidden="true">
+          <div class="web-browser__bar">
+            <span class="web-browser__dots"><i></i><i></i><i></i></span>
+            <span class="web-browser__url">pineapple-zhang.github.io/portfolio</span>
+            <span class="web-browser__live">LIVE</span>
+          </div>
+          <div class="web-browser__body">
+            <img src="assets/img/web/hero-home.jpg" width="1440" height="810"
+                 alt="个人作品集首页：欢迎来到一个小世界" fetchpriority="high" decoding="async">
+          </div>
+        </div>
+
+        <div class="web-stage__code" aria-hidden="true">
+          <div class="web-stage__code-bar"><i></i><i></i><i></i><span>build.sh</span></div>
+          <div class="web-stage__code-lines">
+            <p><b>01</b><span class="web-line__typed"><span class="kw">design</span> layout + type</span></p>
+            <p><b>02</b><span class="web-line__typed"><span class="kw">build</span> html + css + js</span></p>
+            <p><b>03</b><span class="web-line__typed"><span class="kw">test</span> 360 → 1920</span></p>
+            <p><b>04</b><span class="web-line__typed"><span class="kw">deploy</span> nginx</span></p>
+            <p class="is-ok"><b>05</b><span class="web-line__typed"><span class="kw">status</span> 200 OK</span></p>
+          </div>
+        </div>
+
+        <div class="web-stage__prompt" aria-hidden="true">
+          <span class="web-stage__prompt-dot"></span>
+          <span class="web-stage__prompt-text">开发设计网页要找谁？本站合作一站式搞定。</span>
+          <span class="web-stage__send">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                 aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M8.4 14.2c.9 1.25 2.15 1.9 3.6 1.9s2.7-.65 3.6-1.9"></path>
+              <circle cx="9" cy="9.8" r="1" fill="currentColor" stroke="none"></circle>
+              <circle cx="15" cy="9.8" r="1" fill="currentColor" stroke="none"></circle>
+            </svg>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       三件事：设计 + 开发 + 上线
+       ==================================================================== -->
+  <section class="section web-section" aria-labelledby="web-why-title">
+    <div class="wrap">
+      <div class="web-band">
+        <div class="web-band__copy">
+          <p class="eyebrow reveal-line">为什么是我</p>
+          <h2 class="web-band__title reveal-line" id="web-why-title"><span class="grad">审美与功能</span><br>始终都要在线</h2>
+          <p class="web-band__intro reveal-line">信息层级功能效果我们都会理清楚，设计，功能，开发，测试，上线一站式搞定。绝不交一个「好看但不好用」的半成品，还等什么？快来开发你的个人网页（企业官网/个人生活管理）吧。</p>
+
+          <ul class="web-features">
+            <li class="web-feature reveal-line">
+              <span class="web-feature__no">01</span>
+              <div>
+                <h3>审美不是后期贴图</h3>
+                <p>版式、色彩、字距、留白、动画、视频、特效，我们考虑得非常充分。</p>
+              </div>
+            </li>
+            <li class="web-feature reveal-line">
+              <span class="web-feature__no">02</span>
+              <div>
+                <h3>功能不是能用就行</h3>
+                <p>响应式、键盘操作、加载速度、移动端触控，按真实使用场景验收。</p>
+              </div>
+            </li>
+            <li class="web-feature reveal-line">
+              <span class="web-feature__no">03</span>
+              <div>
+                <h3>有测试我们才交付</h3>
+                <p>域名、Nginx、缓存、压缩、HTTPS，我们都会先测试，从来不会把收尾留给客户。</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="web-band__visual reveal-line" aria-hidden="true">
+          <div class="web-code">
+            <div class="web-code__bar"><i></i><i></i><i></i><span>web.html</span></div>
+            <div class="web-code__lines">
+              <p><b>01</b><span class="web-line__typed"><span class="c-key">section</span> <span class="c-str">"web-hero"</span></span></p>
+              <p><b>02</b><span class="web-line__typed"><span class="c-key">grid</span> <span class="c-val">1.05fr .95fr</span></span></p>
+              <p><b>03</b><span class="web-line__typed"><span class="c-key">@media</span> <span class="c-val">max-width: 860px</span></span></p>
+              <p><b>04</b><span class="web-line__typed"><span class="c-key">deploy</span> <span class="c-str">"nginx"</span></span></p>
+              <p><b>05</b><span class="web-line__typed"><span class="c-key">status</span> <span class="c-ok">200 OK</span></span></p>
+            </div>
+            <div class="web-code__glow"></div>
+          </div>
+          <div class="web-band__chips">
+            <span>响应式</span><span>滚动叙事</span><span>Canvas</span><span>性能</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       做过的网页
+       ==================================================================== -->
+  <section class="section section--raised" aria-labelledby="web-works-title">
+    <div class="wrap">
+      <div class="section__head reveal-line">
+        <p class="eyebrow section__eyebrow">做过的网页</p>
+        <h2 class="section-title" id="web-works-title">最好的案例就是本站</h2>
+        <p class="section__intro">真实上线的页面。审美和功能我都落地了</p>
+      </div>
+
+      <ul class="web-works">
+        <li class="web-work reveal-line">
+          <a class="web-work__media" href="index.html" aria-label="查看个人作品集首页">
+            <img src="assets/img/web/hero-home.jpg" width="1440" height="810"
+                 alt="个人作品集首页截图" loading="lazy" decoding="async">
+          </a>
+          <div class="web-work__body">
+            <p class="web-work__no">01 / PORTFOLIO</p>
+            <h3>个人作品集</h3>
+            <p>7 个页面 + 5 个游戏，双线部署在 GitHub Pages 和阿里云。随机作品带、滚动动效、手机端适配，都是自己写的。</p>
+            <ul class="web-work__tags"><li>HTML/CSS/JS</li><li>动效</li><li>响应式</li><li>部署</li></ul>
+            <a class="web-work__link" href="index.html">看首页 →</a>
+          </div>
+        </li>
+
+        <li class="web-work reveal-line">
+          <a class="web-work__media" href="game.html" aria-label="查看小游戏开发页">
+            <img src="assets/img/band/pool-game-1.jpg" width="1280" height="720"
+                 alt="小游戏开发页截图" loading="lazy" decoding="async">
+          </a>
+          <div class="web-work__body">
+            <p class="web-work__no">02 / GAMES</p>
+            <h3>五个网页小游戏</h3>
+            <p>玉兔下凡、炸弹人、五子棋、雨夜便利店、祈年殿。Canvas、DOM、音效、关卡，纯前端，打开就能玩。</p>
+            <ul class="web-work__tags"><li>Canvas</li><li>DOM</li><li>游戏循环</li><li>音效</li></ul>
+            <a class="web-work__link" href="game.html">看游戏页 →</a>
+          </div>
+        </li>
+
+        <li class="web-work reveal-line">
+          <a class="web-work__media" href="llm.html" aria-label="查看大模型部署页">
+            <img src="assets/img/band/pool-llm-1.jpg" width="1280" height="720"
+                 alt="大模型部署页截图" loading="lazy" decoding="async">
+          </a>
+          <div class="web-work__body">
+            <p class="web-work__no">03 / LLM</p>
+            <h3>大模型部署页</h3>
+            <p>粒子球、数据动效、视频首屏和长页面结构。动效全部用 Canvas 和 CSS 画，没挂外部库。</p>
+            <ul class="web-work__tags"><li>Canvas</li><li>粒子</li><li>视频</li><li>长页面</li></ul>
+            <a class="web-work__link" href="llm.html">看大模型页 →</a>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       合作方式
+       ==================================================================== -->
+  <section class="section" aria-labelledby="web-plans-title">
+    <div class="wrap">
+      <div class="section__head reveal-line">
+        <p class="eyebrow section__eyebrow">合作方式</p>
+        <h2 class="section-title" id="web-plans-title">可以怎么合作</h2>
+        <p class="section__intro">按项目难度报价。提供信息结构和视觉方向，我们排期后为您进行开发</p>
+      </div>
+
+      <ul class="web-plans">
+        <li class="web-plan reveal-line">
+          <p class="web-plan__kicker">个人 / 创作者</p>
+          <h3>个人作品集</h3>
+          <p class="web-plan__price">按需求报价</p>
+          <ul class="web-plan__list">
+            <li>结构梳理与页面规划</li>
+            <li>视觉延续个人风格</li>
+            <li>响应式 + 基础动效</li>
+            <li>上线与域名配置</li>
+          </ul>
+          <p class="web-plan__time">约 14～21 天</p>
+          <a class="web-plan__link" href="#web-contact" aria-label="个人作品集：前往联系区域"></a>
+        </li>
+
+        <li class="web-plan web-plan--hot reveal-line">
+          <p class="web-plan__kicker">工作室 / 小团队</p>
+          <h3>品牌官网</h3>
+          <p class="web-plan__price">按需求报价</p>
+          <ul class="web-plan__list">
+            <li>首页 + 3～6 个内页</li>
+            <li>品牌视觉与版式落地</li>
+            <li>响应式 + 滚动动效</li>
+            <li>基础 SEO 与上线</li>
+          </ul>
+          <p class="web-plan__time">约 3～6 周</p>
+          <a class="web-plan__link" href="#web-contact" aria-label="品牌官网：前往联系区域"></a>
+        </li>
+
+        <li class="web-plan reveal-line">
+          <p class="web-plan__kicker">活动 / 课程 / 新品</p>
+          <h3>专题页</h3>
+          <p class="web-plan__price">按需求报价</p>
+          <ul class="web-plan__list">
+            <li>单页叙事与节奏设计</li>
+            <li>动效与视频整合</li>
+            <li>分享卡片与移动端适配</li>
+            <li>快速上线</li>
+          </ul>
+          <p class="web-plan__time">约 10～15 天</p>
+          <a class="web-plan__link" href="#web-contact" aria-label="专题页：前往联系区域"></a>
+        </li>
+
+        <li class="web-plan reveal-line">
+          <p class="web-plan__kicker">需要玩法 / 交互</p>
+          <h3>交互 / 小游戏</h3>
+          <p class="web-plan__price">按需求报价</p>
+          <ul class="web-plan__list">
+            <li>Canvas / DOM 交互</li>
+            <li>关卡、音效、动画</li>
+            <li>移动端触控适配</li>
+            <li>部署与联机扩展</li>
+          </ul>
+          <p class="web-plan__time">约 4～8 周</p>
+          <a class="web-plan__link" href="#web-contact" aria-label="交互 / 小游戏：前往联系区域"></a>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       能力对比
+       ==================================================================== -->
+  <section class="section section--raised" aria-labelledby="web-table-title">
+    <div class="wrap">
+      <div class="section__head reveal-line">
+        <p class="eyebrow section__eyebrow">项目清单</p>
+        <h2 class="section-title" id="web-table-title">不同的项目，不同的优化空间</h2>
+        <p class="section__intro">同样是网页，展示型和交互型要解决的问题不一样，审美和功能自然也不一样。</p>
+      </div>
+
+      <div class="web-table-wrap reveal-line">
+        <table class="web-table">
+          <thead>
+            <tr>
+              <th scope="col">能力</th>
+              <th scope="col">作品集</th>
+              <th scope="col">品牌官网</th>
+              <th scope="col">专题页</th>
+              <th scope="col">交互 / 游戏</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">页面数量</th><td>1～6</td><td>4～8</td><td>1～2</td><td>按需</td></tr>
+            <tr><th scope="row">视觉设计 / 版式</th><td>包含</td><td>包含</td><td>包含</td><td>包含</td></tr>
+            <tr><th scope="row">响应式布局</th><td>包含</td><td>包含</td><td>包含</td><td>包含</td></tr>
+            <tr><th scope="row">滚动 / 悬停动效</th><td>包含</td><td>包含</td><td>包含</td><td>包含</td></tr>
+            <tr><th scope="row">视频 / Canvas</th><td>按需</td><td>按需</td><td>包含</td><td>包含</td></tr>
+            <tr><th scope="row">后台 / 数据</th><td>—</td><td>按需</td><td>—</td><td>按需</td></tr>
+            <tr><th scope="row">部署上线</th><td>包含</td><td>包含</td><td>包含</td><td>包含</td></tr>
+            <tr><th scope="row">后续维护</th><td>按需</td><td>按需</td><td>按需</td><td>按需</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       底部 CTA
+       ==================================================================== -->
+  <section class="section web-section" id="web-contact" aria-labelledby="web-cta-title">
+    <div class="wrap">
+      <div class="web-cta reveal-line">
+        <span class="web-cta__sheen" aria-hidden="true"></span>
+        <p class="eyebrow">有网页要做？</p>
+        <h2 id="web-cta-title">有想法就行动<br><span class="web-cta__seg">交给我</span><span class="web-cta__grad">更快更好更美</span></h2>
+        <p>个人作品集、品牌官网、活动专题、交互页面等，只要你有意向我们都能做</p>
+        <button class="web-cta__btn" id="contact-copy" type="button" data-email="2235126059@qq.com" aria-label="复制邮箱 2235126059@qq.com">2235126059@qq.com</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__grid">
+      <div>
+        <p class="site-footer__title">合作说明</p>
+        <div class="site-footer__about">
+          <p>本平台仅作个人案例展示。</p>
+          <p>如有品牌营销视觉、网页开发、AI模型部署等商业合作意向，欢迎通过邮箱进行联络洽谈。</p>
+        </div>
+      </div>
+      <div>
+        <p class="site-footer__title">联系方式</p>
+        <ul class="site-footer__list">
+          <li><a href="https://mail.qq.com/" target="_blank" rel="noopener noreferrer">2235126059@qq.com</a></li>
+        </ul>
+        <p class="site-footer__note">欢迎对相关领域感兴趣的朋友通过邮箱进行交流探讨，期待您的来信。</p>
+      </div>
+      <div>
+        <p class="site-footer__title">研究/成果</p>
+        <ul class="site-footer__list">
+          <li><a href="design.html">平面设计</a></li>
+          <li><a href="ai-video.html">AI视频</a></li>
+          <li><a href="game.html">小游戏开发</a></li>
+          <li><a href="web.html">网页开发</a></li>
+          <li><a href="llm.html">大模型部署</a></li>
+          <li><a href="culture.html">文学馆</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="site-footer__bottom">
+      <span>©<span id="year">2026</span> 本站作者保留所有权利 · 当前网站版本：<span class="site-ver">V2.7</span></span>
+      <span>本网站全部由个人开发</span>
+      <span>本站所有作品图片皆由作者任职期间创作与个人兴趣交流时所得</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js"></script>
+<script src="assets/js/web.js"></script>
+</body>
+</html>
