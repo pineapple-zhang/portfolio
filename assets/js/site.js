@@ -3046,12 +3046,35 @@
     return ok;
   }
 
+  /* 网页开发页的邮箱按钮：点击时上报一次（用 sendBeacon，不阻塞复制）。
+     只有阿里云有 /admin 接口；GitHub Pages 上会 404，静默失败即可。 */
+  function trackClick(name) {
+    try {
+      var payload = JSON.stringify({
+        event: name,
+        page: location.pathname,
+        ref: document.referrer || ''
+      });
+      if (navigator.sendBeacon) {
+        var blob = new Blob([payload], { type: 'application/json' });
+        if (navigator.sendBeacon('/admin/api/track', blob)) return;
+      }
+      fetch('/admin/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true
+      })['catch'](function () {});
+    } catch (e) {}
+  }
+
   btns.forEach(function (btn) {
     var email = btn.getAttribute('data-email') ||
                 btn.getAttribute('data-copy-email') ||
                 '2235126059@qq.com';
     btn.addEventListener('click', function (ev) {
       ev.preventDefault();
+      if (btn.getAttribute('data-track') === 'copy-email') trackClick('copy-email');
       var done = function () { showToast('已复制邮箱：' + email); };
       var fail = function () { showToast('复制失败，请手动复制：' + email); };
       if (navigator.clipboard && navigator.clipboard.writeText) {
