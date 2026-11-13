@@ -632,6 +632,78 @@
   transition: stroke-dashoffset 700ms cubic-bezier(.65, 0, .35, 1);
 }
 
+/* 悬停弥散光（2026-11-12，用户要求「弥散光、自然光、彩色、渐隐、范围小一点」）：
+   上面那圈描边动画原样保留；这里只在按钮背后垫一小团彩色柔光，
+   让描边外面的光不是齐刷刷断掉，而是慢慢化进背景里。
+   · .hero__glow 比按钮四周只大出一小圈；里面两层各铺四个 radial-gradient 色团，
+     每个色团按接近高斯的曲线衰减（越往外掉得越慢），到边缘时已经是 0，看不到边界；
+   · 悬停：整团光淡入；悬停期间两层缓慢漂移、此消彼长，颜色像在流动。
+   ⚠️ 不用 filter: blur / SVG 高斯模糊（之前实测 hover 有 55–75ms 长帧）；
+      动效只动 opacity / transform。
+   ⚠️ 色团必须淡出到「同色的 0 透明度」，不能写 transparent，否则 Safari 边缘发灰。
+   ⚠️ .hero__glow 是 .hero__act 的后一个兄弟节点（靠 ~ 选择器点亮），
+      z-index:-1 垫在按钮下面，中间被按钮白底盖住，只露出四周的光。 */
+.hero__glow {
+  --g-blue: 0, 113, 227;
+  --g-indigo: 94, 92, 230;
+  --g-purple: 191, 90, 242;
+  --g-pink: 255, 55, 110;
+  --g-orange: 255, 159, 10;
+  --g-yellow: 255, 204, 0;
+  --g-cyan: 90, 200, 250;
+  position: absolute;
+  inset: -26px -22px;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 520ms ease-out;
+}
+.hero__glow::before,
+.hero__glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: 46% 100%;
+  animation: heroGlowA 6s ease-in-out infinite alternate paused;
+}
+.hero__glow::before {
+  background-image:
+    radial-gradient(closest-side, rgba(var(--g-blue), .798), rgba(var(--g-blue), .589) 22%, rgba(var(--g-blue), .361) 42%, rgba(var(--g-blue), .19) 58%, rgba(var(--g-blue), .085) 72%, rgba(var(--g-blue), .023) 86%, rgba(var(--g-blue), 0)),
+    radial-gradient(closest-side, rgba(var(--g-purple), .798), rgba(var(--g-purple), .589) 22%, rgba(var(--g-purple), .361) 42%, rgba(var(--g-purple), .19) 58%, rgba(var(--g-purple), .085) 72%, rgba(var(--g-purple), .023) 86%, rgba(var(--g-purple), 0)),
+    radial-gradient(closest-side, rgba(var(--g-pink), .722), rgba(var(--g-pink), .532) 22%, rgba(var(--g-pink), .323) 42%, rgba(var(--g-pink), .171) 58%, rgba(var(--g-pink), .076) 72%, rgba(var(--g-pink), .021) 86%, rgba(var(--g-pink), 0)),
+    radial-gradient(closest-side, rgba(var(--g-orange), .798), rgba(var(--g-orange), .589) 22%, rgba(var(--g-orange), .361) 42%, rgba(var(--g-orange), .19) 58%, rgba(var(--g-orange), .085) 72%, rgba(var(--g-orange), .023) 86%, rgba(var(--g-orange), 0));
+  background-position: 0% 50%, 34% 50%, 66% 50%, 100% 50%;
+}
+.hero__glow::after {
+  background-image:
+    radial-gradient(closest-side, rgba(var(--g-cyan), .798), rgba(var(--g-cyan), .589) 22%, rgba(var(--g-cyan), .361) 42%, rgba(var(--g-cyan), .19) 58%, rgba(var(--g-cyan), .085) 72%, rgba(var(--g-cyan), .023) 86%, rgba(var(--g-cyan), 0)),
+    radial-gradient(closest-side, rgba(var(--g-indigo), .798), rgba(var(--g-indigo), .589) 22%, rgba(var(--g-indigo), .361) 42%, rgba(var(--g-indigo), .19) 58%, rgba(var(--g-indigo), .085) 72%, rgba(var(--g-indigo), .023) 86%, rgba(var(--g-indigo), 0)),
+    radial-gradient(closest-side, rgba(var(--g-purple), .722), rgba(var(--g-purple), .532) 22%, rgba(var(--g-purple), .323) 42%, rgba(var(--g-purple), .171) 58%, rgba(var(--g-purple), .076) 72%, rgba(var(--g-purple), .021) 86%, rgba(var(--g-purple), 0)),
+    radial-gradient(closest-side, rgba(var(--g-yellow), .798), rgba(var(--g-yellow), .589) 22%, rgba(var(--g-yellow), .361) 42%, rgba(var(--g-yellow), .19) 58%, rgba(var(--g-yellow), .085) 72%, rgba(var(--g-yellow), .023) 86%, rgba(var(--g-yellow), 0));
+  background-position: 17% 50%, 50% 50%, 83% 50%, 100% 50%;
+  animation-name: heroGlowB;
+}
+@keyframes heroGlowA {
+  from { opacity: 1;   transform: translate3d(-4px, 0, 0); }
+  to   { opacity: .5;  transform: translate3d(4px, 0, 0); }
+}
+@keyframes heroGlowB {
+  from { opacity: .5;  transform: translate3d(4px, 0, 0); }
+  to   { opacity: 1;   transform: translate3d(-4px, 0, 0); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero__act:hover ~ .hero__glow { opacity: 1; transition: opacity 600ms ease-out 120ms; }
+  .hero__act:hover ~ .hero__glow::before,
+  .hero__act:hover ~ .hero__glow::after { animation-play-state: running; }
+}
+
+/* 键盘焦点也亮同一团光 */
+.hero__act:focus-visible ~ .hero__glow { opacity: 1; }
+.hero__act:focus-visible ~ .hero__glow::before,
+.hero__act:focus-visible ~ .hero__glow::after { animation-play-state: running; }
+
 /* 键盘焦点：蓝色外环（不改内框颜色） */
 .hero__act:focus-visible {
   outline: 3px solid var(--act-blue);
@@ -692,6 +764,9 @@
     transition: none;
   }
   .hero__trace { display: none; }
+  /* 弥散光保留，只是不漂移 */
+  .hero__glow::before,
+  .hero__glow::after { animation: none; }
 }
 
 /* 滚动提示。
@@ -5480,3 +5555,59 @@ html { touch-action: manipulation; }
   z-index: 9999;
 }
 .site-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+
+/* ==========================================================================
+   31. 手机版精修（2026-11-13）
+
+   用户：「现在我们来优化手机版」，并给了硬条件 **电脑版本不能动，只改手机版**。
+   所以这一节全部关在 @media (max-width: 860px) 里 —— 桌面（>860）一条都不命中。
+   验证方式：制作过程缓存数据/_shots/diff_desktop_geom.py，
+   1440 / 1920 / 1024 三档宽度逐元素比对几何与计算样式，必须逐条一致。
+
+   量出来的问题（390×844 实测）：
+
+   ① 段间距是按桌面高度给的。`.section` 的 clamp(64px, 11vh, 128px) 在 844 下
+      取到 92.8px：上下两段边界各空掉 93px，整页 5432px 里有 900 多像素是空白。
+      手机上本来一屏就看得少，这个比例等于每翻一屏就有三分之一是空的。
+      收到 7.8vh（844 下 ≈ 66px），一页少滚 2~3 屏。
+
+   ② 作品列表的缝是**叠出来**的：`.works` 的 gap 42 + 上下两个 `.work`
+      各自的 padding-block 42 → 两张卡之间实际空 126px。gap 收到 30、
+      内边距收到 32，间隔变成 ~94px，卡片还是一张一张读，但没有半屏空白。
+
+   ③ 首屏下面那条作品带同样是 63 / 50 的上下留白，跟后面 93 的段间距连着，
+      三条大空白挨在一起特别显眼；顺手收到 54 / 38。
+
+   页脚的 94px 顶边距跟着收到 68（页面最后一段，不需要那么重的分隔）。
+   ========================================================================== */
+@media (max-width: 860px) {
+  .section { padding-block: clamp(52px, 7.8vh, 72px); }
+  .section--tight { padding-block: clamp(40px, 5.6vh, 52px); }
+  .section__head { margin-bottom: clamp(24px, 3.4vh, 30px); }
+  .band-sec { padding-block: 54px 38px; }
+  .works { gap: 30px; }
+  .work { padding-block: 32px; }
+  /* 只改上边距：下边距带着 env(safe-area-inset-bottom)，见第 29 节。
+     ⚠️ 选择器必须带 body —— 基础样式里写的是 `body .site-footer{ padding-top:
+        max(94px, 10vh) }`（第 948 行），权重比 `.site-footer` 高一级，
+        不写 body 的话手机上这条根本不生效，实测顶边距还是 94。 */
+  body .site-footer { padding-top: 68px; }
+}
+
+/* --- 触屏手感 -------------------------------------------------------------
+   只对「没有指针」的设备生效（手机 / 平板），桌面鼠标永远不会命中：
+     · 去掉点按时浏览器盖上去的那个灰色方块 —— 深色卡片上那一块灰特别脏；
+     · 实心按钮按下去缩 3%，手指底下有回应（松手立刻弹回，不做延迟）。 */
+@media (max-width: 860px) and (hover: none) {
+  a, button, summary, [role="button"] { -webkit-tap-highlight-color: transparent; }
+  .work__launch,
+  .llm-btn,
+  .vs-final__btn,
+  .nav-toggle { transition: transform .12s ease; }
+  .work__launch:active,
+  .llm-btn:active,
+  .vs-final__btn:active,
+  .nav-toggle:active { transform: scale(.97); }
+  .site-nav__link:active { opacity: .55; }
+}
